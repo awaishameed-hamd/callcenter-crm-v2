@@ -1,2 +1,5 @@
 import DailyAttendancePage from '@/components/attendance/DailyAttendancePage'
-export default DailyAttendancePage
+
+export default function Page() {
+  return <DailyAttendancePage />
+}

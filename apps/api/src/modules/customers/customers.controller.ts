@@ -1,64 +1,52 @@
-import { Controller, Get, Post, Param, Body, UseGuards } from '@nestjs/common'
+import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards } from '@nestjs/common'
+import { Role } from '@crm/shared'
 import { CustomersService } from './customers.service'
-import { CreateCustomerDto } from './dto/create-customer.dto'
-import { JwtAuthGuard }  from '../../common/guards/jwt-auth.guard'
-import { RolesGuard }    from '../../common/guards/roles.guard'
-import { Roles }         from '../../common/decorators/roles.decorator'
-import { CurrentUser }   from '../../common/decorators/current-user.decorator'
-import { Role }          from '@crm/shared'
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
+import { RolesGuard }   from '../../common/guards/roles.guard'
+import { Roles }        from '../../common/decorators/roles.decorator'
+import { CurrentUser }  from '../../common/decorators/current-user.decorator'
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('customers')
 export class CustomersController {
   constructor(private customers: CustomersService) {}
 
+  @Get()
+  findAll(@CurrentUser() actor: any, @Query() q: Record<string, string>) { return this.customers.findAll(actor, q) }
+
   @Roles(Role.AGENT)
   @Post()
-  create(@Body() dto: CreateCustomerDto, @CurrentUser() user: any) {
-    return this.customers.create(dto, user.id)
-  }
+  create(@CurrentUser() actor: any, @Body() body: Record<string, any>) { return this.customers.create(actor, body) }
 
-  @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER, Role.AGENT)
-  @Get()
-  findAll(@CurrentUser() user: any) {
-    return this.customers.findAll(user)
-  }
-
-  @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER, Role.AGENT)
-  @Get(':id')
-  findOne(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.customers.findOne(id, user)
+  @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
+  @Put(':id')
+  update(@CurrentUser() actor: any, @Param('id') id: string, @Body() body: Record<string, any>) {
+    return this.customers.update(actor, id, body)
   }
 
   @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
   @Post(':id/approve')
-  approve(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.customers.approve(id, user.id)
+  approve(@CurrentUser() actor: any, @Param('id') id: string, @Body() body: Record<string, any>) {
+    return this.customers.approve(actor, id, body)
   }
 
   @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
   @Post(':id/reject')
-  reject(
-    @Param('id') id: string,
-    @Body('cancelReason') cancelReason: string,
-    @CurrentUser() user: any,
-  ) {
-    return this.customers.reject(id, user.id, cancelReason)
+  reject(@CurrentUser() actor: any, @Param('id') id: string, @Body() body: Record<string, any>) {
+    return this.customers.reject(actor, id, body)
   }
 
   @Roles(Role.ADMIN, Role.DIRECTOR)
   @Post(':id/final-approve')
-  finalApprove(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.customers.finalApprove(id, user.id)
+  finalApprove(@CurrentUser() actor: any, @Param('id') id: string, @Body() body: Record<string, any>) {
+    return this.customers.finalApprove(actor, id, body)
   }
 
   @Roles(Role.ADMIN, Role.DIRECTOR)
   @Post(':id/final-reject')
-  finalReject(
-    @Param('id') id: string,
-    @Body('cancelReason') cancelReason: string,
-    @CurrentUser() user: any,
-  ) {
-    return this.customers.finalReject(id, user.id, cancelReason)
-  }
+  finalReject(@CurrentUser() actor: any, @Param('id') id: string) { return this.customers.finalReject(actor, id) }
+
+  @Roles(Role.ADMIN, Role.DIRECTOR)
+  @Delete(':id')
+  remove(@Param('id') id: string) { return this.customers.remove(id) }
 }

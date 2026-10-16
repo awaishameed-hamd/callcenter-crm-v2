@@ -1,2 +1,5 @@
 import AttendanceReportPage from '@/components/attendance/AttendanceReportPage'
-export default AttendanceReportPage
+
+export default function Page() {
+  return <AttendanceReportPage />
+}

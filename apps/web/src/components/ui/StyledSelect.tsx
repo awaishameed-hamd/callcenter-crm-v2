@@ -10,7 +10,7 @@ const inputStyle: React.CSSProperties = {
   outline: 'none', color: NAVY, background: '#fff',
 }
 
-export default function StyledSelect({ value, onChange, options, placeholder, loading, borderColor, disabled }: {
+export default function StyledSelect({ value, onChange, options, placeholder, loading, borderColor, disabled, required, compact }: {
   value: string
   onChange: (val: string) => void
   options: { value: string; label: string }[]
@@ -18,6 +18,10 @@ export default function StyledSelect({ value, onChange, options, placeholder, lo
   loading?: boolean
   borderColor?: string
   disabled?: boolean
+  /** Takes part in native form validation (checkValidity / reportValidity). */
+  required?: boolean
+  /** 24px-high variant for dense, spreadsheet-style forms. */
+  compact?: boolean
 }) {
   const [query,   setQuery]   = useState('')
   const [open,    setOpen]    = useState(false)
@@ -46,6 +50,8 @@ export default function StyledSelect({ value, onChange, options, placeholder, lo
     setQuery(''); setOpen(false); setFocused(false)
   }
 
+  const size: React.CSSProperties = compact ? { padding: '3px 7px', fontSize: 11, height: 24, borderWidth: 1, borderRadius: 4 } : {}
+
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>
       <div style={{ position: 'relative' }}>
@@ -56,10 +62,15 @@ export default function StyledSelect({ value, onChange, options, placeholder, lo
           placeholder={loading ? 'Loading…' : (placeholder ?? 'Select…')}
           readOnly={loading || disabled}
           disabled={disabled}
-          style={{ ...inputStyle, borderColor: borderColor ?? '#E0DDD5', paddingRight: 30, cursor: disabled ? 'not-allowed' : loading ? 'wait' : 'text', background: disabled ? '#F9FAFB' : '#fff', color: disabled ? '#9CA3AF' : NAVY }}
+          style={{ ...inputStyle, ...size, borderColor: borderColor ?? '#E0DDD5', paddingRight: compact ? 22 : 30, cursor: disabled ? 'not-allowed' : loading ? 'wait' : 'text', background: disabled ? '#F9FAFB' : '#fff', color: disabled ? '#9CA3AF' : NAVY }}
         />
-        <span style={{ position: 'absolute', right: 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#808080' }}>
-          <svg width={13} height={13} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+        {required && !disabled && (
+          <input tabIndex={-1} aria-hidden required value={value} onChange={() => {}}
+            onFocus={() => { setFocused(true); setQuery(''); setOpen(true) }}
+            style={{ position: 'absolute', left: 0, bottom: 0, width: '100%', height: 1, opacity: 0, pointerEvents: 'none' }} />
+        )}
+        <span style={{ position: 'absolute', right: compact ? 6 : 10, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none', color: '#808080' }}>
+          <svg width={compact ? 10 : 13} height={compact ? 10 : 13} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d={open ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
           </svg>
         </span>

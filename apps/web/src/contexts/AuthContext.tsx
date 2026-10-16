@@ -12,11 +12,13 @@ interface AuthState {
   isLoading:       boolean
 }
 
-interface LoginResponse {
-  accessToken:  string
-  refreshToken: string
-  user:         User
-  attendance:   { date: string; loginTime: string; isLate: boolean; lateMinutes: number | null; status: string } | null
+export interface LoginResponse {
+  accessToken:          string
+  refreshToken:         string
+  user:                 User
+  attendanceMarked:     boolean
+  attendanceInfo:       { time: string; date: string; isLate: boolean; lateMinutes: number | null } | null
+  showWorkingDaysPopup: boolean
 }
 
 interface AuthContextValue extends AuthState {
@@ -42,6 +44,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         const user = JSON.parse(raw) as User
         setState({ user, token, isAuthenticated: true, isLoading: false })
+        // Pick up role, type or lock changes made since this session's login.
+        api.get('/auth/me').then(({ data }) => {
+          const fresh = data?.data as User | undefined
+          if (!fresh) return
+          sessionStorage.setItem('user', JSON.stringify(fresh))
+          setState(s => (s.user ? { ...s, user: fresh } : s))
+        }).catch(() => {})
         return
       } catch {}
     }
@@ -50,14 +59,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const login = useCallback(async (identifier: string, password: string): Promise<LoginResponse> => {
     const { data } = await api.post<{ data: LoginResponse }>('/auth/login', { identifier, password })
-    const { accessToken, refreshToken, user, attendance } = data.data
+    const res = data.data
 
-    sessionStorage.setItem('access_token',  accessToken)
-    sessionStorage.setItem('refresh_token', refreshToken)
-    sessionStorage.setItem('user',          JSON.stringify(user))
+    sessionStorage.setItem('access_token',  res.accessToken)
+    sessionStorage.setItem('refresh_token', res.refreshToken)
+    sessionStorage.setItem('user',          JSON.stringify(res.user))
 
-    setState({ user, token: accessToken, isAuthenticated: true, isLoading: false })
-    return { accessToken, refreshToken, user, attendance }
+    setState({ user: res.user, token: res.accessToken, isAuthenticated: true, isLoading: false })
+    return res
   }, [])
 
   const updateUser = useCallback((patch: Partial<User>) => {

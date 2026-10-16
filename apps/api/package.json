@@ -13,6 +13,9 @@
     "db:studio": "prisma studio",
     "db:seed": "ts-node prisma/seed.ts"
   },
+  "prisma": {
+    "seed": "ts-node prisma/seed.ts"
+  },
   "dependencies": {
     "@crm/shared": "workspace:*",
     "@nestjs/common": "^10.3.0",

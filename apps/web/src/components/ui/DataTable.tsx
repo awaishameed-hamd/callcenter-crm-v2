@@ -2,6 +2,11 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { P } from '@/lib/palette'
 
+// The one table every list in the CRM renders through: gold header, compact
+// striped rows, columns the user can drag wider, and cells that wrap instead of
+// clipping. Widths are remembered per table id, so a column dragged on Clients
+// stays dragged on the next visit without each page wiring up its own storage.
+
 export interface Column<T> {
   key: string
   label: string
@@ -22,6 +27,7 @@ export default function DataTable<T>({
   id, columns, rows, loading, emptyText = 'Nothing to show.', rowKey,
   onRowClick, onRowContextMenu, rowStyle, minWidth, skeletonRows = 6, stickyHeader, footer, containerStyle,
 }: {
+  // Storage key for this table's column widths. Leave it out to skip persisting.
   id?: string
   columns: Column<T>[]
   rows: T[]
@@ -29,12 +35,15 @@ export default function DataTable<T>({
   emptyText?: React.ReactNode
   rowKey: (row: T, index: number) => string
   onRowClick?: (row: T, index: number) => void
+  // Right-click on a row, for pages that keep a context menu of row actions
   onRowContextMenu?: (e: React.MouseEvent, row: T, index: number) => void
   rowStyle?: (row: T, index: number) => React.CSSProperties | undefined
   minWidth?: number
   skeletonRows?: number
   stickyHeader?: boolean
   footer?: React.ReactNode
+  // For a table that already sits inside a card or a scroll pane, so it can drop
+  // the border and let the parent own the scrolling.
   containerStyle?: React.CSSProperties
 }) {
   const defaults = useCallback(
@@ -42,9 +51,10 @@ export default function DataTable<T>({
     [columns],
   )
 
-  const [widths,   setWidths]   = useState<Record<string, number>>(defaults)
+  const [widths, setWidths] = useState<Record<string, number>>(defaults)
   const [hydrated, setHydrated] = useState(false)
 
+  // Stored widths are read after mount so the server and client first paint match
   useEffect(() => {
     const saved = id ? lsGet(`dt:${id}:widths`) : null
     setWidths(saved ? { ...defaults(), ...saved } : defaults())
@@ -79,6 +89,8 @@ export default function DataTable<T>({
     letterSpacing: '0.07em', whiteSpace: 'nowrap', position: 'relative',
     userSelect: 'none', overflow: 'hidden',
   }
+  // Cells never wrap: a row stays one line tall and long text ends in an
+  // ellipsis, so widening the column is what reveals it.
   const tdBase: React.CSSProperties = {
     padding: '6px 12px', fontSize: 12, fontFamily: "'Inter', sans-serif",
     color: '#1a1a1a', borderBottom: `1px solid ${P.border}50`,
@@ -86,51 +98,64 @@ export default function DataTable<T>({
   }
 
   return (
-    <div style={{ overflowX: 'auto', borderRadius: 10, border: `1px solid ${P.border}`, ...containerStyle }}>
-      <table style={{ width: '100%', borderCollapse: 'collapse', minWidth }}>
-        <thead>
-          <tr style={{ background: '#F2AC18', ...(stickyHeader ? { position: 'sticky', top: 0, zIndex: 2 } : {}) }}>
+    <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${P.border}`, overflowX: 'auto', ...containerStyle }}>
+      <table style={{ width: '100%', minWidth, borderCollapse: 'separate', borderSpacing: 0, fontSize: 13, tableLayout: 'fixed' }}>
+        <colgroup>
+          {columns.map(c => <col key={c.key} style={{ width: widths[c.key] ?? c.width ?? 140 }} />)}
+        </colgroup>
+        <thead style={stickyHeader ? { position: 'sticky', top: 0, zIndex: 10 } : undefined}>
+          <tr style={{ background: '#F2AC18' }}>
             {columns.map(c => (
-              <th key={c.key} style={{ ...th, width: widths[c.key], maxWidth: widths[c.key], ...c.headerStyle }}>
+              <th key={c.key} style={{ ...th, textAlign: c.align ?? 'left', ...c.headerStyle }}>
                 {c.label}
                 {c.resizable !== false && (
-                  <span onMouseDown={e => onResizeStart(c.key, e)}
-                    style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: 5, cursor: 'col-resize', background: 'transparent' }} />
+                  <span onMouseDown={e => onResizeStart(c.key, e)} style={{
+                    position: 'absolute', right: 0, top: 0, bottom: 0, width: 6,
+                    cursor: 'col-resize', display: 'flex', alignItems: 'center',
+                    justifyContent: 'center', zIndex: 1,
+                  }}>
+                    <span style={{ width: 2, height: '55%', background: 'rgba(0,0,0,0.2)', borderRadius: 2 }} />
+                  </span>
                 )}
               </th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {loading
-            ? Array.from({ length: skeletonRows }).map((_, i) => (
-              <tr key={i}>
+          {loading ? (
+            Array.from({ length: skeletonRows }).map((_, i) => (
+              <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#FAFCFC' }}>
                 {columns.map(c => (
-                  <td key={c.key} style={{ ...tdBase, width: widths[c.key] }}>
-                    <div style={{ height: 12, borderRadius: 4, background: '#F1F5F9', width: '80%' }} />
+                  <td key={c.key} style={tdBase}>
+                    <div style={{ height: 12, borderRadius: 4, background: P.gridLine }} />
                   </td>
                 ))}
               </tr>
             ))
-            : rows.length === 0
-              ? <tr><td colSpan={columns.length} style={{ padding: '40px 16px', textAlign: 'center', color: '#94A3B8', fontSize: 13, fontFamily: "'Inter',sans-serif" }}>{emptyText}</td></tr>
-              : rows.map((row, i) => (
-                <tr key={rowKey(row, i)}
-                  onClick={onRowClick ? () => onRowClick(row, i) : undefined}
-                  onContextMenu={onRowContextMenu ? e => onRowContextMenu(e, row, i) : undefined}
-                  style={{ cursor: onRowClick ? 'pointer' : undefined, background: '#fff', ...rowStyle?.(row, i) }}
-                  onMouseEnter={e => { if (onRowClick) (e.currentTarget as HTMLElement).style.background = '#F8FAFC' }}
-                  onMouseLeave={e => { if (onRowClick) (e.currentTarget as HTMLElement).style.background = '#fff' }}>
-                  {columns.map(c => (
-                    <td key={c.key} style={{ ...tdBase, width: widths[c.key], maxWidth: widths[c.key], textAlign: c.align, ...c.cellStyle }}>
-                      {c.render ? c.render(row, i) : (row as any)[c.key] ?? ''}
-                    </td>
-                  ))}
-                </tr>
-              ))
-          }
+          ) : rows.length === 0 ? (
+            <tr>
+              <td colSpan={columns.length} style={{ padding: '48px 16px', textAlign: 'center', color: P.textMuted, fontFamily: "'Inter', sans-serif" }}>
+                {emptyText}
+              </td>
+            </tr>
+          ) : rows.map((row, idx) => (
+            <tr key={rowKey(row, idx)}
+              onClick={onRowClick ? () => onRowClick(row, idx) : undefined}
+              onContextMenu={onRowContextMenu ? e => onRowContextMenu(e, row, idx) : undefined}
+              style={{
+                background: idx % 2 === 0 ? '#fff' : '#FAFCFC',
+                cursor: onRowClick ? 'pointer' : undefined,
+                ...rowStyle?.(row, idx),
+              }}>
+              {columns.map(c => (
+                <td key={c.key} style={{ ...tdBase, textAlign: c.align ?? 'left', ...c.cellStyle }}>
+                  {c.render ? c.render(row, idx) : String((row as any)[c.key] ?? '')}
+                </td>
+              ))}
+            </tr>
+          ))}
         </tbody>
-        {footer && <tfoot>{footer}</tfoot>}
+        {footer}
       </table>
     </div>
   )

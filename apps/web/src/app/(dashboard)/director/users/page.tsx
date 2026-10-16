@@ -1,2 +1,5 @@
 import UsersPage from '@/components/admin/UsersPage'
-export default UsersPage
+
+export default function Page() {
+  return <UsersPage />
+}

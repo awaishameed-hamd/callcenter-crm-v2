@@ -1,205 +1,230 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import api from '@/lib/api'
 import { P } from '@/lib/palette'
-import { api } from '@/lib/api'
-import { formatDate } from '@/lib/utils'
 import StyledSelect from '@/components/ui/StyledSelect'
-import DataTable, { Column } from '@/components/ui/DataTable'
+import DataTable from '@/components/ui/DataTable'
+import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 
-type LeaveStatus = 'PENDING' | 'APPROVED' | 'REJECTED'
-type LeaveType   = 'sick' | 'casual' | 'annual' | 'exam' | 'other'
+const LEAVE_TYPE_OPTIONS = [
+  { value: 'sick',   label: 'Sick Leave'   },
+  { value: 'casual', label: 'Casual Leave' },
+  { value: 'annual', label: 'Annual Leave' },
+  { value: 'exam',   label: 'Exam Leave'   },
+  { value: 'other',  label: 'Other'        },
+]
 
-interface LeaveApplication {
-  id:             string
-  leaveType:      LeaveType
-  fromDate:       string
-  toDate:         string
-  reason:         string
-  status:         LeaveStatus
-  reviewedBy:     { displayName: string } | null
-  rejectionReason: string | null
-  reviewedAt:     string | null
-  createdAt:      string
+const LEAVE_TYPE_LABELS: Record<string, string> = Object.fromEntries(
+  LEAVE_TYPE_OPTIONS.map(o => [o.value, o.label])
+)
+
+const STATUS_BADGE: Record<string, React.CSSProperties> = {
+  pending:  { background: '#F1F5F9', color: '#64748B', border: '1px solid #CBD5E1' },
+  approved: { background: '#F0FDF4', color: '#16A34A' },
+  rejected: { background: '#FEF2F2', color: '#DC2626' },
 }
 
-const LEAVE_TYPE_LABELS: Record<LeaveType, string> = {
-  sick:   'Sick Leave',
-  casual: 'Casual Leave',
-  annual: 'Annual Leave',
-  exam:   'Exam Leave',
-  other:  'Other',
-}
-
-const STATUS_STYLES: Record<LeaveStatus, { bg: string; color: string }> = {
-  PENDING:  { bg: '#FEF3C7', color: '#92400E' },
-  APPROVED: { bg: '#D1FAE5', color: '#065F46' },
-  REJECTED: { bg: '#FEE2E2', color: '#991B1B' },
+function todayStr() {
+  return new Date().toISOString().split('T')[0]
 }
 
 export default function MyLeavesPage() {
-  const [leaves,  setLeaves]  = useState<LeaveApplication[]>([])
-  const [loading, setLoading] = useState(true)
-  const [modal,   setModal]   = useState(false)
-  const [submitting, setSubmitting] = useState(false)
-  const [toast,   setToast]   = useState<{ msg: string; ok: boolean } | null>(null)
-
-  const [form, setForm] = useState({
-    leaveType: '',
-    fromDate:  '',
-    toDate:    '',
+  const [leaves,   setLeaves]   = useState<any[]>([])
+  const [loading,  setLoading]  = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [saving,   setSaving]   = useState(false)
+  const [toast,    setToast]    = useState<{ msg: string; ok: boolean } | null>(null)
+  const [form,     setForm]     = useState({
+    leaveType: 'sick',
+    fromDate:  todayStr(),
+    toDate:    todayStr(),
     reason:    '',
   })
-  const [errors, setErrors] = useState<Record<string, string>>({})
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const fetchLeaves = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const { data } = await api.get('/leaves/my')
-      setLeaves(data?.data ?? data ?? [])
-    } catch {
-      setLeaves([])
-    } finally {
-      setLoading(false)
-    }
+      setLeaves(data.data ?? [])
+    } catch { /* ignore */ } finally { if (!silent) setLoading(false) }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { fetchLeaves() }, [fetchLeaves])
+  useAutoRefresh(() => fetchLeaves(true))
 
-  const showToast = (msg: string, ok: boolean) => {
+  const summary = {
+    total:    leaves.length,
+    pending:  leaves.filter(l => l.status === 'pending').length,
+    approved: leaves.filter(l => l.status === 'approved').length,
+    rejected: leaves.filter(l => l.status === 'rejected').length,
+  }
+
+  function showToast(msg: string, ok: boolean) {
     setToast({ msg, ok })
-    setTimeout(() => setToast(null), 3000)
+    setTimeout(() => setToast(null), 3500)
   }
 
-  const validate = () => {
-    const e: Record<string, string> = {}
-    if (!form.leaveType) e.leaveType = 'Required'
-    if (!form.fromDate)  e.fromDate  = 'Required'
-    if (!form.toDate)    e.toDate    = 'Required'
-    if (!form.reason.trim()) e.reason = 'Required'
-    if (form.fromDate && form.toDate && form.toDate < form.fromDate)
-      e.toDate = 'Must be after From Date'
-    setErrors(e)
-    return Object.keys(e).length === 0
-  }
-
-  const handleSubmit = async () => {
-    if (!validate()) return
-    setSubmitting(true)
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!form.reason.trim()) return
+    setSaving(true)
     try {
       await api.post('/leaves', form)
-      showToast('Leave application submitted.', true)
-      setModal(false)
-      setForm({ leaveType: '', fromDate: '', toDate: '', reason: '' })
-      setErrors({})
-      load()
+      showToast('Leave application submitted!', true)
+      setShowForm(false)
+      setForm({ leaveType: 'sick', fromDate: todayStr(), toDate: todayStr(), reason: '' })
+      fetchLeaves()
     } catch (err: any) {
-      showToast(err?.response?.data?.message ?? 'Submit failed', false)
-    } finally {
-      setSubmitting(false)
-    }
+      showToast(err?.response?.data?.message ?? 'Failed to submit', false)
+    } finally { setSaving(false) }
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 8,
-    border: `1.5px solid ${P.border}`, fontSize: 13, fontFamily: "'Inter', sans-serif",
-    outline: 'none', color: P.navy,
-  }
-  const labelStyle: React.CSSProperties = { display: 'block', fontSize: 12, fontWeight: 600, color: P.textLabel, marginBottom: 5 }
-  const errStyle: React.CSSProperties   = { fontSize: 11, color: '#D62828', marginTop: 3 }
-
-  const columns: Column<LeaveApplication>[] = [
-    { key: 'leaveType', label: 'Type',       width: 130, render: r => LEAVE_TYPE_LABELS[r.leaveType] },
-    { key: 'fromDate',  label: 'From',        width: 110, render: r => formatDate(r.fromDate) },
-    { key: 'toDate',    label: 'To',          width: 110, render: r => formatDate(r.toDate) },
-    { key: 'reason',    label: 'Reason',      width: 220 },
-    { key: 'status',    label: 'Status',      width: 100,
-      render: r => {
-        const s = STATUS_STYLES[r.status]
-        return <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color }}>{r.status}</span>
-      },
-    },
-    { key: 'reviewedBy',   label: 'Reviewed By',   width: 140, render: r => r.reviewedBy?.displayName ?? '' },
-    { key: 'rejectionReason', label: 'Reason (if rejected)', width: 200, render: r => r.rejectionReason ?? '' },
-    { key: 'createdAt',   label: 'Applied On',  width: 110, render: r => formatDate(r.createdAt) },
+  const STAT_CARDS = [
+    { label: 'Total',    value: summary.total,    border: '#0891B2', fill: '#A5D8DD', text: '#111827' },
+    { label: 'Pending',  value: summary.pending,  border: '#1565C0', fill: '#BDDAF8', text: '#111827' },
+    { label: 'Approved', value: summary.approved, border: '#16A34A', fill: '#BBF0D6', text: '#111827' },
+    { label: 'Rejected', value: summary.rejected, border: '#DC2626', fill: '#FECACA', text: '#111827' },
   ]
 
   return (
-    <div style={{ padding: '24px 28px', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ background: P.bgMain, minHeight: '100vh', padding: '0 20px 20px' }}>
+
       {/* Toast */}
       {toast && (
         <div style={{
-          position: 'fixed', bottom: 24, right: 24, zIndex: 9999,
-          background: toast.ok ? '#065F46' : '#991B1B', color: '#fff',
-          padding: '12px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600,
-          boxShadow: '0 4px 16px rgba(0,0,0,0.15)',
-        }}>{toast.msg}</div>
+          position: 'fixed', top: 18, right: 22, zIndex: 9999,
+          padding: '10px 20px', borderRadius: 10, fontWeight: 700, fontSize: 13,
+          background: toast.ok ? '#16A34A' : '#DC2626', color: '#fff',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.18)',
+        }}>
+          {toast.msg}
+        </div>
       )}
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-        <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 22, fontWeight: 700, color: P.navy, margin: 0 }}>My Leaves</h1>
-        <button onClick={() => setModal(true)}
-          style={{ padding: '8px 18px', borderRadius: 8, background: P.navy, color: '#fff', border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600, fontFamily: "'Inter', sans-serif" }}>
-          + Apply Leave
+      {/* Header */}
+      <div style={{ height: 52, display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, marginBottom: 8 }}>
+        <h1 style={{ margin: 0, fontFamily: "'Faster One', cursive", textTransform: 'uppercase', fontSize: 26, display: 'inline-block', color: '#1E8496' }}>
+          My Leaves
+        </h1>
+        <div style={{ flex: 1 }} />
+        <button
+          onClick={() => setShowForm(true)}
+          style={{
+            display: 'flex', alignItems: 'center', gap: 7,
+            padding: '7px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
+            background: P.teal, color: '#fff',
+            fontSize: 13, fontWeight: 700, fontFamily: '"Inter", sans-serif',
+          }}
+        >
+          <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+          </svg>
+          Apply for Leave
         </button>
       </div>
 
-      <DataTable id="my-leaves" columns={columns} rows={leaves} loading={loading} rowKey={r => r.id} minWidth={900} />
+      {/* Stat cards */}
+      <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
+        {STAT_CARDS.map(c => (
+          <div key={c.label} style={{ flex: 1, minWidth: 100, background: c.fill, border: `1px solid ${c.border}30`, borderRadius: 10, padding: '11px 14px' }}>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: c.text, fontFamily: '"Inter", sans-serif' }}>{c.value}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 10, fontWeight: 300, fontFamily: "'Ethnocentric Rg', sans-serif", color: '#64748B' }}>{c.label}</p>
+          </div>
+        ))}
+      </div>
 
-      {/* Apply Modal */}
-      {modal && (
-        <div style={{
-          position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000,
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-        }}>
-          <div style={{ background: '#fff', borderRadius: 14, padding: '28px 30px', width: 440, maxWidth: '95vw', boxShadow: '0 8px 40px rgba(0,0,0,0.18)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20 }}>
-              <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 18, fontWeight: 700, color: P.navy, margin: 0 }}>Apply for Leave</h2>
-              <button onClick={() => { setModal(false); setErrors({}) }}
-                style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: P.textMuted }}>✕</button>
+      <DataTable
+        id="myLeaves" minWidth={860} rows={leaves} loading={loading}
+        rowKey={(l: any) => l.id}
+        emptyText='No leave applications yet. Click "Apply for Leave" to submit one.'
+        columns={[
+          { key: 'n', label: '#', width: 52, resizable: false, cellStyle: { color: '#94A3B8', fontSize: 12 },
+            render: (_l: any, i: number) => i + 1 },
+          { key: 'leaveType', label: 'Type', width: 120, cellStyle: { fontWeight: 700, color: P.navy },
+            render: (l: any) => LEAVE_TYPE_LABELS[l.leaveType] ?? l.leaveType },
+          { key: 'fromDate', label: 'From', width: 100, cellStyle: { fontSize: 12, color: '#374151' },
+            render: (l: any) => l.fromDate?.split('T')[0] ?? '' },
+          { key: 'toDate', label: 'To', width: 100, cellStyle: { fontSize: 12, color: '#374151' },
+            render: (l: any) => l.toDate?.split('T')[0] ?? '' },
+          { key: 'days', label: 'Days', width: 64, cellStyle: { fontWeight: 700, color: P.navy } },
+          { key: 'reason', label: 'Reason', width: 190, cellStyle: { fontSize: 12, color: '#374151' } },
+          { key: 'status', label: 'Status', width: 110, render: (l: any) => (
+            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, fontFamily: '"Inter", sans-serif', textTransform: 'capitalize', ...(STATUS_BADGE[l.status] ?? {}) }}>
+              {l.status}
+            </span>
+          ) },
+          { key: 'reviewedBy', label: 'Reviewed By', width: 160, cellStyle: { fontSize: 12, color: '#64748B' },
+            render: (l: any) => l.reviewedBy ? `${l.reviewedBy.displayName} (${l.reviewedBy.role.replace(/_/g, ' ')})` : 'Pending' },
+          { key: 'rejectionReason', label: 'Rejection Reason', width: 170, cellStyle: { fontSize: 12, color: '#DC2626' },
+            render: (l: any) => l.rejectionReason ?? '' },
+        ]}
+      />
+
+      {/* Apply Leave Modal */}
+      {showForm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+          <div style={{ background: '#fff', borderRadius: 14, padding: 28, width: '100%', maxWidth: 500, boxShadow: '0 8px 32px rgba(0,0,0,0.18)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h2 style={{ margin: 0, fontFamily: "'Faster One', cursive", textTransform: 'uppercase', fontSize: 26, display: 'inline-block', color: '#1E8496' }}>
+                Apply for Leave
+              </h2>
+              <button onClick={() => setShowForm(false)} style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: 18, color: '#64748B', lineHeight: 1 }}>✕</button>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-              <div>
-                <label style={labelStyle}>Leave Type *</label>
-                <StyledSelect value={form.leaveType} onChange={v => setForm(f => ({ ...f, leaveType: v }))}
-                  options={Object.entries(LEAVE_TYPE_LABELS).map(([v, l]) => ({ value: v, label: l }))}
-                  placeholder="Select leave type" borderColor={errors.leaveType ? '#D62828' : undefined} />
-                {errors.leaveType && <div style={errStyle}>{errors.leaveType}</div>}
+            <form onSubmit={handleSubmit}>
+              {/* Leave Type */}
+              <div style={{ marginBottom: 14 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B', marginBottom: 5 }}>Leave Type</label>
+                <StyledSelect
+                  value={form.leaveType}
+                  onChange={val => setForm(f => ({ ...f, leaveType: val }))}
+                  options={LEAVE_TYPE_OPTIONS}
+                  placeholder="Select leave type..."
+                  borderColor="#D7A520"
+                />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+
+              {/* Dates */}
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 14 }}>
                 <div>
-                  <label style={labelStyle}>From Date *</label>
-                  <input type="date" value={form.fromDate} onChange={e => setForm(f => ({ ...f, fromDate: e.target.value }))}
-                    style={{ ...inputStyle, borderColor: errors.fromDate ? '#D62828' : P.border }} />
-                  {errors.fromDate && <div style={errStyle}>{errors.fromDate}</div>}
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B', marginBottom: 5 }}>From Date</label>
+                  <input type="date" value={form.fromDate}
+                    onChange={e => setForm(f => ({ ...f, fromDate: e.target.value }))}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: '"Inter", sans-serif' }} />
                 </div>
                 <div>
-                  <label style={labelStyle}>To Date *</label>
-                  <input type="date" value={form.toDate} onChange={e => setForm(f => ({ ...f, toDate: e.target.value }))}
-                    style={{ ...inputStyle, borderColor: errors.toDate ? '#D62828' : P.border }} />
-                  {errors.toDate && <div style={errStyle}>{errors.toDate}</div>}
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B', marginBottom: 5 }}>To Date</label>
+                  <input type="date" value={form.toDate}
+                    onChange={e => setForm(f => ({ ...f, toDate: e.target.value }))}
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: '"Inter", sans-serif' }} />
                 </div>
               </div>
-              <div>
-                <label style={labelStyle}>Reason *</label>
-                <textarea rows={3} value={form.reason} onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
-                  placeholder="Reason for leave…"
-                  style={{ ...inputStyle, resize: 'vertical', borderColor: errors.reason ? '#D62828' : P.border }} />
-                {errors.reason && <div style={errStyle}>{errors.reason}</div>}
-              </div>
-            </div>
 
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 22 }}>
-              <button onClick={() => { setModal(false); setErrors({}) }}
-                style={{ padding: '8px 18px', borderRadius: 8, border: `1.5px solid ${P.border}`, background: '#fff', color: P.navy, cursor: 'pointer', fontSize: 13, fontFamily: "'Inter',sans-serif" }}>
-                Cancel
-              </button>
-              <button onClick={handleSubmit} disabled={submitting}
-                style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: P.navy, color: '#fff', cursor: submitting ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: "'Inter',sans-serif", opacity: submitting ? 0.7 : 1 }}>
-                {submitting ? 'Submitting…' : 'Submit Application'}
-              </button>
-            </div>
+              {/* Reason */}
+              <div style={{ marginBottom: 22 }}>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B', marginBottom: 5 }}>Reason</label>
+                <textarea
+                  rows={3}
+                  required
+                  value={form.reason}
+                  onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
+                  placeholder="Enter reason for leave..."
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: '"Inter", sans-serif', color: '#1E293B' }} />
+              </div>
+
+              {/* Actions */}
+              <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <button type="button" onClick={() => setShowForm(false)}
+                  style={{ padding: '8px 22px', borderRadius: 8, border: '1.5px solid #CBD5E1', background: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#64748B', fontFamily: '"Inter", sans-serif' }}>
+                  Cancel
+                </button>
+                <button type="submit" disabled={saving}
+                  style={{ padding: '8px 22px', borderRadius: 8, border: 'none', background: P.teal, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.7 : 1, fontFamily: '"Inter", sans-serif' }}>
+                  {saving ? 'Submitting…' : 'Submit Application'}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

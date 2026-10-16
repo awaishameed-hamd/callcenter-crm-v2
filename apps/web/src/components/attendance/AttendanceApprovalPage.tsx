@@ -1,212 +1,559 @@
-'use client'
+﻿'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import api from '@/lib/api'
 import { P } from '@/lib/palette'
-import { api } from '@/lib/api'
-import { useAuth } from '@/contexts/AuthContext'
-import { formatDate } from '@/lib/utils'
-import DataTable, { Column } from '@/components/ui/DataTable'
-import StyledSelect from '@/components/ui/StyledSelect'
-import PillSelect from '@/components/ui/PillSelect'
+import { useAutoRefresh } from '@/hooks/useAutoRefresh'
+import DataTable from '@/components/ui/DataTable'
+import { formatTime12h } from '@/lib/utils'
 
-type AttendanceStatus = 'PRESENT' | 'ABSENT' | 'LATE' | 'LEAVE' | 'HOLIDAY' | 'WEEKEND' | 'HALF_DAY'
-type ApprovalStatus   = 'PENDING' | 'APPROVED' | 'REJECTED'
+const labelCls     = 'block text-xs font-bold uppercase tracking-widest mb-1'
+const inputCls     = 'rounded-lg px-3 py-1.5 text-sm outline-none transition'
+const filterStyle  = { background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(255,255,255,0.25)', color: '#fff' } as React.CSSProperties
 
-interface AttendanceRow {
-  id:             string
-  date:           string
-  status:         AttendanceStatus
-  loginTime:      string | null
-  isLate:         boolean
-  lateMinutes:    number | null
-  notes:          string | null
-  approvalStatus: ApprovalStatus | null
-  approvedAt:     string | null
-  approvedBy:     { displayName: string } | null
-  editedBy:       { displayName: string } | null
-  user:           { id: string; displayName: string; role: string }
+const STATUS_TABS = [
+  { key: 'all',      label: 'All'      },
+  { key: 'pending',  label: 'Pending'  },
+  { key: 'approved', label: 'Approved' },
+  { key: 'rejected', label: 'Rejected' },
+]
+
+const APPROVAL_BADGE: Record<string, string> = {
+  pending:  'border border-gray-300 text-gray-500',
+  approved: 'bg-green-100 text-green-700',
+  rejected: 'bg-red-100 text-red-700',
 }
 
-const STATUS_COLORS: Record<AttendanceStatus, { bg: string; text: string }> = {
-  PRESENT:  { bg: '#D1FAE5', text: '#065F46' },
-  ABSENT:   { bg: '#FEE2E2', text: '#991B1B' },
-  LATE:     { bg: '#FEF3C7', text: '#92400E' },
-  LEAVE:    { bg: '#E0E7FF', text: '#3730A3' },
-  HOLIDAY:  { bg: '#F0FDF4', text: '#166534' },
-  WEEKEND:  { bg: '#F1F5F9', text: '#475569' },
-  HALF_DAY: { bg: '#FEF9C3', text: '#713F12' },
+// ── Stat Card ─────────────────────────────────────────────────────────────────
+function StatCard({ label, value, border, fill, textColor }: { label: string; value: number; border: string; fill: string; textColor: string }) {
+  return (
+    <div style={{ flex: 1, minWidth: 100, background: fill, border: `1px solid ${border}30`, borderRadius: 10, padding: '11px 14px' }}>
+      <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: textColor, fontFamily: '"Inter", sans-serif' }}>{value ?? 0}</p>
+      <p style={{ margin: '2px 0 0', fontSize: 10, fontWeight: 300, fontFamily: "'Ethnocentric Rg', sans-serif", color: '#64748B' }}>{label}</p>
+    </div>
+  )
 }
 
-export default function AttendanceApprovalPage() {
-  const { user }  = useAuth()
-  const today     = new Date()
-  const [month,   setMonth]   = useState(today.getMonth())
-  const [year,    setYear]    = useState(today.getFullYear())
-  const [rows,    setRows]    = useState<AttendanceRow[]>([])
-  const [loading, setLoading] = useState(true)
-  const [toast,   setToast]   = useState<{ msg: string; ok: boolean } | null>(null)
-  const [editing, setEditing] = useState<AttendanceRow | null>(null)
-  const [editData, setEditData] = useState({ status: '', notes: '' })
+// ── Inline login-time edit ─────────────────────────────────────────────────────
+function EditTimeCell({ rec, onSaved }: { rec: any; onSaved: (id: string, time: string) => void }) {
+  const [editing, setEditing] = useState(false)
+  const [time,    setTime]    = useState(rec.loginTime ?? '')
   const [saving,  setSaving]  = useState(false)
 
-  const showToast = (msg: string, ok: boolean) => {
-    setToast({ msg, ok })
-    setTimeout(() => setToast(null), 3000)
-  }
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const { data } = await api.get('/attendance', { params: { month: month + 1, year } })
-      setRows(data?.data ?? data ?? [])
-    } catch {
-      setRows([])
-    } finally {
-      setLoading(false)
-    }
-  }, [month, year])
-
-  useEffect(() => { load() }, [load])
-
-  const handleApprove = async (id: string) => {
-    try {
-      await api.post(`/attendance/${id}/approve`)
-      showToast('Attendance approved.', true)
-      load()
-    } catch (e: any) {
-      showToast(e?.response?.data?.message ?? 'Error', false)
-    }
-  }
-
-  const handleReject = async (id: string) => {
-    try {
-      await api.post(`/attendance/${id}/reject`)
-      showToast('Attendance rejected.', true)
-      load()
-    } catch (e: any) {
-      showToast(e?.response?.data?.message ?? 'Error', false)
-    }
-  }
-
-  const openEdit = (row: AttendanceRow) => {
-    setEditing(row)
-    setEditData({ status: row.status, notes: row.notes ?? '' })
-  }
-
-  const handleSaveEdit = async () => {
-    if (!editing) return
+  async function save() {
     setSaving(true)
     try {
-      await api.put(`/attendance/${editing.id}`, editData)
-      showToast('Attendance updated.', true)
-      setEditing(null)
-      load()
-    } catch (e: any) {
-      showToast(e?.response?.data?.message ?? 'Error', false)
-    } finally {
-      setSaving(false)
-    }
+      await api.patch(`/attendance/${rec.id}`, { loginTime: time })
+      onSaved(rec.id, time)
+      setEditing(false)
+    } catch { /* ignore */ } finally { setSaving(false) }
   }
 
-  const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
-  const monthOpts = MONTHS.map((m, i) => ({ value: String(i), label: m }))
-  const yearOpts  = Array.from({ length: 4 }, (_, i) => ({ value: String(today.getFullYear() - 1 + i), label: String(today.getFullYear() - 1 + i) }))
-
-  const statusOpts = [
-    { value: 'PRESENT',  label: 'Present'  },
-    { value: 'ABSENT',   label: 'Absent'   },
-    { value: 'LATE',     label: 'Late'     },
-    { value: 'LEAVE',    label: 'Leave'    },
-    { value: 'HOLIDAY',  label: 'Holiday'  },
-    { value: 'HALF_DAY', label: 'Half Day' },
-  ]
-
-  const columns: Column<AttendanceRow>[] = [
-    { key: 'user',    label: 'Employee',    width: 160, render: r => r.user.displayName },
-    { key: 'date',    label: 'Date',        width: 110, render: r => formatDate(r.date) },
-    {
-      key: 'status', label: 'Status', width: 100,
-      render: r => {
-        const c = STATUS_COLORS[r.status]
-        return <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: c.bg, color: c.text }}>{r.status}</span>
-      },
-    },
-    { key: 'loginTime',   label: 'Login',     width: 90,  render: r => r.loginTime ?? 'N/A' },
-    { key: 'isLate',      label: 'Late',      width: 60,  render: r => r.isLate ? 'Yes' : 'No' },
-    { key: 'lateMinutes', label: 'Late (m)',  width: 80,  render: r => r.lateMinutes != null ? String(r.lateMinutes) : '' },
-    {
-      key: 'approvalStatus', label: 'Approval', width: 90,
-      render: r => {
-        if (!r.approvalStatus) return ''
-        const c = r.approvalStatus === 'APPROVED' ? { bg: '#D1FAE5', text: '#065F46' }
-                : r.approvalStatus === 'REJECTED'  ? { bg: '#FEE2E2', text: '#991B1B' }
-                : { bg: '#FEF3C7', text: '#92400E' }
-        return <span style={{ display: 'inline-block', padding: '2px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: c.bg, color: c.text }}>{r.approvalStatus}</span>
-      },
-    },
-    { key: 'approvedBy', label: 'Approved By', width: 130, render: r => r.approvedBy?.displayName ?? '' },
-    {
-      key: 'actions', label: 'Actions', width: 200, resizable: false,
-      render: r => (
-        <div style={{ display: 'flex', gap: 6 }}>
-          <button onClick={() => openEdit(r)}
-            style={{ padding: '3px 10px', borderRadius: 6, border: `1px solid ${P.navy}`, background: '#fff', color: P.navy, cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: "'Inter',sans-serif" }}>
-            Edit
-          </button>
-          {r.approvalStatus !== 'APPROVED' && (
-            <button onClick={() => handleApprove(r.id)}
-              style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: '#D1FAE5', color: '#065F46', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: "'Inter',sans-serif" }}>
-              Approve
+  if (editing) {
+    return (
+      <div className="flex items-center gap-2">
+        {saving ? (
+          <span className="text-xs text-gray-400">Saving…</span>
+        ) : (
+          <>
+            <input type="time" value={time} onChange={e => setTime(e.target.value)}
+              className="rounded border border-gray-300 px-1.5 py-0.5 text-xs outline-none focus:border-teal-400" />
+            <button onClick={save}
+              className="px-2 py-0.5 rounded bg-teal-600 text-white text-xs font-semibold hover:bg-teal-700 transition-colors">
+              Save
             </button>
-          )}
-          {r.approvalStatus !== 'REJECTED' && (
-            <button onClick={() => handleReject(r.id)}
-              style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: '#FEE2E2', color: '#991B1B', cursor: 'pointer', fontSize: 11, fontWeight: 600, fontFamily: "'Inter',sans-serif" }}>
-              Reject
-            </button>
-          )}
-        </div>
-      ),
-    },
-  ]
+            <button onClick={() => setEditing(false)} className="text-xs text-gray-400 hover:text-gray-600">✕</button>
+          </>
+        )}
+      </div>
+    )
+  }
 
   return (
-    <div style={{ padding: '24px 28px', fontFamily: "'Inter', sans-serif" }}>
-      {toast && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, background: toast.ok ? '#065F46' : '#991B1B', color: '#fff', padding: '12px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600 }}>{toast.msg}</div>
+    <div className="flex items-center gap-2">
+      <span className="text-xs font-bold text-gray-700" style={{ fontFamily: '"Inter", sans-serif', letterSpacing: '0.04em' }}>
+        {formatTime12h(rec.loginTime) ?? 'N/A'}
+      </span>
+      {rec.approvalStatus === 'pending' && (
+        <button onClick={() => setEditing(true)}
+          className="px-2 py-0.5 rounded border border-gray-300 text-xs text-gray-500 hover:border-blue-400 hover:text-blue-600 transition-colors">
+          Edit
+        </button>
       )}
+    </div>
+  )
+}
 
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 22, fontWeight: 700, color: P.navy, margin: 0 }}>Attendance Approval</h1>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <PillSelect value={String(month)} onChange={v => setMonth(Number(v))} options={monthOpts} minWidth={130} />
-          <PillSelect value={String(year)}  onChange={v => setYear(Number(v))}  options={yearOpts}  minWidth={90} />
+function todayStr() {
+  return new Date().toISOString().split('T')[0]
+}
+
+// ── Main ──────────────────────────────────────────────────────────────────────
+export default function AttendanceApprovalPage() {
+  const [date,      setDate]      = useState(todayStr())
+  const [search,    setSearch]    = useState('')
+  const [statusTab, setStatusTab] = useState('all')
+  const [records,   setRecords]   = useState<any[]>([])
+  const [loading,   setLoading]   = useState(true)
+  const [confirm,   setConfirm]   = useState<{ id: string; name: string } | null>(null)
+  const [acting,    setActing]    = useState(false)
+  const [bulkConfirm, setBulkConfirm] = useState(false)
+  const [bulkActing,  setBulkActing]  = useState(false)
+
+  // ── Leave approval state ───────────────────────────────────────────────────
+  const [moduleTab,    setModuleTab]    = useState<'attendance' | 'leaves'>('attendance')
+  const [leaveRecords, setLeaveRecords] = useState<any[]>([])
+  const [leaveLoading, setLeaveLoading] = useState(false)
+  const [leaveSTab,    setLeaveSTab]    = useState('pending')
+  const [leaveSearch,  setLeaveSearch]  = useState('')
+  const [leaveConfirm, setLeaveConfirm] = useState<{ id: string; action: 'approve' | 'reject'; name: string } | null>(null)
+  const [leaveReason,  setLeaveReason]  = useState('')
+  const [leaveActing,  setLeaveActing]  = useState(false)
+
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
+    try {
+      const d    = new Date(date)
+      const month = d.getUTCMonth() + 1
+      const year  = d.getUTCFullYear()
+      const { data } = await api.get('/attendance/report', { params: { month, year } })
+      const all: any[] = data.data ?? []
+      // Approval is only for people who actually logged in that day (PRESENT or
+      // LATE). Absent rows are system-generated no-shows with nothing to approve,
+      // and they get locked at 6pm on their own, so they do not belong here.
+      setRecords(all.filter(r => r.date === date && (r.status === 'PRESENT' || r.status === 'LATE')))
+    } catch { /* ignore */ } finally { if (!silent) setLoading(false) }
+  }, [date])
+
+  useEffect(() => { fetchData() }, [fetchData])
+
+  const fetchLeaves = useCallback(async (silent = false) => {
+    if (!silent) setLeaveLoading(true)
+    try {
+      const { data } = await api.get('/leaves/all')
+      setLeaveRecords(data.data ?? [])
+    } catch { /* ignore */ } finally { if (!silent) setLeaveLoading(false) }
+  }, [])
+
+  useEffect(() => { if (moduleTab === 'leaves') fetchLeaves() }, [moduleTab, fetchLeaves])
+
+  useAutoRefresh(() => {
+    fetchData(true)
+    if (moduleTab === 'leaves') fetchLeaves(true)
+  })
+
+  // Client-side filter
+  const filtered = useMemo(() => {
+    let list = records
+    if (statusTab !== 'all') list = list.filter(r => r.approvalStatus === statusTab)
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      list = list.filter(r => r.userName?.toLowerCase().includes(q))
+    }
+    return list
+  }, [records, statusTab, search])
+
+  // Summary counts
+  const summary = useMemo(() => ({
+    total:    records.length,
+    pending:  records.filter(r => r.approvalStatus === 'pending').length,
+    approved: records.filter(r => r.approvalStatus === 'approved').length,
+    rejected: records.filter(r => r.approvalStatus === 'rejected').length,
+    late:     records.filter(r => r.isLate).length,
+  }), [records])
+
+  async function doAction() {
+    if (!confirm) return
+    setActing(true)
+    try {
+      await api.patch(`/attendance/${confirm.id}/reject`)
+      setRecords(prev => prev.map(r => r.id === confirm.id
+        ? { ...r, approvalStatus: 'rejected', status: 'ABSENT', isLate: false, lateMinutes: null }
+        : r
+      ))
+      setConfirm(null)
+    } catch { setConfirm(null) } finally { setActing(false) }
+  }
+
+  // Approve is a one-click action, no confirmation popup (unlike Mark Absent, which still overrides the logged-in status)
+  async function approveDirect(id: string) {
+    try {
+      await api.patch(`/attendance/${id}/approve`)
+      setRecords(prev => prev.map(r => r.id === id ? { ...r, approvalStatus: 'approved' } : r))
+    } catch { /* ignore */ }
+  }
+
+  function onTimeSaved(id: string, newTime: string) {
+    setRecords(prev => prev.map(r => r.id === id ? { ...r, loginTime: newTime } : r))
+  }
+
+  async function doLeaveAction() {
+    if (!leaveConfirm) return
+    setLeaveActing(true)
+    try {
+      if (leaveConfirm.action === 'approve') {
+        await api.patch(`/leaves/${leaveConfirm.id}/approve`)
+      } else {
+        await api.patch(`/leaves/${leaveConfirm.id}/reject`, { reason: leaveReason || undefined })
+      }
+      setLeaveRecords(prev => prev.map(l => l.id === leaveConfirm.id
+        ? { ...l, status: leaveConfirm.action === 'approve' ? 'approved' : 'rejected' }
+        : l
+      ))
+      setLeaveConfirm(null)
+      setLeaveReason('')
+    } catch { /* ignore */ } finally { setLeaveActing(false) }
+  }
+
+  const leaveFiltered = leaveRecords.filter(l => {
+    if (leaveSTab !== 'all' && l.status !== leaveSTab) return false
+    if (leaveSearch.trim()) {
+      const q = leaveSearch.toLowerCase()
+      return (l.applicant?.displayName?.toLowerCase() ?? '').includes(q)
+        || (l.applicant?.userCode?.toLowerCase() ?? '').includes(q)
+    }
+    return true
+  })
+
+  const leaveSummary = {
+    total:    leaveRecords.length,
+    pending:  leaveRecords.filter(l => l.status === 'pending').length,
+    approved: leaveRecords.filter(l => l.status === 'approved').length,
+    rejected: leaveRecords.filter(l => l.status === 'rejected').length,
+  }
+
+  const pendingRecords = useMemo(() => records.filter(r => r.approvalStatus === 'pending'), [records])
+
+  async function doBulkApprove() {
+    setBulkActing(true)
+    try {
+      await Promise.all(pendingRecords.map(r => api.patch(`/attendance/${r.id}/approve`)))
+      setRecords(prev => prev.map(r =>
+        r.approvalStatus === 'pending' ? { ...r, approvalStatus: 'approved' } : r
+      ))
+      setBulkConfirm(false)
+    } catch { /* ignore */ } finally { setBulkActing(false) }
+  }
+
+  return (
+    <div className="flex flex-col" style={{ background: P.bgMain, minHeight: '100vh', padding: '0 20px 20px' }}>
+
+      {/* Header */}
+      <div style={{ height: 52, display: 'flex', alignItems: 'center', gap: 14, flexShrink: 0, marginBottom: 8 }}>
+        <h1 style={{ margin: 0, fontFamily: "'Faster One', cursive", textTransform: 'uppercase', fontSize: 26, display: 'inline-block', color: '#1E8496' }}>
+          {moduleTab === 'attendance' ? 'Attendance Approval' : 'Leave Approvals'}
+        </h1>
+        {/* Module tabs */}
+        <div style={{ display: 'flex', gap: 2, background: P.navy + '15', borderRadius: 10, padding: 4 }}>
+          {[{ key: 'attendance', label: 'Attendance' }, { key: 'leaves', label: 'Leave Approvals' }].map(m => (
+            <button key={m.key} onClick={() => setModuleTab(m.key as 'attendance' | 'leaves')}
+              style={{
+                padding: '5px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
+                fontSize: 12, fontWeight: 700, fontFamily: '"Inter", sans-serif',
+                background: moduleTab === m.key ? P.navy : 'transparent',
+                color: moduleTab === m.key ? '#fff' : P.navy,
+                transition: 'all .15s',
+              }}>
+              {m.label}
+            </button>
+          ))}
         </div>
       </div>
 
-      <DataTable id="att-approval" columns={columns} rows={rows} loading={loading} rowKey={r => r.id} minWidth={1100} />
+      {moduleTab === 'attendance' && (<>
 
-      {editing && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{ background: '#fff', borderRadius: 14, padding: '28px 30px', width: 380, maxWidth: '95vw' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
-              <h2 style={{ fontFamily: "'Outfit',sans-serif", fontSize: 18, fontWeight: 700, color: P.navy, margin: 0 }}>Edit Attendance</h2>
-              <button onClick={() => setEditing(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 20, color: P.textMuted }}>✕</button>
+      {/* Stat cards */}
+      <div style={{ display: 'flex', gap: 12, flexShrink: 0, marginBottom: 16 }}>
+        <StatCard label="Total Records" value={summary.total}    border="#0891B2" fill="#A5D8DD" textColor="#111827" />
+        <StatCard label="Pending"       value={summary.pending}  border="#1565C0" fill="#BDDAF8" textColor="#111827" />
+        <StatCard label="Late"          value={summary.late}     border="#64748B" fill="#D4DAE3" textColor="#111827" />
+        <StatCard label="Approved"      value={summary.approved} border="#16A34A" fill="#BBF0D6" textColor="#111827" />
+        <StatCard label="Rejected"      value={summary.rejected} border="#DC2626" fill="#FECACA" textColor="#111827" />
+      </div>
+
+      {/* Filters */}
+      <div style={{ flexShrink: 0, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: P.teal, borderRadius: 40, padding: '5px 8px', flexWrap: 'wrap' }}>
+
+          {/* Date */}
+          <input type="date" value={date} onChange={e => setDate(e.target.value)}
+            style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 30, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: '"Inter", sans-serif', background: date ? P.navy : 'rgba(255,255,255,0.18)', color: '#fff', outline: 'none', colorScheme: 'dark' }} />
+
+          {/* Separator */}
+          <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.3)', flexShrink: 0, margin: '0 2px' }} />
+
+          {/* Status pills */}
+          {STATUS_TABS.map(({ key, label }) => (
+            <button key={key} type="button" onClick={() => setStatusTab(key)}
+              style={{ flexShrink: 0, padding: '4px 12px', borderRadius: 40, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: '"Inter", sans-serif', transition: 'all .15s', whiteSpace: 'nowrap', background: statusTab === key ? P.navy : 'transparent', color: statusTab === key ? '#fff' : 'rgba(255,255,255,0.85)' }}>
+              {label}
+            </button>
+          ))}
+
+          {/* Separator */}
+          <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.3)', flexShrink: 0, margin: '0 2px' }} />
+
+          {/* Search */}
+          <div style={{ position: 'relative', flex: 1, minWidth: 160, maxWidth: 220 }}>
+            <svg style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width={12} height={12} fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.8)" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+            <input type="text" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}
+              style={{ width: '100%', boxSizing: 'border-box', paddingLeft: 28, paddingRight: 8, paddingTop: 4, paddingBottom: 4, borderRadius: 30, border: '1.5px solid rgba(255,255,255,0.35)', fontSize: 12, outline: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', fontFamily: '"Inter", sans-serif' }} />
+          </div>
+
+          {/* Bulk Approve, right corner */}
+          <button
+            onClick={() => pendingRecords.length > 0 && setBulkConfirm(true)}
+            disabled={pendingRecords.length === 0 || loading}
+            style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 14px', borderRadius: 30, border: 'none', cursor: pendingRecords.length > 0 ? 'pointer' : 'not-allowed', fontSize: 12, fontWeight: 700, fontFamily: '"Inter", sans-serif', background: pendingRecords.length > 0 ? '#F2AC18' : 'rgba(0,0,0,0.2)', color: '#ffffff', opacity: pendingRecords.length === 0 ? 0.5 : 1 }}>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
+              <polyline points="20 6 9 17 4 12"/>
+            </svg>
+            Approve All Pending
+            {pendingRecords.length > 0 && (
+              <span style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 99, padding: '1px 7px', fontSize: 11, fontWeight: 900 }}>
+                {pendingRecords.length}
+              </span>
+            )}
+          </button>
+
+        </div>
+      </div>
+
+
+      {/* Table */}
+      <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+        <div style={{ flex: 1, overflowY: 'auto' }}>
+          <DataTable
+            id="attApproval" minWidth={820} rows={filtered} loading={loading} skeletonRows={8}
+            stickyHeader containerStyle={{ border: 'none', borderRadius: 0 }}
+            rowKey={(rec: any) => rec.id}
+            emptyText="No records found."
+            columns={[
+              { key: 'n', label: '#', width: 52, resizable: false,
+                cellStyle: { fontWeight: 700, color: '#94A3B8' }, render: (_r: any, i: number) => i + 1 },
+              { key: 'userName', label: 'Name', width: 170, cellStyle: { fontWeight: 700, color: P.navy } },
+              { key: 'userRole', label: 'Role', width: 110, render: (rec: any) => {
+                const s = rec.userRole === 'DIRECTOR' ? { bg: '#FEF3C7', color: '#92400E' }
+                  : rec.userRole === 'MANAGER' ? { bg: '#DBEAFE', color: '#1D4ED8' } : { bg: '#CFFAFE', color: '#0E7490' }
+                return <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: s.bg, color: s.color }}>{rec.userRole.replace(/_/g, ' ')}</span>
+              } },
+              { key: 'date', label: 'Date', width: 104, cellStyle: { color: P.navy } },
+              { key: 'loginTime', label: 'Login Time', width: 130, cellStyle: { overflow: 'visible' },
+                render: (rec: any) => <EditTimeCell rec={rec} onSaved={onTimeSaved} /> },
+              { key: 'status', label: 'Status', width: 100, render: (rec: any) => {
+                const s = rec.status === 'PRESENT' ? { bg: '#E6F4F6', color: '#0E7490' }
+                  : rec.status === 'LATE'   ? { bg: '#FEF3C7', color: '#B45309' }
+                  : rec.status === 'ABSENT' ? { bg: '#FEE2E2', color: '#DC2626' }
+                  : rec.status === 'LEAVE'  ? { bg: '#DBEAFE', color: '#1565C0' } : { bg: '#F3F4F6', color: '#6B7280' }
+                return <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: s.bg, color: s.color }}>{rec.status}</span>
+              } },
+              { key: 'isLate', label: 'Late', width: 76, render: (rec: any) => rec.isLate
+                ? <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 6, fontSize: 11, fontWeight: 700, background: P.brick + '18', color: P.brick, border: `1px solid ${P.brick}40` }}>{rec.lateMinutes}m</span>
+                : <span style={{ fontSize: 12, color: '#94A3B8' }}>No</span> },
+              { key: 'approvalStatus', label: 'Approval', width: 104, render: (rec: any) => {
+                const s = rec.approvalStatus === 'approved' ? { bg: '#F0FDF4', color: '#16A34A' }
+                  : rec.approvalStatus === 'rejected' ? { bg: '#FEF2F2', color: '#DC2626' } : { bg: '#F1F5F9', color: '#64748B' }
+                return <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: s.bg, color: s.color }}>{rec.approvalStatus}</span>
+              } },
+              { key: 'actions', label: 'Actions', width: 190, resizable: false, render: (rec: any) => rec.approvalStatus !== 'pending' ? null : (
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                  <button onClick={() => approveDirect(rec.id)}
+                    style={{ padding: '3px 10px', borderRadius: 6, background: '#16A34A', color: '#fff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Inter", sans-serif' }}>
+                    Approve
+                  </button>
+                  <button onClick={() => setConfirm({ id: rec.id, name: rec.userName })}
+                    style={{ padding: '3px 10px', borderRadius: 6, background: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Inter", sans-serif' }}>
+                    Mark Absent
+                  </button>
+                </div>
+              ) },
+            ]}
+          />
+        </div>
+      </div>
+
+      </>)} {/* end attendance section */}
+
+      {moduleTab === 'leaves' && (<>
+
+        {/* Leave Stat cards */}
+        <div style={{ display: 'flex', gap: 12, flexShrink: 0, marginBottom: 16 }}>
+          <StatCard label="Total"    value={leaveSummary.total}    border="#0891B2" fill="#A5D8DD" textColor="#111827" />
+          <StatCard label="Pending"  value={leaveSummary.pending}  border="#1565C0" fill="#BDDAF8" textColor="#111827" />
+          <StatCard label="Approved" value={leaveSummary.approved} border="#16A34A" fill="#BBF0D6" textColor="#111827" />
+          <StatCard label="Rejected" value={leaveSummary.rejected} border="#DC2626" fill="#FECACA" textColor="#111827" />
+        </div>
+
+        {/* Leave Filters */}
+        <div style={{ flexShrink: 0, marginBottom: 16 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: P.teal, borderRadius: 40, padding: '5px 8px', flexWrap: 'wrap' }}>
+            {STATUS_TABS.map(({ key, label }) => (
+              <button key={key} type="button" onClick={() => setLeaveSTab(key)}
+                style={{ flexShrink: 0, padding: '4px 12px', borderRadius: 40, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: '"Inter", sans-serif', transition: 'all .15s', whiteSpace: 'nowrap', background: leaveSTab === key ? P.navy : 'transparent', color: leaveSTab === key ? '#fff' : 'rgba(255,255,255,0.85)' }}>
+                {label}
+              </button>
+            ))}
+            <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.3)', flexShrink: 0, margin: '0 2px' }} />
+            <div style={{ position: 'relative', flex: 1, minWidth: 160, maxWidth: 220 }}>
+              <svg style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width={12} height={12} fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.8)" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+              </svg>
+              <input type="text" placeholder="Search…" value={leaveSearch} onChange={e => setLeaveSearch(e.target.value)}
+                style={{ width: '100%', boxSizing: 'border-box', paddingLeft: 28, paddingRight: 8, paddingTop: 4, paddingBottom: 4, borderRadius: 30, border: '1.5px solid rgba(255,255,255,0.35)', fontSize: 12, outline: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', fontFamily: '"Inter", sans-serif' }} />
             </div>
-            <div style={{ marginBottom: 12 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: P.textLabel, marginBottom: 5 }}>Status</label>
-              <StyledSelect value={editData.status} onChange={v => setEditData(d => ({ ...d, status: v }))} options={statusOpts} />
+            <button onClick={() => fetchLeaves()} disabled={leaveLoading}
+              style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 14px', borderRadius: 30, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: '"Inter", sans-serif', background: 'rgba(255,255,255,0.2)', color: '#fff', opacity: leaveLoading ? 0.6 : 1 }}>
+              {leaveLoading ? 'Loading…' : 'Refresh'}
+            </button>
+          </div>
+        </div>
+
+        {/* Leave Table */}
+        <div style={{ background: '#fff', borderRadius: 12, overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.08)', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+          <div style={{ overflowX: 'auto' }}>
+            <DataTable
+              id="leaveApproval" minWidth={860} rows={leaveFiltered} loading={leaveLoading}
+              stickyHeader containerStyle={{ border: 'none', borderRadius: 0 }}
+              rowKey={(l: any) => l.id}
+              emptyText="No leave applications found."
+              columns={[
+                { key: 'n', label: '#', width: 48, resizable: false,
+                  cellStyle: { color: '#94A3B8' }, render: (_l: any, i: number) => i + 1 },
+                { key: 'applicant', label: 'Applicant', width: 160,
+                  cellStyle: { fontWeight: 700, color: P.navy }, render: (l: any) => l.applicant?.displayName },
+                { key: 'role', label: 'Role', width: 110, render: (l: any) => {
+                  const s = l.applicant?.role === 'DIRECTOR' ? { bg: '#FEF3C7', color: '#92400E' }
+                    : l.applicant?.role === 'MANAGER'   ? { bg: '#DBEAFE', color: '#1D4ED8' }
+                    : l.applicant?.role === 'TEAM_LEAD' ? { bg: '#F0FDF4', color: '#15803D' }
+                    : { bg: '#CFFAFE', color: '#0E7490' }
+                  return <span style={{ display: 'inline-flex', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: s.bg, color: s.color }}>{l.applicant?.role?.replace(/_/g, ' ')}</span>
+                } },
+                { key: 'leaveType', label: 'Type', width: 100, cellStyle: { textTransform: 'capitalize', color: P.navy } },
+                { key: 'fromDate', label: 'From', width: 100, cellStyle: { color: P.navy }, render: (l: any) => l.fromDate?.split('T')[0] },
+                { key: 'toDate',   label: 'To',   width: 100, cellStyle: { color: P.navy }, render: (l: any) => l.toDate?.split('T')[0] },
+                { key: 'days', label: 'Days', width: 64, cellStyle: { fontWeight: 700, color: P.navy } },
+                { key: 'reason', label: 'Reason', width: 190, cellStyle: { color: P.navy } },
+                { key: 'status', label: 'Status', width: 104, render: (l: any) => {
+                  const s = l.status === 'approved' ? { bg: '#F0FDF4', color: '#16A34A' }
+                    : l.status === 'rejected' ? { bg: '#FEF2F2', color: '#DC2626' } : { bg: '#F1F5F9', color: '#64748B' }
+                  return <span style={{ display: 'inline-flex', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 700, background: s.bg, color: s.color, textTransform: 'capitalize' }}>{l.status}</span>
+                } },
+                { key: 'actions', label: 'Actions', width: 170, resizable: false, render: (l: any) => l.status !== 'pending' ? null : (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <button onClick={() => setLeaveConfirm({ id: l.id, action: 'approve', name: l.applicant?.displayName })}
+                      style={{ padding: '3px 10px', borderRadius: 6, background: '#16A34A', color: '#fff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Inter", sans-serif' }}>
+                      Approve
+                    </button>
+                    <button onClick={() => { setLeaveConfirm({ id: l.id, action: 'reject', name: l.applicant?.displayName }); setLeaveReason('') }}
+                      style={{ padding: '3px 10px', borderRadius: 6, background: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Inter", sans-serif' }}>
+                      Reject
+                    </button>
+                  </div>
+                ) },
+              ]}
+            />
+          </div>
+        </div>
+
+      </>)} {/* end leaves section */}
+
+      {/* Bulk Approve confirm dialog */}
+      {bulkConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !bulkActing && setBulkConfirm(false)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center border border-gray-200">
+            <div className="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4"
+              style={{ background: 'linear-gradient(135deg, #15803d, #16a34a)' }}>
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" style={{ width: 28, height: 28 }}>
+                <polyline points="20 6 9 17 4 12"/>
+              </svg>
             </div>
-            <div style={{ marginBottom: 16 }}>
-              <label style={{ display: 'block', fontSize: 12, fontWeight: 600, color: P.textLabel, marginBottom: 5 }}>Notes</label>
-              <textarea rows={3} value={editData.notes} onChange={e => setEditData(d => ({ ...d, notes: e.target.value }))}
-                style={{ width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 8, border: `1.5px solid ${P.border}`, fontSize: 13, resize: 'vertical', fontFamily: "'Inter',sans-serif", outline: 'none', color: P.navy }} />
+            <h3 className="text-base font-bold text-gray-800 mb-2" style={{ fontFamily: '"Inter", sans-serif' }}>
+              Approve All Pending
+            </h3>
+            <p className="text-sm text-gray-500 mb-1">
+              You are about to approve
+            </p>
+            <p className="text-2xl font-black mb-1" style={{ color: '#15803d', fontFamily: '"Inter", sans-serif' }}>
+              {pendingRecords.length} record{pendingRecords.length !== 1 ? 's' : ''}
+            </p>
+            <p className="text-xs text-gray-400 mb-5">for {date}</p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => setBulkConfirm(false)} disabled={bulkActing}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50">
+                Cancel
+              </button>
+              <button onClick={doBulkApprove} disabled={bulkActing}
+                className="px-5 py-2 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-50"
+                style={{ background: 'linear-gradient(90deg, #15803d, #16a34a)' }}>
+                {bulkActing ? 'Approving…' : 'Approve All'}
+              </button>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10 }}>
-              <button onClick={() => setEditing(null)} style={{ padding: '8px 16px', borderRadius: 8, border: `1.5px solid ${P.border}`, background: '#fff', color: P.navy, cursor: 'pointer', fontSize: 13, fontFamily: "'Inter',sans-serif" }}>Cancel</button>
-              <button onClick={handleSaveEdit} disabled={saving}
-                style={{ padding: '8px 20px', borderRadius: 8, border: 'none', background: P.navy, color: '#fff', cursor: saving ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: "'Inter',sans-serif", opacity: saving ? 0.7 : 1 }}>
-                {saving ? 'Saving…' : 'Save'}
+          </div>
+        </div>
+      )}
+
+      {/* Confirm dialog. Mark Absent only; Approve is now a direct one-click action */}
+      {confirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !acting && setConfirm(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full text-center border border-gray-200">
+            <div className="text-4xl mb-3">🚫</div>
+            <h3 className="text-base font-bold text-gray-800 mb-2">Mark as Absent</h3>
+            <p className="text-sm text-gray-500 mb-5">
+              Mark {confirm.name} as Absent? This will override their logged-in attendance.
+            </p>
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => setConfirm(null)} disabled={acting}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50">
+                Cancel
+              </button>
+              <button onClick={doAction} disabled={acting}
+                className="px-5 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 bg-red-600 text-white hover:bg-red-700">
+                {acting ? 'Processing…' : 'Mark Absent'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Leave confirm dialog */}
+      {leaveConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !leaveActing && setLeaveConfirm(null)} />
+          <div className="relative bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-gray-200">
+            <div className="text-3xl mb-3 text-center">{leaveConfirm.action === 'approve' ? '✅' : '🚫'}</div>
+            <h3 className="text-base font-bold text-gray-800 mb-2 text-center" style={{ fontFamily: '"Inter", sans-serif' }}>
+              {leaveConfirm.action === 'approve' ? 'Approve Leave' : 'Reject Leave'}
+            </h3>
+            <p className="text-sm text-gray-500 mb-4 text-center">
+              {leaveConfirm.action === 'approve'
+                ? `Approve leave application for ${leaveConfirm.name}?`
+                : `Reject leave application for ${leaveConfirm.name}?`}
+            </p>
+            {leaveConfirm.action === 'reject' && (
+              <div className="mb-4">
+                <label className="block text-xs font-bold uppercase tracking-widest text-gray-500 mb-1">Rejection Reason (optional)</label>
+                <textarea
+                  rows={2}
+                  value={leaveReason}
+                  onChange={e => setLeaveReason(e.target.value)}
+                  placeholder="Enter reason…"
+                  className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none resize-none focus:border-red-400"
+                  style={{ fontFamily: '"Inter", sans-serif' }}
+                />
+              </div>
+            )}
+            <div className="flex gap-3 justify-center">
+              <button onClick={() => setLeaveConfirm(null)} disabled={leaveActing}
+                className="px-4 py-2 rounded-lg border border-gray-300 text-sm text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50">
+                Cancel
+              </button>
+              <button onClick={doLeaveAction} disabled={leaveActing}
+                className={`px-5 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50 text-white ${leaveConfirm.action === 'approve' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-red-600 hover:bg-red-700'}`}>
+                {leaveActing ? 'Processing…' : leaveConfirm.action === 'approve' ? 'Approve' : 'Reject'}
               </button>
             </div>
           </div>
@@ -215,3 +562,4 @@ export default function AttendanceApprovalPage() {
     </div>
   )
 }
+

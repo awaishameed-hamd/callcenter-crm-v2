@@ -1,2 +1,5 @@
 import AttendanceApprovalPage from '@/components/attendance/AttendanceApprovalPage'
-export default AttendanceApprovalPage
+
+export default function Page() {
+  return <AttendanceApprovalPage />
+}

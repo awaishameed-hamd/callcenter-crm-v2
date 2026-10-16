@@ -1,2 +1,5 @@
 import ChatPage from '@/components/chat/ChatPage'
-export default ChatPage
+
+export default function Page() {
+  return <ChatPage />
+}

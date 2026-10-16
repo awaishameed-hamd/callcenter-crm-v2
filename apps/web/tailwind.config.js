@@ -1,3 +1,5 @@
+const defaults = require('tailwindcss/colors')
+
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./src/**/*.{js,ts,jsx,tsx,mdx}'],
@@ -5,13 +7,13 @@ module.exports = {
     extend: {
       colors: {
         navy:      '#132E57',
-        teal:      '#1E8496',
+        teal:      { ...defaults.teal, DEFAULT: '#1E8496' },
         deepTeal:  '#1A5560',
         gold:      '#D7A520',
         brick:     '#C25A1F',
         forest:    '#3A6B3A',
         khaki:     '#CBB26A',
-        purple:    '#7B2D8E',
+        purple:    { ...defaults.purple, DEFAULT: '#7B2D8E' },
         bgMain:    '#EDF0F3',
         bgCard:    '#FFFFFF',
         fillNavy:  '#E8EEF7',
@@ -20,7 +22,7 @@ module.exports = {
         fillBrick: '#F5E0D2',
         border:    '#E0DDD5',
         gridLine:  '#F0EDE5',
-        slate:     '#5C5C5C',
+        slate:     { ...defaults.slate, DEFAULT: '#5C5C5C' },
         muted:     '#808080',
         sidebarBg: '#E8EAED',
       },

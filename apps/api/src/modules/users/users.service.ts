@@ -1,139 +1,277 @@
-import { Injectable, NotFoundException, ConflictException, ForbiddenException } from '@nestjs/common'
+import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
+import { Prisma, Role } from '@prisma/client'
+import * as bcrypt from 'bcryptjs'
+import { ManagerType, MANAGER_TYPES, AGENT_TYPES, DEPARTMENTS } from '@crm/shared'
 import { PrismaService } from '../prisma/prisma.service'
-import { CreateUserDto } from './dto/create-user.dto'
-import { UpdateUserDto } from './dto/update-user.dto'
-import { Role }          from '@crm/shared'
-import * as bcrypt       from 'bcryptjs'
+import { V, fail, defined, pageArgs, toPage, csvRow } from '../../common/utils/validate'
+import { dateOnly, fmtDateOnly } from '../../common/utils/time'
 
-const ROLE_PREFIX: Record<Role, string> = {
-  [Role.ADMIN]:    'ADMIN',
-  [Role.DIRECTOR]: 'D',
-  [Role.MANAGER]:  'M',
-  [Role.AGENT]:    'A',
+const HIERARCHY: Role[] = [Role.ADMIN, Role.DIRECTOR, Role.MANAGER, Role.AGENT]
+const ROLE_PREFIX: Partial<Record<Role, string>> = { [Role.DIRECTOR]: 'D', [Role.MANAGER]: 'M', [Role.AGENT]: 'A' }
+const CNIC_RE = /^\d{5}-\d{7}-\d{1}$/
+
+export const USER_SELECT = {
+  id: true, userCode: true, role: true, displayName: true,
+  firstName: true, midName: true, lastName: true,
+  email: true, phone: true, dateOfBirth: true, dateOfJoining: true,
+  department: true, agentType: true, managerType: true, experience: true,
+  cnic: true, permanentAddress: true, currentAddress: true, address: true,
+  bank: true, accountTitle: true, bankAccountNo: true, ibanNo: true,
+  basicSalary: true, punctualityAllowance: true, travellingAllowance: true, otherAllowance: true,
+  isActive: true, inactiveSince: true, profileLocked: true, attendanceApplicable: true,
+  avatar: true, createdAt: true, extraFields: true,
+} satisfies Prisma.UserSelect
+
+type Actor = { id: string; role: Role }
+
+export function rolesBelow(role: Role): Role[] {
+  const i = HIERARCHY.indexOf(role)
+  return i === -1 ? [] : HIERARCHY.slice(i + 1)
+}
+
+export function attendanceApplies(role: Role, managerType?: string | null) {
+  return role === Role.AGENT || (role === Role.MANAGER && managerType !== ManagerType.ACCOUNTANT)
 }
 
 @Injectable()
 export class UsersService {
   constructor(private prisma: PrismaService) {}
 
-  async create(dto: CreateUserDto) {
-    const existing = await this.prisma.user.findUnique({ where: { email: dto.email.toLowerCase() } })
-    if (existing) throw new ConflictException('Email already in use')
+  async nextCode(role: string) {
+    const prefix = ROLE_PREFIX[role as Role]
+    if (!prefix) fail('Invalid role.')
+    const users = await this.prisma.user.findMany({
+      where: { role: role as Role, userCode: { startsWith: prefix } },
+      select: { userCode: true },
+    })
+    const max = users.reduce((m, u) => Math.max(m, parseInt(u.userCode.slice(1), 10) || 0), 0)
+    return { code: `${prefix}${String(max + 1).padStart(3, '0')}` }
+  }
 
-    const hashed   = await bcrypt.hash(dto.password, 12)
-    const userCode = await this.generateUserCode(dto.role)
+  private scopeRoles(actor: Actor): Role[] {
+    if (actor.role === Role.ADMIN)    return HIERARCHY
+    if (actor.role === Role.DIRECTOR) return [Role.DIRECTOR, Role.MANAGER, Role.AGENT]
+    if (actor.role === Role.MANAGER)  return [Role.MANAGER, Role.AGENT]
+    throw new ForbiddenException('Forbidden.')
+  }
 
-    return this.prisma.user.create({
-      data: {
-        displayName:   dto.displayName,
-        email:         dto.email.toLowerCase(),
-        password:      hashed,
-        role:          dto.role,
-        managerType:   dto.managerType,
-        phone:         dto.phone,
-        userCode,
-        agentType:     dto.agentType,
-        department:    dto.department,
-        dateOfJoining: dto.dateOfJoining ? new Date(dto.dateOfJoining) : undefined,
-        cnic:          dto.cnic,
-        address:       dto.address,
-      },
-      select: this.safeSelect(),
+  private listWhere(actor: Actor, q: Record<string, string | undefined>): Prisma.UserWhereInput {
+    const where: Prisma.UserWhereInput = { role: { in: this.scopeRoles(actor) } }
+    if (q.role) where.role = q.role as Role
+    if (q.role && !this.scopeRoles(actor).includes(q.role as Role)) where.role = { in: [] }
+    const status = q.status ?? 'active'
+    if (status === 'active')   where.isActive = true
+    if (status === 'inactive') where.isActive = false
+    if (q.search) {
+      const s = { contains: q.search, mode: 'insensitive' as const }
+      where.OR = [{ userCode: s }, { displayName: s }, { firstName: s }, { lastName: s }, { email: s }, { phone: s }]
+    }
+    return where
+  }
+
+  private sortByHierarchy<T extends { role: Role; userCode: string }>(rows: T[]): T[] {
+    return rows.sort((a, b) => HIERARCHY.indexOf(a.role) - HIERARCHY.indexOf(b.role) || a.userCode.localeCompare(b.userCode, undefined, { numeric: true }))
+  }
+
+  async findAll(actor: Actor, q: Record<string, string | undefined>) {
+    const where = this.listWhere(actor, q)
+    const rows = this.sortByHierarchy(await this.prisma.user.findMany({ where, select: USER_SELECT }))
+    if (q.format === 'csv') return this.exportCsv(rows)
+    if (q.perPage === 'all') return rows
+    const { skip, take, page } = pageArgs(q.page, 20)
+    return toPage(rows.slice(skip, skip + take), rows.length, page, 20)
+  }
+
+  private exportCsv(users: Prisma.UserGetPayload<{ select: typeof USER_SELECT }>[]) {
+    const lines = [csvRow([
+      'User ID', 'Role', 'Role Type', 'Display Name', 'Status', 'Inactive Since',
+      'First Name', 'Middle Name', 'Last Name', 'Email', 'Phone', 'Date of Birth', 'Date of Joining',
+      'Department', 'Experience', 'CNIC', 'Permanent Address', 'Current Address',
+      'Bank', 'Account Title', 'Account No.', 'IBAN No.',
+      'Basic Salary', 'Punctuality Allowance', 'Travelling Allowance', 'Other Allowance', 'Total Package',
+    ])]
+    for (const u of users) {
+      const total = [u.basicSalary, u.punctualityAllowance, u.travellingAllowance, u.otherAllowance]
+        .reduce((s, v) => s + Number(v ?? 0), 0)
+      lines.push(csvRow([
+        u.userCode, u.role.charAt(0) + u.role.slice(1).toLowerCase(), u.agentType ?? u.managerType ?? '',
+        u.displayName, u.isActive ? 'Active' : 'Inactive', fmtDateOnly(u.inactiveSince) ?? '',
+        u.firstName, u.midName ?? '', u.lastName, u.email ?? '', u.phone ?? '',
+        fmtDateOnly(u.dateOfBirth) ?? '', fmtDateOnly(u.dateOfJoining) ?? '',
+        u.department ?? '', u.experience ?? '', u.cnic ?? '', u.permanentAddress ?? '', u.currentAddress ?? '',
+        u.bank ?? '', u.accountTitle ?? '', u.bankAccountNo ?? '', u.ibanNo ?? '',
+        u.basicSalary ?? '', u.punctualityAllowance ?? '', u.travellingAllowance ?? '', u.otherAllowance ?? '',
+        total > 0 ? total : '',
+      ]))
+    }
+    const stamp = new Date().toISOString().replace(/[-:]/g, '').replace('T', '_').slice(0, 15)
+    return { csv: lines.join('\n'), filename: `users_${stamp}.csv` }
+  }
+
+  /** Field readers shared by create and update. */
+  private readProfile(b: Record<string, any>, creating: boolean) {
+    const cnic = V.str(b.cnic, 'CNIC', { max: 15 })
+    if (cnic && !CNIC_RE.test(cnic)) fail('CNIC must be in the format 00000-0000000-0.')
+    const extra = V.obj(b.extraFields, 'Extra fields')
+    return defined({
+      displayName:          V.str(b.displayName, 'Display name', { required: creating, max: 255 }) ?? undefined,
+      firstName:            V.str(b.firstName, 'First name', { required: creating, max: 100 }) ?? undefined,
+      midName:              V.str(b.midName, 'Middle name', { max: 100 }),
+      lastName:             V.str(b.lastName, 'Last name', { required: creating, max: 100 }) ?? undefined,
+      email:                V.email(b.email, 'Email'),
+      phone:                V.str(b.phone, 'Phone', { max: 30 }),
+      dateOfBirth:          this.toDate(V.date(b.dateOfBirth, 'Date of birth')),
+      dateOfJoining:        this.toDate(V.date(b.dateOfJoining, 'Date of joining', { required: creating })),
+      address:              V.str(b.address, 'Address'),
+      cnic,
+      permanentAddress:     V.str(b.permanentAddress, 'Permanent address'),
+      currentAddress:       V.str(b.currentAddress, 'Current address'),
+      experience:           V.str(b.experience, 'Experience', { max: 255 }),
+      department:           V.oneOf(b.department, 'Department', DEPARTMENTS),
+      agentType:            V.oneOf(b.agentType, 'Agent type', AGENT_TYPES),
+      managerType:          V.oneOf(b.managerType, 'Manager type', MANAGER_TYPES),
+      bank:                 V.str(b.bank, 'Bank', { max: 255 }),
+      accountTitle:         V.str(b.accountTitle, 'Account title', { max: 255 }),
+      bankAccountNo:        V.str(b.bankAccountNo, 'Account number', { max: 100 }),
+      ibanNo:               V.str(b.ibanNo, 'IBAN', { max: 100 }),
+      basicSalary:          V.num(b.basicSalary, 'Basic salary', { min: 0 }),
+      punctualityAllowance: V.num(b.punctualityAllowance, 'Punctuality allowance', { min: 0 }),
+      travellingAllowance:  V.num(b.travellingAllowance, 'Travelling allowance', { min: 0 }),
+      otherAllowance:       V.num(b.otherAllowance, 'Other allowance', { min: 0 }),
+      extraFields:          extra === null ? Prisma.DbNull : (extra as Prisma.InputJsonValue | undefined),
     })
   }
 
-  findAll(role?: Role) {
-    return this.prisma.user.findMany({
-      where:   role ? { role } : undefined,
-      select:  this.safeSelect(),
-      orderBy: { createdAt: 'desc' },
-    })
+  private toDate(s: string | null | undefined) {
+    return s === undefined ? undefined : s === null ? null : dateOnly(s)
   }
 
-  async findOne(id: string) {
-    const user = await this.prisma.user.findUnique({ where: { id }, select: this.safeSelect() })
-    if (!user) throw new NotFoundException('User not found')
-    return user
-  }
-
-  async update(id: string, dto: UpdateUserDto) {
-    const data: any = { ...dto }
-    // Remove plain-text password and email before spreading into update payload
-    delete data.password
-    delete data.email
-    delete data.dateOfJoining
-
-    if (dto.password)      data.password      = await bcrypt.hash(dto.password, 12)
-    if (dto.email)         data.email         = dto.email.toLowerCase()
-    if (dto.dateOfJoining) data.dateOfJoining = new Date(dto.dateOfJoining)
-
-    return this.prisma.user.update({ where: { id }, data, select: this.safeSelect() })
-  }
-
-  async activate(id: string, isActive: boolean) {
-    await this.prisma.user.update({ where: { id }, data: { isActive } })
-    return { message: isActive ? 'User activated' : 'User deactivated' }
-  }
-
-  async remove(id: string) {
-    await this.prisma.user.update({ where: { id }, data: { isActive: false } })
-    return { message: 'User deactivated' }
-  }
-
-  async toggleLock(id: string, requestingRole: Role) {
-    if (requestingRole !== Role.ADMIN) throw new ForbiddenException('Only admins can lock/unlock profiles')
-    const user = await this.prisma.user.findUnique({ where: { id }, select: { profileLocked: true } })
-    if (!user) throw new NotFoundException('User not found')
-    const updated = await this.prisma.user.update({
-      where:  { id },
-      data:   { profileLocked: !user.profileLocked },
-      select: this.safeSelect(),
-    })
-    return updated
-  }
-
-  async nextCode(role: Role): Promise<string> {
-    const prefix = ROLE_PREFIX[role]
-    if (role === Role.ADMIN) return 'ADMIN'
-
-    const key    = `userCode:${role}`
-    const counter = await this.prisma.sequenceCounter.findUnique({ where: { key } })
-    const next   = (counter?.value ?? 0) + 1
-    return `${prefix}${String(next).padStart(3, '0')}`
-  }
-
-  // Dropdown list of agents for reports/filters
-  agentsDropdown() {
-    return this.prisma.user.findMany({
-      where:   { role: Role.AGENT, isActive: true },
-      select:  { id: true, displayName: true, userCode: true },
-      orderBy: { displayName: 'asc' },
-    })
-  }
-
-  private safeSelect() {
-    return {
-      id: true, userCode: true, email: true, displayName: true,
-      role: true, managerType: true, agentType: true, phone: true,
-      isActive: true, profileLocked: true, avatar: true,
-      dateOfJoining: true, department: true, cnic: true, address: true,
-      basicSalary: true, punctualityAllowance: true, travellingAllowance: true,
-      otherAllowance: true, bank: true, bankAccountNo: true,
-      createdAt: true,
+  private async assertUnique(userCode?: string, email?: string | null, ignoreId?: string) {
+    if (userCode) {
+      const u = await this.prisma.user.findUnique({ where: { userCode }, select: { id: true } })
+      if (u && u.id !== ignoreId) fail('The username has already been taken.')
+    }
+    if (email) {
+      const u = await this.prisma.user.findUnique({ where: { email }, select: { id: true } })
+      if (u && u.id !== ignoreId) fail('The email has already been taken.')
     }
   }
 
-  private async generateUserCode(role: Role): Promise<string> {
-    const key    = `userCode:${role}`
-    const prefix = ROLE_PREFIX[role]
+  async create(actor: Actor, b: Record<string, any>) {
+    const allowed = rolesBelow(actor.role)
+    if (!allowed.length) throw new ForbiddenException('You are not allowed to create users.')
 
-    const counter = await this.prisma.sequenceCounter.upsert({
-      where:  { key },
-      update: { value: { increment: 1 } },
-      create: { key, value: 1 },
+    const role = V.oneOf(b.role, 'Role', allowed, { required: true }) as Role
+    const password = V.str(b.password, 'Password', { required: true, min: 8 })!
+    const userCode = (V.str(b.userCode, 'Username', { max: 100 }) ?? (await this.nextCode(role)).code).toUpperCase()
+    const data = this.readProfile(b, true)
+    await this.assertUnique(userCode, data.email as string | null | undefined)
+
+    return this.prisma.user.create({
+      data: {
+        ...(data as Prisma.UserCreateInput),
+        userCode,
+        role,
+        password: await bcrypt.hash(password, 12),
+        createdBy: { connect: { id: actor.id } },
+        attendanceApplicable: attendanceApplies(role, data.managerType as string | undefined),
+      },
+      select: USER_SELECT,
     })
+  }
 
-    if (role === Role.ADMIN) return 'ADMIN'
-    return `${prefix}${String(counter.value).padStart(3, '0')}`
+  private canEdit(actor: Actor, target: { role: Role }) {
+    if (actor.role === Role.ADMIN)    return true
+    if (actor.role === Role.DIRECTOR) return target.role === Role.MANAGER || target.role === Role.AGENT
+    if (actor.role === Role.MANAGER)  return target.role === Role.AGENT
+    return false
+  }
+
+  private canToggleActive(actor: Actor, target: { role: Role }) {
+    if (actor.role === Role.ADMIN)    return true
+    if (actor.role === Role.DIRECTOR) return target.role !== Role.ADMIN
+    if (actor.role === Role.MANAGER)  return target.role === Role.AGENT
+    return false
+  }
+
+  private async target(id: string) {
+    const u = await this.prisma.user.findUnique({ where: { id }, select: { id: true, role: true, managerType: true, profileLocked: true } })
+    if (!u) throw new NotFoundException('User not found.')
+    return u
+  }
+
+  async update(actor: Actor, id: string, b: Record<string, any>) {
+    const user = await this.target(id)
+    if (!this.canEdit(actor, user)) throw new ForbiddenException('Forbidden.')
+
+    let role: Role | undefined
+    if (b.role !== undefined && b.role !== user.role) {
+      if (user.id === actor.id) fail('You cannot change your own role.')
+      role = V.oneOf(b.role, 'Role', rolesBelow(actor.role), { required: true }) as Role
+    }
+
+    const userCode = V.str(b.userCode, 'Username', { max: 100 })?.toUpperCase()
+    const password = V.str(b.password, 'Password', { min: 8 })
+    const data = this.readProfile(b, false)
+    await this.assertUnique(userCode, data.email as string | null | undefined, id)
+
+    const nextRole = role ?? user.role
+    const nextManagerType = data.managerType !== undefined ? (data.managerType as string | null) : user.managerType
+
+    return this.prisma.user.update({
+      where: { id },
+      data: {
+        ...(data as Prisma.UserUpdateInput),
+        ...(userCode ? { userCode } : {}),
+        ...(role ? { role } : {}),
+        ...(password ? { password: await bcrypt.hash(password, 12) } : {}),
+        ...(role || data.managerType !== undefined ? { attendanceApplicable: attendanceApplies(nextRole, nextManagerType) } : {}),
+      },
+      select: USER_SELECT,
+    })
+  }
+
+  async deactivate(actor: Actor, id: string, inactiveSince: unknown) {
+    const user = await this.target(id)
+    if (!this.canToggleActive(actor, user)) throw new ForbiddenException('Forbidden.')
+    if (user.id === actor.id) fail('You cannot deactivate your own account.')
+    const since = V.date(inactiveSince, 'Inactive since', { required: true })!
+    await this.prisma.user.update({ where: { id }, data: { isActive: false, inactiveSince: dateOnly(since) } })
+    await this.prisma.refreshToken.deleteMany({ where: { userId: id } })
+    return { message: 'User disabled.' }
+  }
+
+  async activate(actor: Actor, id: string) {
+    const user = await this.target(id)
+    if (!this.canToggleActive(actor, user)) throw new ForbiddenException('Forbidden.')
+    await this.prisma.user.update({ where: { id }, data: { isActive: true, inactiveSince: null } })
+    return { message: 'User re-activated.' }
+  }
+
+  async toggleLock(actor: Actor, id: string) {
+    if (actor.role !== Role.ADMIN) throw new ForbiddenException('Forbidden.')
+    const user = await this.target(id)
+    const updated = await this.prisma.user.update({ where: { id }, data: { profileLocked: !user.profileLocked }, select: { profileLocked: true } })
+    return { profileLocked: updated.profileLocked }
+  }
+
+  async updateRole(actor: Actor, id: string, role: unknown) {
+    if (actor.role !== Role.ADMIN) throw new ForbiddenException('Admin only.')
+    const next = V.oneOf(role, 'Role', HIERARCHY, { required: true }) as Role
+    const user = await this.target(id)
+    const updated = await this.prisma.user.update({
+      where: { id },
+      data: { role: next, attendanceApplicable: attendanceApplies(next, user.managerType) },
+      select: USER_SELECT,
+    })
+    return { message: 'Role updated.', user: updated }
+  }
+
+  agentsDropdown() {
+    return this.prisma.user.findMany({
+      where:   { role: Role.AGENT },
+      select:  { id: true, displayName: true, userCode: true, isActive: true },
+      orderBy: { userCode: 'asc' },
+    })
   }
 }

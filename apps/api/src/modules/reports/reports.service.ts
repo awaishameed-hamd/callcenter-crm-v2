@@ -1,98 +1,99 @@
 import { Injectable } from '@nestjs/common'
-import { PrismaService }  from '../prisma/prisma.service'
-import { CustomerStatus, Role, Vertical } from '@crm/shared'
+import { Prisma } from '@prisma/client'
+import { CustomerStatus, Role } from '@crm/shared'
+import { PrismaService } from '../prisma/prisma.service'
+import { clientSelect } from '../customers/customers.service'
+import { V, pageArgs, toPage, csvRow } from '../../common/utils/validate'
+import { BUSINESS_TZ, dayRangeUtc, fmtDateOnly, todayIn } from '../../common/utils/time'
 
-// Convert a YYYY-MM-DD date string to a UTC Date representing PKT midnight
-const pktDate = (dateStr: string, endOfDay = false): Date => {
-  const PKT_OFFSET = 5 * 60 * 60_000 // 5 hours in ms
-  const [y, mo, d] = dateStr.split('-').map(Number)
-  const base = Date.UTC(y, mo - 1, d) - PKT_OFFSET // PKT midnight → UTC
-  return new Date(endOfDay ? base + 86_400_000 - 1 : base) // end = 23:59:59.999 PKT
-}
+type Actor = { id: string; role: Role }
 
-export interface ReportFilters {
-  from?:     string
-  to?:       string
-  status?:   CustomerStatus
-  vertical?: Vertical
-  agentId?:  string
-  didId?:    string
-}
+const FINAL_ROLES: Role[] = [Role.ADMIN, Role.DIRECTOR]
+const FROZEN: CustomerStatus[] = [CustomerStatus.FINAL_APPROVED, CustomerStatus.DISAPPROVED, CustomerStatus.FINAL_DISAPPROVED]
 
 @Injectable()
 export class ReportsService {
   constructor(private prisma: PrismaService) {}
 
-  async getReport(requestingUser: { id: string; role: Role }, filters: ReportFilters) {
-    const where: any = this.buildWhere(requestingUser, filters)
-
-    return this.prisma.customer.findMany({
-      where,
-      orderBy: { createdAt: 'desc' },
-      include: {
-        agent:   { select: { displayName: true, userCode: true } },
-        manager: { select: { displayName: true, userCode: true } },
-        did: {
-          select: {
-            didCode: true, campaign: true,
-            client: [Role.DIRECTOR, Role.ADMIN].includes(requestingUser.role)
-              ? { select: { companyName: true } }
-              : false,
-          },
-        },
-      },
-    })
+  private where(actor: Actor, q: Record<string, string | undefined>): Prisma.CustomerWhereInput {
+    const where: Prisma.CustomerWhereInput = actor.role === Role.AGENT ? { agentId: actor.id } : {}
+    const from = V.date(q.dateFrom, 'Date from') ?? undefined
+    const to   = V.date(q.dateTo, 'Date to') ?? undefined
+    if (from || to) {
+      const range = dayRangeUtc(from ?? '2000-01-01', to ?? todayIn(BUSINESS_TZ), BUSINESS_TZ)
+      where.createdAt = from && to ? range : from ? { gte: range.gte } : { lt: range.lt }
+    }
+    const status = q.status?.toUpperCase()
+    if (status && status in CustomerStatus) where.status = status as CustomerStatus
+    if (q.agentId && actor.role !== Role.AGENT) where.agentId = q.agentId
+    if (q.clientId) where.clientId = q.clientId
+    if (q.companyName && FINAL_ROLES.includes(actor.role)) where.client = { companyName: q.companyName }
+    if (q.verticalType) where.verticalType = q.verticalType
+    return where
   }
 
-  async exportCsv(requestingUser: { id: string; role: Role }, filters: ReportFilters): Promise<string> {
-    const rows = await this.getReport(requestingUser, filters)
-    const showCompany = [Role.DIRECTOR, Role.ADMIN].includes(requestingUser.role)
+  private include(role: Role) {
+    return {
+      agent:  { select: { id: true, userCode: true, displayName: true } },
+      client: clientSelect(role),
+    } satisfies Prisma.CustomerInclude
+  }
 
-    const headers = [
-      'Customer Code', 'First Name', 'Last Name', 'DOB', 'State', 'Phone',
-      'Vertical', 'DID', ...(showCompany ? ['Company', 'Sale Company'] : []),
-      'Policy Number', 'Effective Date', 'Status', 'Cancel Reason',
-      'Agent', 'Manager',
-      'Pak Time (PKT)', 'USA Time (EST)',
+  private mask<T extends Record<string, unknown>>(row: T, role: Role): T {
+    if (FINAL_ROLES.includes(role)) return row
+    const { saleCompanyName, saleRateAmount, saleRateType, ...rest } = row
+    return rest as T
+  }
+
+  async list(actor: Actor, q: Record<string, string | undefined>) {
+    const where = this.where(actor, q)
+    const { skip, take, page } = pageArgs(q.page, 20)
+    const [rows, total] = await Promise.all([
+      this.prisma.customer.findMany({ where, include: this.include(actor.role), orderBy: { createdAt: 'desc' }, skip, take }),
+      this.prisma.customer.count({ where }),
+    ])
+    return toPage(rows.map(r => this.mask(r, actor.role)), total, page, 20)
+  }
+
+  async exportCsv(actor: Actor, q: Record<string, string | undefined>): Promise<string> {
+    const showCommercial = FINAL_ROLES.includes(actor.role)
+    const rows = await this.prisma.customer.findMany({
+      where: this.where(actor, q),
+      include: {
+        agent:  { select: { displayName: true } },
+        client: { select: { didCode: true, companyName: true, rateOfSaleAmount: true, rateType: true, saleType: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    const header = [
+      'Code', 'Agent', 'First Name', 'Mid Name', 'Last Name',
+      'Age', 'CX DOB', 'Phone', 'Address', 'City', 'State', 'ZIP',
+      'Vertical', 'Vertical Other', 'Comments', 'Transferred From', 'QA Comments',
+      'Reason', 'Rejection Reason', 'DID Code', 'Sale Type',
+      ...(showCommercial ? ['Company', 'Rate', 'Rate Type'] : []),
+      'Status', 'Pak Time (PKT)', 'USA Time (EST)', 'Date Submitted',
     ]
-
-    const lines = [headers.join(',')]
-    for (const r of rows) {
-      const cols = [
-        r.customerCode, r.firstName, r.lastName,
-        r.dob ? r.dob.toISOString().slice(0,10) : '',
-        r.state ?? '', r.phone ?? '',
-        r.vertical, (r.did as any)?.didCode ?? '',
-        ...(showCompany ? [
-          (r.did as any)?.client?.companyName ?? '',
-          (r as any).saleCompanyName ?? '',
-        ] : []),
-        r.policyNumber ?? '',
-        r.effectiveDate ? r.effectiveDate.toISOString().slice(0,10) : '',
-        r.status,
-        r.cancelReason ?? '',
-        (r.agent as any)?.displayName ?? '',
-        (r.manager as any)?.displayName ?? '',
-        (r as any).submittedAtPkt ?? '',
-        (r as any).submittedAtEst ?? '',
-      ]
-      lines.push(cols.map(v => `"${String(v).replace(/"/g, '""')}"`).join(','))
+    const lines = [csvRow(header)]
+    for (const c of rows) {
+      const frozen = FROZEN.includes(c.status as CustomerStatus)
+      const did     = frozen && c.saleDidCode ? c.saleDidCode : c.client?.didCode
+      const company = frozen && c.saleCompanyName ? c.saleCompanyName : c.client?.companyName
+      const rate    = frozen && c.saleRateType ? c.saleRateAmount : c.client?.rateOfSaleAmount
+      const rateTyp = frozen && c.saleRateType ? c.saleRateType : c.client?.rateType
+      const rejection =
+        c.status === CustomerStatus.DISAPPROVED       ? c.managerNote :
+        c.status === CustomerStatus.FINAL_DISAPPROVED ? c.finalNote :
+        c.status === CustomerStatus.AGENT_REJECTED    ? c.reason : ''
+      lines.push(csvRow([
+        c.customerCode, c.agent?.displayName, c.firstName, c.midName, c.lastName,
+        c.age, fmtDateOnly(c.dateOfBirth), c.phone, c.address, c.city, c.state, c.postalCode,
+        c.verticalType, c.verticalOther, c.didComments, c.transferredFrom, c.qaComments,
+        c.reason, rejection, did, c.client?.saleType,
+        ...(showCommercial ? [company, rate, rateTyp] : []),
+        c.status.toLowerCase(), c.submittedAtPak, c.submittedAtEst, todayIn(BUSINESS_TZ, c.createdAt),
+      ]))
     }
     return lines.join('\n')
-  }
-
-  private buildWhere(user: { id: string; role: Role }, f: ReportFilters) {
-    const where: any = {}
-    if (user.role === Role.AGENT) where.agentId = user.id
-    if (f.from || f.to) {
-      where.createdAt = {}
-      if (f.from) where.createdAt.gte = pktDate(f.from)
-      if (f.to)   where.createdAt.lte = pktDate(f.to, true)
-    }
-    if (f.status)   where.status   = f.status
-    if (f.vertical) where.vertical = f.vertical
-    if (f.agentId && user.role !== Role.AGENT) where.agentId = f.agentId
-    if (f.didId)    where.didId    = f.didId
-    return where
   }
 }

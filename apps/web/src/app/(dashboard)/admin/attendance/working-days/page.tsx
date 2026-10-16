@@ -1,2 +1,5 @@
 import WorkingDaysPage from '@/components/attendance/WorkingDaysPage'
-export default WorkingDaysPage
+
+export default function Page() {
+  return <WorkingDaysPage />
+}

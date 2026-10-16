@@ -61,6 +61,12 @@
   transform: translateY(0);
 }
 
+/* Date inputs render their own calendar button (DateInput), so the native indicator is hidden */
+input[type="date"].date-input::-webkit-calendar-picker-indicator { opacity: 0; width: 0; padding: 0; margin: 0; }
+
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
+
 /* Scrollbar */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }

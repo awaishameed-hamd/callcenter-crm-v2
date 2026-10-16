@@ -598,12 +598,12 @@ export class AttendanceService {
 
     const users = await this.prisma.user.findMany({
       where:  { attendanceApplicable: true, role: { in: INTERNAL_STAFF_ROLES } },
-      select: { id: true, createdAt: true },
+      select: { id: true, createdAt: true, dateOfJoining: true },
     })
     if (users.length === 0) return { created: 0 }
 
     const userStartMap = new Map(users.map(u => {
-      const created = new Date(u.createdAt)
+      const created = new Date(u.dateOfJoining && u.dateOfJoining > u.createdAt ? u.dateOfJoining : u.createdAt)
       created.setUTCHours(0, 0, 0, 0)
       const start = created > moduleStart ? created : moduleStart
       return [u.id, start]

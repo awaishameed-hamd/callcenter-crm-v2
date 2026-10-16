@@ -26,8 +26,8 @@ export class AttendanceSchedulerService implements OnModuleInit {
       select: { id: true, date: true, workingDayId: true, userId: true },
     })
 
-    const userRows = await this.prisma.user.findMany({ select: { id: true, createdAt: true } })
-    const createdAtMap = new Map(userRows.map(u => [u.id, u.createdAt]))
+    const userRows = await this.prisma.user.findMany({ select: { id: true, createdAt: true, dateOfJoining: true } })
+    const createdAtMap = new Map(userRows.map(u => [u.id, u.dateOfJoining && u.dateOfJoining > u.createdAt ? u.dateOfJoining : u.createdAt]))
 
     const idsToDelete: string[] = []
     for (const r of wrongRecords) {
@@ -93,11 +93,12 @@ export class AttendanceSchedulerService implements OnModuleInit {
       }
 
       const [rh, rm]         = reportingTime.split(':').map(Number)
-      const todayStartUtc    = this.localToUtc(dateStr, 0,  0,  tz)
+      // Only logins in the few hours before reporting time count; earlier ones belong to the previous night shift.
+      const todayStartUtc    = this.localToUtc(dateStr, Math.max(0, rh - 6), rh >= 6 ? rm : 0, tz)
       const reportingTimeUtc = this.localToUtc(dateStr, rh, rm, tz)
 
       const users = await this.prisma.user.findMany({
-        where:  { isActive: true, attendanceApplicable: true, role: { in: INTERNAL_STAFF_ROLES } },
+        where:  { isActive: true, attendanceApplicable: true, role: { in: INTERNAL_STAFF_ROLES }, OR: [{ dateOfJoining: null }, { dateOfJoining: { lte: today } }] },
         select: { id: true },
       })
       const userIds = users.map(u => u.id)
@@ -172,7 +173,7 @@ export class AttendanceSchedulerService implements OnModuleInit {
       }
 
       const users = await this.prisma.user.findMany({
-        where:  { isActive: true, attendanceApplicable: true, role: { in: INTERNAL_STAFF_ROLES } },
+        where:  { isActive: true, attendanceApplicable: true, role: { in: INTERNAL_STAFF_ROLES }, OR: [{ dateOfJoining: null }, { dateOfJoining: { lte: today } }] },
         select: { id: true },
       })
       const userIds = users.map(u => u.id)

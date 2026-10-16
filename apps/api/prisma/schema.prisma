@@ -21,12 +21,6 @@ enum Role {
   AGENT
 }
 
-enum ManagerType {
-  REGULAR
-  HR
-  ACCOUNTANT
-}
-
 enum MessageType {
   TEXT
   FILE
@@ -61,13 +55,7 @@ enum CustomerStatus {
   DISAPPROVED
   FINAL_APPROVED
   FINAL_DISAPPROVED
-}
-
-enum Vertical {
-  MEDICARE
-  FINAL_EXPENSE
-  ACA
-  OTHER
+  AGENT_REJECTED
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -75,16 +63,46 @@ enum Vertical {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model User {
-  id          String      @id @default(cuid())
-  userCode    String      @unique  // A001, M001, D001, ADMIN
-  email       String      @unique
+  id          String  @id @default(cuid())
+  userCode    String  @unique // login username: ADMIN, D001, M001, A001
+  email       String? @unique
   phone       String?
   password    String
   displayName String
   role        Role
-  managerType ManagerType @default(REGULAR)
-  isActive    Boolean     @default(true)
-  attendanceApplicable Boolean @default(false)
+
+  firstName        String    @default("")
+  midName          String?
+  lastName         String    @default("")
+  dateOfBirth      DateTime? @db.Date
+  dateOfJoining    DateTime? @db.Date
+  address          String?   @db.Text
+  cnic             String?
+  permanentAddress String?   @db.Text
+  currentAddress   String?   @db.Text
+  experience       String?
+  department       String? // Medicare | Final Expense | ACA | Management
+  agentType        String? // Closer | Verifier | Self Closer | Fronter
+  managerType      String? // Floor Manager/Team Lead | QA Manager | HR Manager | Accountant
+
+  bank                 String?
+  accountTitle         String?
+  bankAccountNo        String?
+  ibanNo               String?
+  basicSalary          Decimal? @db.Decimal(12, 2)
+  punctualityAllowance Decimal? @db.Decimal(12, 2)
+  travellingAllowance  Decimal? @db.Decimal(12, 2)
+  otherAllowance       Decimal? @db.Decimal(12, 2)
+
+  profileLocked        Boolean   @default(false)
+  isActive             Boolean   @default(true)
+  inactiveSince        DateTime? @db.Date
+  extraFields          Json?
+  attendanceApplicable Boolean   @default(false)
+
+  createdById  String?
+  createdBy    User?   @relation("UserCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdUsers User[]  @relation("UserCreatedBy")
 
   // Password reset
   resetOtpHash  String?
@@ -95,26 +113,9 @@ model User {
 
   avatar     String?
   lastSeenAt DateTime?
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
 
-  // HR / profile fields
-  dateOfJoining DateTime? @db.Date
-  department    String?
-  agentType     String?
-  cnic          String?
-  address       String?   @db.Text
-  profileLocked Boolean   @default(false)
-
-  // Salary fields (for accounting/HR)
-  basicSalary          Decimal? @db.Decimal(12, 2)
-  punctualityAllowance Decimal? @db.Decimal(12, 2)
-  travellingAllowance  Decimal? @db.Decimal(12, 2)
-  otherAllowance       Decimal? @db.Decimal(12, 2)
-  bank                 String?
-  bankAccountNo        String?
-
-  // Relations
   refreshTokens              RefreshToken[]
   messages                   Message[]
   notifications              Notification[]
@@ -128,14 +129,15 @@ model User {
   leaveApplications LeaveApplication[] @relation("LeaveApplicant")
   leaveReviews      LeaveApplication[] @relation("LeaveReviewer")
 
-  // CRM relations
   submittedSales  Customer[] @relation("AgentSales")
   approvedSales   Customer[] @relation("ManagerApprovals")
   finalActedSales Customer[] @relation("DirectorActions")
 
+  invoicesCreated Invoice[] @relation("InvoiceCreator")
+  vouchersCreated Voucher[] @relation("VoucherCreator")
+
   @@index([role])
-  @@index([email])
-  @@index([userCode])
+  @@index([isActive])
   @@map("users")
 }
 
@@ -193,19 +195,19 @@ model ConversationParticipant {
 }
 
 model Message {
-  id             String       @id @default(cuid())
-  conversationId String
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  senderId       String
-  sender         User         @relation(fields: [senderId], references: [id])
-  type           MessageType  @default(TEXT)
-  content        String?      @db.Text
-  attachmentUrl  String?
-  replyToId      String?
-  replyTo        Message?     @relation("MessageReplies", fields: [replyToId], references: [id])
-  replies        Message[]    @relation("MessageReplies")
-  deletedForUserIds String[]  @default([])
-  createdAt      DateTime     @default(now())
+  id                String       @id @default(cuid())
+  conversationId    String
+  conversation      Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  senderId          String
+  sender            User         @relation(fields: [senderId], references: [id])
+  type              MessageType  @default(TEXT)
+  content           String?      @db.Text
+  attachmentUrl     String?
+  replyToId         String?
+  replyTo           Message?     @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies           Message[]    @relation("MessageReplies")
+  deletedForUserIds String[]     @default([])
+  createdAt         DateTime     @default(now())
 
   @@index([conversationId])
   @@index([senderId])
@@ -248,7 +250,7 @@ model Attendance {
   lateMinutes    Int?
   notes          String?
   editedById     String?
-  editedBy       User?            @relation("AttendanceEdits",    fields: [editedById],    references: [id])
+  editedBy       User?            @relation("AttendanceEdits", fields: [editedById], references: [id])
   approvalStatus String           @default("pending")
   approvedById   String?
   approvedBy     User?            @relation("AttendanceApprovals", fields: [approvedById], references: [id])
@@ -286,13 +288,9 @@ model AttendanceSetting {
   @@map("attendance_settings")
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Working Days
-// ─────────────────────────────────────────────────────────────────────────────
-
 model WorkingDay {
   id                    String   @id @default(cuid())
-  date                  DateTime @db.Date @unique
+  date                  DateTime @unique @db.Date
   dayType               DayType  @default(WORKING_DAY)
   leaveReason           String?
   reportingTimeOverride String?
@@ -304,26 +302,22 @@ model WorkingDay {
   @@map("working_days")
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Leave
-// ─────────────────────────────────────────────────────────────────────────────
-
 model LeaveApplication {
-  id              String   @id @default(cuid())
+  id              String    @id @default(cuid())
   applicantId     String
-  applicant       User     @relation("LeaveApplicant", fields: [applicantId], references: [id])
+  applicant       User      @relation("LeaveApplicant", fields: [applicantId], references: [id])
   reviewedById    String?
-  reviewedBy      User?    @relation("LeaveReviewer", fields: [reviewedById], references: [id])
-  leaveType       String   // sick | casual | annual | exam | other
-  fromDate        DateTime @db.Date
-  toDate          DateTime @db.Date
+  reviewedBy      User?     @relation("LeaveReviewer", fields: [reviewedById], references: [id])
+  leaveType       String
+  fromDate        DateTime  @db.Date
+  toDate          DateTime  @db.Date
   days            Int
-  reason          String   @db.Text
-  status          String   @default("pending")  // pending | approved | rejected
+  reason          String    @db.Text
+  status          String    @default("pending")
   rejectionReason String?
   reviewedAt      DateTime?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
 
   @@index([applicantId])
   @@index([status])
@@ -331,91 +325,419 @@ model LeaveApplication {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// CRM — Clients / DIDs
+// CRM — DID pool, Clients (company + assigned DID + billing), Customers (sales)
 // ─────────────────────────────────────────────────────────────────────────────
-
-model Client {
-  id          String   @id @default(cuid())
-  companyName String
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  dids Did[]
-
-  @@map("clients")
-}
 
 model Did {
   id        String   @id @default(cuid())
-  didCode   String   @unique  // e.g. DID-001
-  campaign  String   // Medicare | Final Expense | ACA | Other
-  clientId  String
-  client    Client   @relation(fields: [clientId], references: [id])
+  didCode   String   @unique // MD1, FD1, AD1 …
+  campaign  String // Medicare | Final Expense | ACA
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  customers Customer[]
-
-  @@index([clientId])
   @@index([campaign])
   @@map("dids")
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// CRM — Customers (sales records)
-// ─────────────────────────────────────────────────────────────────────────────
+model Client {
+  id                    String   @id @default(cuid())
+  didCode               String? // assigned DID; reusable once the client is deactivated
+  saleType              String? // CPA | CPL
+  campaign              String? // Medicare | Final Expense | ACA
+  companyName           String
+  displayName           String?
+  rateOfSaleAmount      Decimal? @db.Decimal(10, 2)
+  openingBalance        Decimal? @db.Decimal(12, 2)
+  rateType              String   @default("fixed") // fixed | variable
+  cycleOfDay            Int? // billing cycle length in days
+  billingStartAfterDays Int?
+  billingStartAfter     String   @default("first_approved") // first_approved | first_final_approved
+  notes                 String?  @db.Text
+  isActive              Boolean  @default(true)
+  extraFields           Json?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  customers Customer[]
+  invoices  Invoice[]
+
+  @@index([didCode])
+  @@index([campaign])
+  @@index([isActive])
+  @@map("clients")
+}
 
 model Customer {
-  id           String         @id @default(cuid())
-  customerCode String         @unique  // C-0000001
+  id           String  @id @default(cuid())
+  customerCode String? @unique // C0000001
 
-  // Personal info
-  firstName  String
-  lastName   String
-  dob        DateTime?  @db.Date
-  state      String?
-  phone      String?
-  address    String?    @db.Text
+  firstName       String
+  midName         String?
+  lastName        String
+  dateOfBirth     DateTime? @db.Date
+  age             Int?
+  phone           String?
+  address         String?   @db.Text
+  city            String?
+  state           String?
+  postalCode      String?
+  verticalType    String? // Medicare | Final Expense | ACA | Other
+  verticalOther   String?
+  didComments     String?   @db.Text
+  transferredFrom String?
+  qaComments      String?   @db.Text
+  verifiersPart   String?
+  leadIdTimestamp String?
+  submittedAtPak  String? // "16 Oct 2026 07:30 PM PKT"
+  submittedAtEst  String? // "16 Oct 2026 10:30 AM EST"
+  reason          String? // Reason of Cancellation
+  notes           String?   @db.Text
+  managerNote     String?   @db.Text
+  finalNote       String?   @db.Text
+  extraFields     Json?
 
-  // Policy info
-  vertical      Vertical
-  didId         String
-  did           Did        @relation(fields: [didId], references: [id])
-  policyNumber  String?
-  effectiveDate DateTime?  @db.Date
+  status CustomerStatus @default(PENDING)
 
-  // Approval pipeline
-  status       CustomerStatus @default(PENDING)
-  cancelReason String?
-
-  // Snapshot — frozen at finalApprove/finalReject so history survives DID reassignments
-  saleDid         String?
-  saleCompanyName String?
-
-  // Submission timestamps in both timezones (set at create, never changed)
-  submittedAtPkt String?  // "16 Oct 2025 07:30 PM PKT"
-  submittedAtEst String?  // "16 Oct 2025 09:30 AM EST"
-
-  // Actors
   agentId    String
-  agent      User   @relation("AgentSales",       fields: [agentId],    references: [id])
+  agent      User    @relation("AgentSales", fields: [agentId], references: [id], onDelete: Restrict)
   managerId  String?
-  manager    User?  @relation("ManagerApprovals", fields: [managerId],  references: [id])
+  manager    User?   @relation("ManagerApprovals", fields: [managerId], references: [id], onDelete: SetNull)
   directorId String?
-  director   User?  @relation("DirectorActions",  fields: [directorId], references: [id])
+  director   User?   @relation("DirectorActions", fields: [directorId], references: [id], onDelete: SetNull)
+  clientId   String?
+  client     Client? @relation(fields: [clientId], references: [id], onDelete: SetNull)
 
-  approvedAt   DateTime?
-  finalActedAt DateTime?
-  notes        String?   @db.Text
+  approvedAt         DateTime?
+  disapprovedAt      DateTime?
+  finalApprovedAt    DateTime?
+  finalDisapprovedAt DateTime?
+
+  // Frozen snapshot of the client at the moment of the manager reject / final action
+  saleDidCode     String?
+  saleCompanyName String?
+  saleRateAmount  Decimal? @db.Decimal(10, 2)
+  saleRateType    String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  @@index([agentId])
+  invoiceItems InvoiceItem[]
+
   @@index([status])
-  @@index([vertical])
   @@index([createdAt])
+  @@index([agentId, status])
+  @@index([status, createdAt])
+  @@index([clientId, createdAt])
+  @@index([finalApprovedAt])
   @@map("customers")
+}
+
+model FormFieldSetting {
+  id           String   @id @default(cuid())
+  formType     String   @default("sale") // sale | client | user
+  fieldKey     String
+  label        String
+  placeholder  String?
+  isVisible    Boolean  @default(true)
+  isRequired   Boolean  @default(false)
+  fieldType    String   @default("text") // text | number | select | date | textarea | amount_usd | amount_pkr
+  options      Json?
+  sortOrder    Int      @default(0)
+  isCore       Boolean  @default(false)
+  section      String?
+  colSpan      String   @default("third") // full | two_thirds | half | third
+  textareaRows Int      @default(3)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  @@unique([formType, fieldKey])
+  @@map("form_field_settings")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Invoicing
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Invoice {
+  id                  String    @id @default(cuid())
+  invoiceNumber       String    @unique // INV-2026-0001
+  clientId            String
+  client              Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  billingPeriodStart  DateTime  @db.Date
+  billingPeriodEnd    DateTime  @db.Date
+  subtotal            Decimal   @default(0) @db.Decimal(12, 2)
+  discount            Decimal   @default(0) @db.Decimal(12, 2)
+  adjustment          Decimal   @default(0) @db.Decimal(12, 2)
+  totalAmount         Decimal   @default(0) @db.Decimal(12, 2)
+  status              String    @default("pending") // pending | sent | overdue | paid
+  invoiceDate         DateTime  @db.Date
+  dueDate             DateTime  @db.Date
+  paymentReceivedDate DateTime? @db.Date
+  notes               String?   @db.Text
+  createdById         String
+  createdBy           User      @relation("InvoiceCreator", fields: [createdById], references: [id])
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  items InvoiceItem[]
+
+  @@unique([clientId, billingPeriodStart, billingPeriodEnd])
+  @@index([clientId, status])
+  @@map("invoices")
+}
+
+model InvoiceItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+  customerId  String
+  customer    Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  description String?  @db.VarChar(300)
+  rate        Decimal  @default(0) @db.Decimal(12, 2)
+  quantity    Int      @default(1)
+  amount      Decimal  @default(0) @db.Decimal(12, 2)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([invoiceId])
+  @@index([customerId])
+  @@map("invoice_items")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Accounting
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Account {
+  id            String    @id @default(cuid())
+  accountCode   String    @unique
+  accountName   String
+  level1        String // Assets | Liabilities | Equity | Revenue | Expenses
+  level2        String // Main Classification
+  level3        String // Sub Classification
+  level4        String? // Notes Classification
+  level5        String? // Sub Notes Classification
+  accountType   String // asset | liability | equity | revenue | expense
+  normalBalance String // debit | credit
+  currency      String    @default("PKR")
+  isPosting     Boolean   @default(true)
+  isActive      Boolean   @default(true)
+  parentId      String?
+  parent        Account?  @relation("AccountTree", fields: [parentId], references: [id], onDelete: SetNull)
+  children      Account[] @relation("AccountTree")
+  description   String?   @db.Text
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  voucherLines    VoucherLine[]
+  paymentVouchers Voucher[]          @relation("VoucherPaymentAccount")
+  budgets         AccountingBudget[]
+
+  @@index([level1, level2, level3])
+  @@index([accountType])
+  @@map("accounts")
+}
+
+model CoaClass {
+  id          String     @id @default(cuid())
+  level       Int // 2 = Main, 3 = Sub, 4 = Notes, 5 = Sub Notes
+  name        String
+  parentId    String?
+  parent      CoaClass?  @relation("CoaClassTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children    CoaClass[] @relation("CoaClassTree")
+  accountType String? // L2 only
+  codeDigit   Int?
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  @@index([level])
+  @@map("coa_classes")
+}
+
+model AccountingParty {
+  id        String   @id @default(cuid())
+  name      String
+  type      String   @default("both") // customer | supplier | both
+  email     String?
+  phone     String?
+  address   String?  @db.Text
+  taxNumber String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  vouchers     Voucher[]
+  voucherLines VoucherLine[]
+
+  @@map("accounting_parties")
+}
+
+model ExchangeRate {
+  id        String   @id @default(cuid())
+  currency  String
+  rate      Decimal  @db.Decimal(15, 6)
+  rateDate  DateTime @db.Date
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([currency, rateDate])
+  @@map("exchange_rates")
+}
+
+model VoucherSequence {
+  id          String   @id @default(cuid())
+  voucherType String
+  fiscalYear  Int
+  lastNumber  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@unique([voucherType, fiscalYear])
+  @@map("voucher_sequences")
+}
+
+model Voucher {
+  id                 String           @id @default(cuid())
+  voucherNumber      String           @unique
+  voucherType        String // BPV CPV BRV CRV JV SR INV BILL CHQ
+  date               DateTime         @db.Date
+  partyId            String?
+  party              AccountingParty? @relation(fields: [partyId], references: [id], onDelete: SetNull)
+  paymentAccountId   String?
+  paymentAccount     Account?         @relation("VoucherPaymentAccount", fields: [paymentAccountId], references: [id], onDelete: SetNull)
+  paymentMethod      String?
+  referenceNumber    String?
+  currency           String           @default("PKR")
+  exchangeRate       Decimal          @default(1) @db.Decimal(15, 6)
+  memo               String?          @db.Text
+  status             String           @default("draft") // draft | posted | reversed
+  linkedVoucherId    String?
+  linkedVoucher      Voucher?         @relation("VoucherLink", fields: [linkedVoucherId], references: [id], onDelete: SetNull)
+  linkedFrom         Voucher[]        @relation("VoucherLink")
+  reversalOfId       String?
+  reversalOf         Voucher?         @relation("VoucherReversal", fields: [reversalOfId], references: [id], onDelete: SetNull)
+  reversals          Voucher[]        @relation("VoucherReversal")
+  isAdjusting        Boolean          @default(false)
+  isRecurring        Boolean          @default(false)
+  recurringFrequency String?
+  recurringEndDate   DateTime?        @db.Date
+  createdById        String?
+  createdBy          User?            @relation("VoucherCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt          DateTime         @default(now())
+  updatedAt          DateTime         @updatedAt
+
+  lines VoucherLine[]
+
+  @@index([voucherType, date, status])
+  @@index([date])
+  @@map("vouchers")
+}
+
+model VoucherLine {
+  id            String           @id @default(cuid())
+  voucherId     String
+  voucher       Voucher          @relation(fields: [voucherId], references: [id], onDelete: Cascade)
+  accountId     String
+  account       Account          @relation(fields: [accountId], references: [id])
+  debitPkr      Decimal          @default(0) @db.Decimal(18, 2)
+  creditPkr     Decimal          @default(0) @db.Decimal(18, 2)
+  foreignDebit  Decimal?         @db.Decimal(18, 2)
+  foreignCredit Decimal?         @db.Decimal(18, 2)
+  currency      String           @default("PKR")
+  exchangeRate  Decimal          @default(1) @db.Decimal(15, 6)
+  description   String?          @db.Text
+  partyId       String?
+  party         AccountingParty? @relation(fields: [partyId], references: [id], onDelete: SetNull)
+  isBillable    Boolean          @default(false)
+  project       String?
+  costCentreId  String?
+  projectId     String?
+  locationId    String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  @@index([accountId, voucherId])
+  @@index([voucherId])
+  @@map("voucher_lines")
+}
+
+model AccountingAttachment {
+  id             String   @id @default(cuid())
+  attachableType String
+  attachableId   String
+  filename       String
+  originalName   String
+  filePath       String
+  fileSize       Int      @default(0)
+  mimeType       String?
+  uploadedById   String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([attachableType, attachableId])
+  @@map("accounting_attachments")
+}
+
+model AccountingBudget {
+  id         String   @id @default(cuid())
+  accountId  String
+  account    Account  @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  fiscalYear Int
+  month      Int
+  amount     Decimal  @default(0) @db.Decimal(18, 2)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@unique([accountId, fiscalYear, month])
+  @@map("accounting_budgets")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Accounting dimensions
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Location {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  name      String
+  address   String?
+  city      String?
+  country   String?  @default("Pakistan")
+  notes     String?  @db.Text
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("locations")
+}
+
+model CostCentre {
+  id          String   @id @default(cuid())
+  code        String   @unique
+  name        String
+  description String?  @db.Text
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("cost_centres")
+}
+
+model Project {
+  id          String    @id @default(cuid())
+  code        String    @unique
+  name        String
+  clientName  String?
+  startDate   DateTime? @db.Date
+  endDate     DateTime? @db.Date
+  budget      Decimal?  @db.Decimal(18, 2)
+  status      String    @default("active") // active | completed | on_hold | cancelled
+  description String?   @db.Text
+  isActive    Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@map("projects")
 }

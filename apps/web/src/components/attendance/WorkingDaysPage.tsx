@@ -1,194 +1,326 @@
-'use client'
+﻿'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useMemo } from 'react'
+import api from '@/lib/api'
 import { P } from '@/lib/palette'
-import { api } from '@/lib/api'
 import PillSelect from '@/components/ui/PillSelect'
-import StyledSelect from '@/components/ui/StyledSelect'
 
-type DayType = 'WORKING' | 'WEEKEND' | 'HOLIDAY' | 'HALF_DAY'
+const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
+const DAY_NAMES   = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
+const MODULE_START_YEAR = 2026
+const MODULE_START_MONTH = 1
 
-interface WorkingDay {
-  id:                     string
-  date:                   string
-  dayType:                DayType
-  leaveReason:            string | null
-  reportingTimeOverride:  string | null
-}
-
-interface DayFormEntry {
-  date:    string
-  dayType: DayType
-  leaveReason:           string
-  reportingTimeOverride: string
-}
-
-const DAY_TYPE_COLORS: Record<DayType, { bg: string; text: string }> = {
-  WORKING:  { bg: '#D1FAE5', text: '#065F46' },
-  WEEKEND:  { bg: '#F1F5F9', text: '#475569' },
-  HOLIDAY:  { bg: '#FEE2E2', text: '#991B1B' },
-  HALF_DAY: { bg: '#FEF3C7', text: '#92400E' },
-}
-
-const dayTypeOpts = [
-  { value: 'WORKING',  label: 'Working'  },
-  { value: 'WEEKEND',  label: 'Weekend'  },
-  { value: 'HOLIDAY',  label: 'Holiday'  },
-  { value: 'HALF_DAY', label: 'Half Day' },
+const STATUS_OPTIONS = [
+  { value: 'WORKING_DAY', label: 'Working Day' },
+  { value: 'WEEKEND',     label: 'Weekend'     },
+  { value: 'HOLIDAY',     label: 'Holiday'     },
 ]
 
-const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December']
+function pktToday(offset = 0): string {
+  const now = new Date()
+  const pkt = new Date(now.getTime() + 5 * 60 * 60 * 1000)
+  if (offset) pkt.setUTCDate(pkt.getUTCDate() + offset)
+  return pkt.toISOString().split('T')[0]
+}
 
-export default function WorkingDaysPage() {
-  const today = new Date()
-  const [month,   setMonth]   = useState(today.getMonth())
-  const [year,    setYear]    = useState(today.getFullYear())
-  const [days,    setDays]    = useState<WorkingDay[]>([])
-  const [loading, setLoading] = useState(true)
-  const [saving,  setSaving]  = useState(false)
-  const [toast,   setToast]   = useState<{ msg: string; ok: boolean } | null>(null)
-  const [overrides, setOverrides] = useState<Record<string, DayFormEntry>>({})
+// One height for every in-row control, so the type dropdown, the reason box and
+// the login time sit level instead of each taking its own browser default.
+const CTRL: React.CSSProperties = {
+  height: 20, boxSizing: 'border-box', borderRadius: 6,
+  padding: '0 8px', fontSize: 12, outline: 'none', lineHeight: '24px',
+}
+const CELL: React.CSSProperties = { padding: '6px 12px' }
 
-  const showToast = (msg: string, ok: boolean) => {
-    setToast({ msg, ok })
-    setTimeout(() => setToast(null), 3000)
-  }
-
-  const load = useCallback(async () => {
-    setLoading(true)
-    try {
-      const { data } = await api.get('/working-days', { params: { month: month + 1, year } })
-      const list: WorkingDay[] = data?.data ?? data ?? []
-      setDays(list)
-      const map: Record<string, DayFormEntry> = {}
-      list.forEach(d => {
-        map[d.date.slice(0, 10)] = {
-          date: d.date.slice(0, 10), dayType: d.dayType,
-          leaveReason: d.leaveReason ?? '', reportingTimeOverride: d.reportingTimeOverride ?? '',
-        }
-      })
-      setOverrides(map)
-    } catch {
-      setDays([])
-    } finally {
-      setLoading(false)
-    }
-  }, [month, year])
-
-  useEffect(() => { load() }, [load])
-
-  const daysInMonth = new Date(year, month + 1, 0).getDate()
-  const firstDay    = new Date(year, month, 1).getDay()
-
-  const allDays = Array.from({ length: daysInMonth }, (_, i) => {
-    const d = new Date(year, month, i + 1)
-    const key = d.toISOString().slice(0, 10)
-    const dow = d.getDay()
-    const defaultType: DayType = (dow === 0 || dow === 6) ? 'WEEKEND' : 'WORKING'
-    return {
-      date: key, day: i + 1, dow,
-      entry: overrides[key] ?? { date: key, dayType: defaultType, leaveReason: '', reportingTimeOverride: '' },
-    }
-  })
-
-  const handleChange = (date: string, field: keyof DayFormEntry, value: string) => {
-    setOverrides(prev => ({
-      ...prev,
-      [date]: { ...(prev[date] ?? { date, dayType: 'WORKING', leaveReason: '', reportingTimeOverride: '' }), [field]: value },
-    }))
-  }
-
-  const handleSave = async () => {
-    setSaving(true)
-    try {
-      const entries = allDays.map(d => ({
-        date:    d.date,
-        dayType: (overrides[d.date]?.dayType ?? d.entry.dayType) as DayType,
-        leaveReason:           overrides[d.date]?.leaveReason           || undefined,
-        reportingTimeOverride: overrides[d.date]?.reportingTimeOverride || undefined,
-      }))
-      await api.post('/working-days/setup', { month: month + 1, year, days: entries })
-      showToast('Working days saved.', true)
-      load()
-    } catch (e: any) {
-      showToast(e?.response?.data?.message ?? 'Save failed', false)
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const monthOpts = MONTHS.map((m, i) => ({ value: String(i), label: m }))
-  const yearOpts  = Array.from({ length: 4 }, (_, i) => ({ value: String(today.getFullYear() - 1 + i), label: String(today.getFullYear() - 1 + i) }))
-
-  const DOW_NAMES = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
-  const cells: (number | null)[] = [...Array(firstDay).fill(null), ...Array.from({ length: daysInMonth }, (_, i) => i + 1)]
-  while (cells.length % 7 !== 0) cells.push(null)
-
+function Toast({ msg, type, onClose }: { msg: string; type: string; onClose: () => void }) {
+  useEffect(() => { const t = setTimeout(onClose, 4000); return () => clearTimeout(t) }, [onClose])
   return (
-    <div style={{ padding: '24px 28px', fontFamily: "'Inter', sans-serif" }}>
-      {toast && (
-        <div style={{ position: 'fixed', bottom: 24, right: 24, zIndex: 9999, background: toast.ok ? '#065F46' : '#991B1B', color: '#fff', padding: '12px 20px', borderRadius: 10, fontSize: 13, fontWeight: 600 }}>{toast.msg}</div>
-      )}
-
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20, flexWrap: 'wrap', gap: 12 }}>
-        <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 22, fontWeight: 700, color: P.navy, margin: 0 }}>Working Days Setup</h1>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-          <PillSelect value={String(month)} onChange={v => setMonth(Number(v))} options={monthOpts} minWidth={130} />
-          <PillSelect value={String(year)}  onChange={v => setYear(Number(v))}  options={yearOpts}  minWidth={90} />
-          <button onClick={handleSave} disabled={saving}
-            style={{ padding: '7px 20px', borderRadius: 8, border: 'none', background: P.navy, color: '#fff', cursor: saving ? 'not-allowed' : 'pointer', fontSize: 13, fontWeight: 600, fontFamily: "'Inter',sans-serif", opacity: saving ? 0.7 : 1 }}>
-            {saving ? 'Saving…' : 'Save Month'}
-          </button>
-        </div>
-      </div>
-
-      {/* Legend */}
-      <div style={{ display: 'flex', gap: 12, marginBottom: 16, flexWrap: 'wrap' }}>
-        {dayTypeOpts.map(o => {
-          const c = DAY_TYPE_COLORS[o.value as DayType]
-          return (
-            <span key={o.value} style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '3px 10px', borderRadius: 20, fontSize: 11, fontWeight: 700, background: c.bg, color: c.text }}>{o.label}</span>
-          )
-        })}
-      </div>
-
-      {loading ? (
-        <div style={{ textAlign: 'center', padding: 40, color: P.textMuted }}>Loading…</div>
-      ) : (
-        <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${P.border}`, overflow: 'hidden' }}>
-          {/* Header row */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', background: P.navy }}>
-            {DOW_NAMES.map(d => (
-              <div key={d} style={{ padding: '8px', textAlign: 'center', fontSize: 11, fontWeight: 700, color: '#fff' }}>{d}</div>
-            ))}
-          </div>
-          {/* Calendar cells */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)' }}>
-            {cells.map((day, i) => {
-              if (!day) return <div key={i} style={{ height: 80, borderRight: `1px solid ${P.gridLine}`, borderBottom: `1px solid ${P.gridLine}` }} />
-              const d     = allDays[day - 1]
-              const entry = overrides[d.date] ?? d.entry
-              const col   = DAY_TYPE_COLORS[entry.dayType]
-              const isToday = d.date === new Date().toISOString().slice(0, 10)
-              return (
-                <div key={i} style={{ borderRight: `1px solid ${P.gridLine}`, borderBottom: `1px solid ${P.gridLine}`, padding: '6px 6px 8px', background: col.bg + '33' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 }}>
-                    <span style={{
-                      display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-                      width: 22, height: 22, borderRadius: '50%', fontSize: 12, fontWeight: isToday ? 700 : 500,
-                      background: isToday ? P.teal : 'transparent', color: isToday ? '#fff' : P.navy,
-                    }}>{day}</span>
-                  </div>
-                  <select value={entry.dayType} onChange={e => handleChange(d.date, 'dayType', e.target.value)}
-                    style={{ width: '100%', fontSize: 10, padding: '2px 4px', borderRadius: 4, border: `1px solid ${P.border}`, background: '#fff', color: P.navy, fontFamily: "'Inter',sans-serif", cursor: 'pointer' }}>
-                    {dayTypeOpts.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
-                  </select>
-                </div>
-              )
-            })}
-          </div>
-        </div>
-      )}
+    <div style={{
+      position: 'fixed', top: 20, right: 20, zIndex: 9999,
+      background: type === 'success' ? '#E6F4F6' : '#FFEBEE',
+      border: `1px solid ${type === 'success' ? P.teal : '#f87171'}`,
+      borderRadius: 10, padding: '12px 18px', fontSize: 13,
+      color: type === 'success' ? P.deepTeal : '#C62828',
+      boxShadow: '0 4px 16px rgba(0,0,0,0.1)',
+      display: 'flex', alignItems: 'center', gap: 8,
+    }}>
+      {msg}
+      <button onClick={onClose} style={{ background: 0, border: 0, cursor: 'pointer', color: 'inherit', marginLeft: 8, fontWeight: 700 }}>×</button>
     </div>
   )
 }
+
+export default function WorkingDaysPage() {
+  const now      = new Date()
+  const nowYear  = now.getFullYear()
+  const nowMonth = now.getMonth() + 1
+
+  const maxYear  = nowMonth === 12 ? nowYear + 1 : nowYear
+  const maxMonth = nowMonth === 12 ? 1 : nowMonth + 1
+
+  const [month,    setMonth]    = useState(nowMonth)
+  const [year,     setYear]     = useState(nowYear)
+  const [days,      setDays]      = useState<any[]>([])
+  const [loading,   setLoading]   = useState(true)
+  const [saving,    setSaving]    = useState(false)
+  const [toast,     setToast]     = useState<{ msg: string; type: string } | null>(null)
+  const [loginTime, setLoginTime] = useState('10:00')
+  const [satEnabled,   setSatEnabled]   = useState(false)
+  const [sunEnabled,   setSunEnabled]   = useState(false)
+  const [satLoginTime, setSatLoginTime] = useState('10:00')
+  const [sunLoginTime, setSunLoginTime] = useState('10:00')
+
+  const availableYears = useMemo(() => {
+    const arr = []
+    for (let y = MODULE_START_YEAR; y <= maxYear; y++) arr.push(y)
+    return arr
+  }, [maxYear])
+
+  const availableMonths = useMemo(() => {
+    const minM = year === MODULE_START_YEAR ? MODULE_START_MONTH : 1
+    const mxM  = year === maxYear ? maxMonth : 12
+    const arr = []
+    for (let m = minM; m <= mxM; m++) arr.push(m)
+    return arr
+  }, [year, maxYear, maxMonth])
+
+  useEffect(() => {
+    const minM = year === MODULE_START_YEAR ? MODULE_START_MONTH : 1
+    const mxM  = year === maxYear ? maxMonth : 12
+    if (month < minM) setMonth(minM)
+    else if (month > mxM) setMonth(mxM)
+  }, [year]) // eslint-disable-line
+
+  useEffect(() => { fetchData() }, [month, year]) // eslint-disable-line
+
+  async function fetchData() {
+    setLoading(true)
+    try {
+      const [wdRes, settingsRes] = await Promise.all([
+        api.get('/working-days', { params: { month, year } }),
+        api.get('/attendance/settings'),
+      ])
+      const s = settingsRes.data.data ?? settingsRes.data
+      const globalLoginTime = s?.login_time ?? '10:00'
+      if (s?.login_time) setLoginTime(s.login_time)
+      setSatEnabled(s?.saturday_attendance_enabled === 'true')
+      setSunEnabled(s?.sunday_attendance_enabled   === 'true')
+      setSatLoginTime(s?.saturday_login_time ?? globalLoginTime)
+      setSunLoginTime(s?.sunday_login_time   ?? globalLoginTime)
+
+      const today    = pktToday()
+      const rawDays  = wdRes.data.data?.days ?? []
+      // Future days auto-reflect the current global login_time setting
+      const mergedDays = rawDays.map((d: any) =>
+        d.date > today ? { ...d, login_time_formatted: globalLoginTime } : d
+      )
+      setDays(mergedDays)
+    } catch { /* ignore */ } finally { setLoading(false) }
+  }
+
+  function setDayField(idx: number, field: string, value: any) {
+    setDays(prev => prev.map((d, i) => i === idx ? { ...d, [field]: value } : d))
+  }
+
+  async function handleSave() {
+    const missing = days.find(d => d.dayType === 'HOLIDAY' && !d.leave_reason?.trim())
+    if (missing) {
+      setToast({ msg: `Holiday reason is required for ${missing.date}.`, type: 'error' })
+      return
+    }
+    setSaving(true)
+    try {
+      await api.post('/working-days/setup', {
+        month, year,
+        days: days.map(d => ({
+          date:                 d.date,
+          dayType:              d.dayType ?? d.status?.toUpperCase().replace('_', '_'),
+          leaveReason:          d.leave_reason ?? null,
+          reportingTimeOverride: d.login_time_formatted ?? null,
+        })),
+      })
+      setToast({ msg: `Working days for ${MONTH_NAMES[month - 1]} ${year} saved.`, type: 'success' })
+    } catch (err: any) {
+      setToast({ msg: err.response?.data?.message ?? 'Save failed.', type: 'error' })
+    } finally { setSaving(false) }
+  }
+
+  const summary = useMemo(() => ({
+    working:  days.filter(d => d.dayType === 'WORKING_DAY' || d.status === 'working_day').length,
+    weekends: days.filter(d => d.dayType === 'WEEKEND'     || d.status === 'weekend').length,
+    holidays: days.filter(d => d.dayType === 'HOLIDAY'     || d.status === 'leave').length,
+    total:    days.length,
+  }), [days])
+
+  return (
+    <div style={{ padding: '0 20px 20px', height: '100vh', background: P.bgMain, display: 'flex', flexDirection: 'column' }}>
+      {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
+
+      {/* Header */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 52, marginBottom: 8 }}>
+        <div>
+          <h1 style={{ fontFamily: "'Faster One', cursive", textTransform: 'uppercase', fontSize: 26, display: 'inline-block', color: '#1E8496', margin: 0 }}>
+            Working Days
+          </h1>
+        </div>
+        <button onClick={handleSave} disabled={saving || loading}
+          style={{
+            padding: '9px 20px', border: 0, borderRadius: 8, cursor: 'pointer',
+            background: `linear-gradient(135deg, ${P.teal} 0%, ${P.deepTeal} 100%)`,
+            color: '#fff', fontFamily: '"Inter", sans-serif', fontSize: 13,
+            fontWeight: 700, letterSpacing: '0.04em', opacity: saving || loading ? 0.6 : 1,
+          }}
+        >
+          {saving ? 'Saving…' : 'Save Changes'}
+        </button>
+      </div>
+
+      {/* Stat cards */}
+      <div style={{ display: 'flex', gap: 12, flexShrink: 0, marginBottom: 16 }}>
+        {[
+          { label: 'Working',  val: summary.working,  border: '#16A34A', fill: '#BBF0D6', textColor: '#111827' },
+          { label: 'Weekends', val: summary.weekends, border: '#64748B', fill: '#D4DAE3', textColor: '#111827' },
+          { label: 'Holidays', val: summary.holidays, border: '#1565C0', fill: '#BDDAF8', textColor: '#111827' },
+          { label: 'Total',    val: summary.total,    border: P.teal,    fill: '#C8E9EE', textColor: '#111827' },
+        ].map(({ label, val, border, fill, textColor }) => (
+          <div key={label} style={{ flex: 1, minWidth: 100, background: fill, border: `1px solid ${border}30`, borderRadius: 10, padding: '11px 14px' }}>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: textColor, fontFamily: '"Inter", sans-serif' }}>{val ?? 0}</p>
+            <p style={{ margin: '2px 0 0', fontSize: 10, fontWeight: 300, fontFamily: "'Ethnocentric Rg', sans-serif", color: '#64748B' }}>{label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Filter bar */}
+      <div style={{ flexShrink: 0, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: P.teal, borderRadius: 40, padding: '5px 8px' }}>
+          <PillSelect value={String(month)} onChange={v => setMonth(Number(v))} minWidth={140}
+            options={availableMonths.map(m => ({ value: String(m), label: MONTH_NAMES[m - 1] }))} />
+          <PillSelect value={String(year)} onChange={v => setYear(Number(v))} minWidth={100}
+            options={availableYears.map(y => ({ value: String(y), label: String(y) }))} />
+          <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.3)', flexShrink: 0, margin: '0 2px' }} />
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', fontFamily: '"Inter", sans-serif' }}>{MONTH_NAMES[month - 1]} {year}</span>
+        </div>
+      </div>
+
+      {/* Table card */}
+      <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${P.border}`, overflow: 'hidden', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>
+
+
+        {/* Table */}
+        <div style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
+          <table style={{ width: '100%', borderCollapse: 'separate', borderSpacing: 0, fontSize: 13 }}>
+            <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
+              <tr style={{ background: '#F2AC18' }}>
+                {['Date', 'Day', 'Type', 'Reason / Note', 'Login Time'].map(h => (
+                  <th key={h} style={{
+                    padding: '7px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
+                    textTransform: 'uppercase', color: P.navy,
+                    fontFamily: '"Inter", sans-serif', letterSpacing: '0.07em',
+                  }}>{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {loading
+                ? Array.from({ length: 10 }).map((_, i) => (
+                  <tr key={i} style={{ background: i % 2 === 0 ? '#fff' : '#F9FAFB' }}>
+                    {[1,2,3,4,5].map(c => (
+                      <td key={c} style={{ ...CELL, borderBottom: `1px solid ${P.gridLine}` }}>
+                        <div style={{ height: 12, borderRadius: 4, background: P.gridLine }} />
+                      </td>
+                    ))}
+                  </tr>
+                ))
+                : days.length === 0
+                  ? <tr><td colSpan={5} style={{ padding: '48px 16px', textAlign: 'center', color: P.textMuted }}>No data.</td></tr>
+                  : days.map((row, idx) => {
+                    const isLocked = row.date < pktToday(-1)
+                    const dayType  = row.dayType ?? (row.status === 'working_day' ? 'WORKING_DAY' : row.status === 'weekend' ? 'WEEKEND' : 'HOLIDAY')
+
+                    const rowBg = dayType === 'HOLIDAY' ? 'rgba(73,49,30,0.06)' : dayType === 'WEEKEND' ? '#F8FAFC' : idx % 2 === 0 ? '#fff' : '#F9FAFB'
+
+                    return (
+                      <tr key={row.date} style={{ background: rowBg, opacity: isLocked ? 0.65 : 1 }}>
+                        <td style={{ ...CELL, borderBottom: `1px solid ${P.gridLine}`, fontWeight: 600, color: P.textHeading }}>
+                          {row.date}
+                        </td>
+                        <td style={{ ...CELL, borderBottom: `1px solid ${P.gridLine}`, color: P.textMuted, fontFamily: '"Inter", sans-serif', letterSpacing: '0.02em' }}>
+                          {DAY_NAMES[new Date(row.date).getDay()]}
+                        </td>
+                        <td style={{ ...CELL, borderBottom: `1px solid ${P.gridLine}` }}>
+                          {isLocked
+                            ? <span style={{
+                                ...CTRL, display: 'inline-flex', alignItems: 'center',
+                                fontSize: 11, fontWeight: 600,
+                                background: dayType === 'HOLIDAY' ? '#FFF3E0' : dayType === 'WEEKEND' ? '#F5F5F5' : '#E6F4F6',
+                                color: dayType === 'HOLIDAY' ? P.brick : dayType === 'WEEKEND' ? P.textMuted : P.deepTeal,
+                              }}>
+                                {STATUS_OPTIONS.find(o => o.value === dayType)?.label ?? dayType}
+                              </span>
+                            : <PillSelect
+                                value={dayType}
+                                onChange={v => setDayField(idx, 'dayType', v)}
+                                options={STATUS_OPTIONS}
+                                minWidth={132}
+                                triggerStyle={{
+                                  ...CTRL, fontWeight: 600, width: 132,
+                                  border: `1px solid ${P.border}`,
+                                  background: dayType === 'HOLIDAY' ? '#FFF3E0' : dayType === 'WEEKEND' ? '#F5F5F5' : '#fff',
+                                  color: dayType === 'HOLIDAY' ? P.brick : dayType === 'WEEKEND' ? P.textMuted : P.textHeading,
+                                }}
+                              />
+                          }
+                        </td>
+                        <td style={{ ...CELL, borderBottom: `1px solid ${P.gridLine}`, minWidth: 180 }}>
+                          {dayType === 'HOLIDAY'
+                            ? isLocked
+                              ? <span style={{ fontSize: 12, color: '#49311E' }}>{row.leave_reason ?? 'N/A'}</span>
+                              : <input
+                                  type="text"
+                                  placeholder="Holiday reason (required)"
+                                  value={row.leave_reason ?? ''}
+                                  onChange={e => setDayField(idx, 'leave_reason', e.target.value)}
+                                  style={{
+                                    ...CTRL, width: '100%',
+                                    border: `1px solid ${!row.leave_reason?.trim() ? '#f87171' : '#AA7F56'}`,
+                                    background: 'rgba(73,49,30,0.04)', color: P.textHeading,
+                                  }}
+                                />
+                            : <span style={{ color: P.textMuted, fontSize: 12 }}>N/A</span>
+                          }
+                        </td>
+                        <td style={{ ...CELL, borderBottom: `1px solid ${P.gridLine}` }}>
+                          {(() => {
+                            const dow = new Date(row.date).getDay()
+                            const isEnabledWeekend = dayType === 'WEEKEND' && (
+                              (dow === 6 && satEnabled) || (dow === 0 && sunEnabled)
+                            )
+                            const weekendDefault = dow === 6 ? satLoginTime : sunLoginTime
+
+                            if (dayType === 'WORKING_DAY' || isEnabledWeekend) {
+                              const val = row.login_time_formatted ?? (isEnabledWeekend ? weekendDefault : loginTime)
+                              return isLocked
+                                ? <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, color: P.textHeading, letterSpacing: '0.04em' }}>
+                                    {val}
+                                  </span>
+                                : <input
+                                    type="time"
+                                    value={val}
+                                    onChange={e => setDayField(idx, 'login_time_formatted', e.target.value)}
+                                    style={{ ...CTRL, border: `1px solid ${P.border}`, color: P.textHeading }}
+                                  />
+                            }
+                            return <span style={{ color: P.textMuted, fontSize: 12, fontWeight: 600 }}>N/A</span>
+                          })()}
+                        </td>
+                      </tr>
+                    )
+                  })
+              }
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  )
+}
+

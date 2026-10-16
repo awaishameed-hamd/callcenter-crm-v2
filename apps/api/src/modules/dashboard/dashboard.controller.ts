@@ -1,7 +1,7 @@
 import { Controller, Get, Query, UseGuards } from '@nestjs/common'
 import { DashboardService } from './dashboard.service'
-import { JwtAuthGuard }     from '../../common/guards/jwt-auth.guard'
-import { CurrentUser }      from '../../common/decorators/current-user.decorator'
+import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
+import { CurrentUser }  from '../../common/decorators/current-user.decorator'
 
 @UseGuards(JwtAuthGuard)
 @Controller('dashboard')
@@ -10,9 +10,11 @@ export class DashboardController {
 
   @Get('stats')
   stats(
-    @CurrentUser() user: any,
-    @Query('period') period: 'daily' | 'weekly' | 'monthly' | 'overall',
+    @CurrentUser() actor: any,
+    @Query('period') period?: string,
+    @Query('fromDate') fromDate?: string,
+    @Query('toDate') toDate?: string,
   ) {
-    return this.dashboard.getStats(user.id, user.role, period ?? 'overall')
+    return this.dashboard.stats(actor, period ?? 'weekly', fromDate, toDate)
   }
 }

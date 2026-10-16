@@ -1,2 +1,5 @@
 import ReportsPage from '@/components/reports/ReportsPage'
-export default ReportsPage
+
+export default function Page() {
+  return <ReportsPage />
+}
