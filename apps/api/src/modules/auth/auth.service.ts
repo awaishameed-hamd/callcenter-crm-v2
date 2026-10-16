@@ -1,17 +1,19 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common'
-import { JwtService }    from '@nestjs/jwt'
-import { ConfigService } from '@nestjs/config'
-import * as bcrypt       from 'bcryptjs'
-import { v4 as uuidv4 } from 'uuid'
-import { PrismaService } from '../prisma/prisma.service'
-import { LoginDto }      from './dto/login.dto'
+import { JwtService }       from '@nestjs/jwt'
+import { ConfigService }    from '@nestjs/config'
+import * as bcrypt          from 'bcryptjs'
+import { v4 as uuidv4 }    from 'uuid'
+import { PrismaService }    from '../prisma/prisma.service'
+import { LoginDto }         from './dto/login.dto'
+import { AttendanceService } from '../attendance/attendance.service'
 
 @Injectable()
 export class AuthService {
   constructor(
-    private prisma:  PrismaService,
-    private jwt:     JwtService,
-    private config:  ConfigService,
+    private prisma:      PrismaService,
+    private jwt:         JwtService,
+    private config:      ConfigService,
+    private attendance:  AttendanceService,
   ) {}
 
   async login(dto: LoginDto) {
@@ -32,9 +34,12 @@ export class AuthService {
 
     this.prisma.user.update({ where: { id: user.id }, data: { lastSeenAt: new Date() } }).catch(() => {})
 
+    const attendance = await this.attendance.autoMarkOnLogin(user.id, user.role).catch(() => null)
+
     return {
       accessToken:  tokens.accessToken,
       refreshToken: tokens.refreshToken,
+      attendance,
       user: {
         id:          user.id,
         userCode:    user.userCode,

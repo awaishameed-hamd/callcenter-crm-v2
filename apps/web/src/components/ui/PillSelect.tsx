@@ -1,0 +1,67 @@
+'use client'
+import { useState, useRef, useEffect } from 'react'
+
+const NAVY = '#132E57'
+const TEAL = '#1E8496'
+
+export default function PillSelect({ value, onChange, options, minWidth = 150, dimValue, triggerStyle, align = 'left' }: {
+  value: string
+  onChange: (v: string) => void
+  options: { value: string; label: string }[]
+  minWidth?: number
+  dimValue?: string
+  triggerStyle?: React.CSSProperties
+  align?: 'left' | 'right'
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
+    document.addEventListener('mousedown', h)
+    return () => document.removeEventListener('mousedown', h)
+  }, [])
+
+  const sel = options.find(o => o.value === value) ?? options[0]
+
+  return (
+    <div ref={ref} style={{ position: 'relative', flexShrink: 0 }}>
+      <button onClick={() => setOpen(o => !o)}
+        style={{
+          display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 40,
+          border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
+          fontFamily: "'Inter', sans-serif", color: '#fff', whiteSpace: 'nowrap',
+          background: dimValue !== undefined && value === dimValue ? 'rgba(255,255,255,0.18)' : NAVY,
+          ...triggerStyle,
+        }}>
+        <span style={{ flex: 1, textAlign: 'inherit', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sel?.label}</span>
+        <svg width={11} height={11} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ flexShrink: 0 }}>
+          <path strokeLinecap="round" strokeLinejoin="round" d={open ? 'M18 15l-6-6-6 6' : 'M6 9l6 6 6-6'} />
+        </svg>
+      </button>
+
+      {open && (
+        <div style={{
+          position: 'absolute', zIndex: 999, top: 'calc(100% + 5px)', minWidth,
+          ...(align === 'right' ? { right: 0 } : { left: 0 }),
+          background: '#fff', border: '1.5px solid #E0DDD5', borderRadius: 8,
+          boxShadow: '0 6px 20px rgba(0,0,0,0.12)', maxHeight: 220, overflowY: 'auto',
+        }}>
+          {options.map(opt => (
+            <div key={opt.value} onMouseDown={() => { onChange(opt.value); setOpen(false) }}
+              style={{
+                padding: '5px 12px', fontSize: 13, fontFamily: "'Inter', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap',
+                color: opt.value === value ? TEAL : NAVY,
+                fontWeight: opt.value === value ? 700 : 400,
+                background: opt.value === value ? '#E5F3F5' : 'transparent',
+                borderBottom: '1px solid #F0EDE5',
+              }}
+              onMouseEnter={e => { if (opt.value !== value) (e.currentTarget as HTMLElement).style.background = '#f7f8fa' }}
+              onMouseLeave={e => { if (opt.value !== value) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
+            >{opt.label}</div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
