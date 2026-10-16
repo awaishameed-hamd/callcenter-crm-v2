@@ -98,6 +98,14 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
+  // HR / profile fields
+  dateOfJoining DateTime? @db.Date
+  department    String?
+  agentType     String?
+  cnic          String?
+  address       String?   @db.Text
+  profileLocked Boolean   @default(false)
+
   // Salary fields (for accounting/HR)
   basicSalary          Decimal? @db.Decimal(12, 2)
   punctualityAllowance Decimal? @db.Decimal(12, 2)

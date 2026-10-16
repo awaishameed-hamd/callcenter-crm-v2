@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common'
+import { Injectable, UnauthorizedException, BadRequestException, ForbiddenException } from '@nestjs/common'
 import { JwtService }       from '@nestjs/jwt'
 import { ConfigService }    from '@nestjs/config'
 import * as bcrypt          from 'bcryptjs'
@@ -41,13 +41,14 @@ export class AuthService {
       refreshToken: tokens.refreshToken,
       attendance,
       user: {
-        id:          user.id,
-        userCode:    user.userCode,
-        email:       user.email,
-        displayName: user.displayName,
-        role:        user.role,
-        managerType: user.managerType,
-        avatar:      user.avatar,
+        id:           user.id,
+        userCode:     user.userCode,
+        email:        user.email,
+        displayName:  user.displayName,
+        role:         user.role,
+        managerType:  user.managerType,
+        avatar:       user.avatar,
+        profileLocked: user.profileLocked,
       },
     }
   }
@@ -76,11 +77,44 @@ export class AuthService {
       where:  { id: userId },
       select: {
         id: true, userCode: true, email: true, displayName: true,
-        role: true, managerType: true, avatar: true, phone: true, isActive: true,
+        role: true, managerType: true, agentType: true, avatar: true,
+        phone: true, isActive: true, profileLocked: true,
+        dateOfJoining: true, department: true, cnic: true, address: true,
+        basicSalary: true, punctualityAllowance: true, travellingAllowance: true,
+        otherAllowance: true, bank: true, bankAccountNo: true,
       },
     })
     if (!user) throw new UnauthorizedException()
     return user
+  }
+
+  async updateProfile(userId: string, dto: { displayName?: string; phone?: string; email?: string }) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { profileLocked: true } })
+    if (!user) throw new UnauthorizedException()
+    if (user.profileLocked) throw new ForbiddenException('Your profile is locked. Contact an admin.')
+
+    const data: any = {}
+    if (dto.displayName) data.displayName = dto.displayName
+    if (dto.phone !== undefined) data.phone = dto.phone
+    if (dto.email) data.email = dto.email.toLowerCase()
+
+    return this.prisma.user.update({
+      where:  { id: userId },
+      data,
+      select: { id: true, displayName: true, email: true, phone: true, avatar: true },
+    })
+  }
+
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } })
+    if (!user) throw new UnauthorizedException()
+
+    const ok = await bcrypt.compare(currentPassword, user.password)
+    if (!ok) throw new BadRequestException('Current password is incorrect')
+
+    const hashed = await bcrypt.hash(newPassword, 12)
+    await this.prisma.user.update({ where: { id: userId }, data: { password: hashed } })
+    return { message: 'Password changed successfully' }
   }
 
   private async generateTokens(userId: string, email: string, role: string) {

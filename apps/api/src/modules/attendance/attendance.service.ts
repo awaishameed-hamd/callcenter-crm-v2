@@ -317,9 +317,9 @@ export class AttendanceService {
     const daysInMonth = new Date(year, month, 0).getDate()
     const today       = new Date().toISOString().split('T')[0]
 
-    const joinedUser  = await this.prisma.user.findUnique({ where: { id: userId }, select: { createdAt: true } })
-    const joinDateStr = joinedUser?.createdAt
-      ? new Date(joinedUser.createdAt).toISOString().split('T')[0]
+    const joinedUser  = await this.prisma.user.findUnique({ where: { id: userId }, select: { dateOfJoining: true } })
+    const joinDateStr = joinedUser?.dateOfJoining
+      ? new Date(joinedUser.dateOfJoining).toISOString().split('T')[0]
       : null
 
     const calendar = []
@@ -425,7 +425,7 @@ export class AttendanceService {
     const records = await this.prisma.attendance.findMany({
       where,
       include: {
-        user: { select: { id: true, displayName: true, role: true, isActive: true, createdAt: true } },
+        user: { select: { id: true, displayName: true, role: true, isActive: true, dateOfJoining: true } },
       },
       orderBy: [{ date: 'asc' }, { user: { displayName: 'asc' } }],
     })
@@ -436,7 +436,7 @@ export class AttendanceService {
       userName:    r.user.displayName,
       userRole:    r.user.role,
       isActive:    r.user.isActive,
-      joinDate:    r.user.createdAt.toISOString().split('T')[0],
+      joinDate:    r.user.dateOfJoining ? r.user.dateOfJoining.toISOString().split('T')[0] : null,
       date:        r.date.toISOString().split('T')[0],
       loginTime:   r.loginTime
         ? new Date(r.loginTime).toLocaleTimeString('en-PK', { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit', hour12: false })
