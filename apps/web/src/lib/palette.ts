@@ -1,0 +1,31 @@
+export const P = {
+  bgMain:    '#EDF0F3',
+  bgCard:    '#FFFFFF',
+  navy:      '#132E57',
+  teal:      '#1E8496',
+  deepTeal:  '#1A5560',
+  gold:      '#F2AC18',
+  forest:    '#3A6B3A',
+  brick:     '#C25A1F',
+  khaki:     '#CBB26A',
+  purple:    '#7B2D8E',
+  red:       '#D62828',
+  gray:      '#808080',
+  slate:     '#5C5C5C',
+  fillNavy:  '#E8EEF7',
+  fillTeal:  '#E5F3F5',
+  fillGold:  '#FAEFD0',
+  fillBrick: '#F5E0D2',
+  border:    '#E0DDD5',
+  gridLine:  '#F0EDE5',
+  textHeading: '#132E57',
+  textLabel:   '#5C5C5C',
+  textMuted:   '#808080',
+  shadow:    '0 1px 6px rgba(0,0,0,0.06)',
+  sidebarBg: '#E8EAED',
+  iconMuted: '#9FA7B2',
+}
+
+export const CHART_COLORS = [
+  '#132E57', '#1E8496', '#D7A520', '#CBB26A', '#C25A1F', '#808080',
+]

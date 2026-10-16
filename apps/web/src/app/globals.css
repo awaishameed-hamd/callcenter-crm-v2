@@ -1,0 +1,68 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --navy:        #132E57;
+    --teal:        #1E8496;
+    --deep-teal:   #1A5560;
+    --gold:        #D7A520;
+    --brick:       #C25A1F;
+    --bg-main:     #EDF0F3;
+    --sidebar-bg:  #E8EAED;
+    --border:      #E0DDD5;
+    --slate:       #5C5C5C;
+  }
+
+  * {
+    border-color: #E0DDD5;
+  }
+
+  body {
+    background: #EDF0F3;
+    color: #132E57;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: 'Inter', sans-serif;
+    color: #132E57;
+  }
+
+  html, body {
+    overflow-x: hidden;
+    overscroll-behavior-y: none;
+  }
+
+  @media (max-width: 1023px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
+}
+
+/* Login page styles */
+.lfield:focus-within {
+  border-color: rgba(30, 132, 150, 0.45) !important;
+  background: #eef1f3 !important;
+  box-shadow: 0 0 0 3px rgba(30, 132, 150, 0.10);
+}
+
+.lbtn:hover:not(:disabled) {
+  filter: brightness(1.08);
+  transform: translateY(-1px);
+  box-shadow: 0 12px 28px -10px rgba(74, 90, 99, 0.65), inset 0 1px 0 rgba(255, 255, 255, 0.18) !important;
+}
+
+.lbtn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #c9cdd1; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #a0a7b0; }
