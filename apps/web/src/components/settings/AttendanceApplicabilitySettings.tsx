@@ -17,6 +17,8 @@ interface UserEntry {
   displayName: string
   userCode: string
   role: string
+  managerType?: string | null
+  agentType?: string | null
   attendanceApplicable: boolean
 }
 
@@ -153,6 +155,7 @@ export default function AttendanceApplicabilitySettings() {
                     </div>
                     <span style={{ fontSize: 12, fontWeight: 400, color: '#374151', fontFamily: "'Inter', sans-serif" }}>
                       {user.displayName}
+                      {(user.managerType ?? user.agentType) && <span style={{ marginLeft: 6, fontSize: 10, color: '#94A3B8' }}>{user.managerType ?? user.agentType}</span>}
                     </span>
                   </div>
                   <Toggle on={user.attendanceApplicable} disabled={busy === `user-${user.id}`} onChange={() => toggleUser(user)} />

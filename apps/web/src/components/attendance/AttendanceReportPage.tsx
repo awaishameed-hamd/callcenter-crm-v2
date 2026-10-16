@@ -8,6 +8,7 @@ import PillSelect from '@/components/ui/PillSelect'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { formatTime12h } from '@/lib/utils'
+import { staffRole, rolePill, hasHrDesk, canManage } from '@/lib/roles'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const MODULE_START_YEAR  = 2026
@@ -19,9 +20,6 @@ const inputCls          = 'w-full rounded-lg px-2.5 py-1.5 text-xs outline-none 
 const filterSelectStyle = { background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff' } as React.CSSProperties
 const filterInputStyle  = { background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff' } as React.CSSProperties
 
-function roleLabel(r: string) {
-  return r.replace(/_/g, ' ')
-}
 
 function statusLabel(s: string) {
   if (s === 'PRESENT') return 'Present'
@@ -45,6 +43,7 @@ interface EmpSummary {
   userId:    string
   userName:  string
   userRole:  string
+  userType?: string | null
   isActive:  boolean
   joinDate?: string
   present:   number
@@ -58,7 +57,7 @@ function buildSummaries(records: any[]): EmpSummary[] {
   const map = new Map<string, EmpSummary>()
   for (const r of records) {
     if (!map.has(r.userId)) {
-      map.set(r.userId, { userId: r.userId, userName: r.userName, userRole: r.userRole, isActive: r.isActive ?? true, joinDate: r.joinDate, present: 0, late: 0, absent: 0, leave: 0, records: [] })
+      map.set(r.userId, { userId: r.userId, userName: r.userName, userRole: r.userRole, userType: r.userType, isActive: r.isActive ?? true, joinDate: r.joinDate, present: 0, late: 0, absent: 0, leave: 0, records: [] })
     }
     const s = map.get(r.userId)!
     s.records.push(r)
@@ -71,7 +70,7 @@ function buildSummaries(records: any[]): EmpSummary[] {
 }
 
 // ── Opening Balance Modal ─────────────────────────────────────────────────────
-interface OpeningRow { userId: string; userName: string; userRole: string; presents: number; late: number; absents: number; leaves: number; workingDays: number }
+interface OpeningRow { userId: string; userName: string; userRole: string; userType?: string | null; presents: number; late: number; absents: number; leaves: number; workingDays: number }
 
 function OpeningBalanceModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const [rows,    setRows]    = useState<OpeningRow[]>([])
@@ -91,6 +90,7 @@ function OpeningBalanceModal({ onClose, onSaved }: { onClose: () => void; onSave
         userId:     u.id,
         userName:   u.displayName,
         userRole:   u.role,
+        userType:   u.managerType ?? u.agentType ?? null,
         presents:   openings[u.id]?.presents    ?? 0,
         late:       openings[u.id]?.late        ?? 0,
         absents:    openings[u.id]?.absents     ?? 0,
@@ -156,7 +156,7 @@ function OpeningBalanceModal({ onClose, onSaved }: { onClose: () => void; onSave
                   <tr key={r.userId} style={{ background: i % 2 === 0 ? '#fff' : '#FAFCFC', borderBottom: `1px solid ${P.border}30` }}>
                     <td style={{ padding: '6px 12px', fontWeight: 700, color: P.navy }}>{r.userName}</td>
                     <td style={{ padding: '6px 12px' }}>
-                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, background: '#E8EAED', color: P.textMuted }}>{roleLabel(r.userRole)}</span>
+                      <span style={{ fontSize: 11, fontWeight: 600, padding: '2px 8px', borderRadius: 9999, background: '#E8EAED', color: P.textMuted }}>{staffRole(r.userRole, r.userType)}</span>
                     </td>
                     <td style={{ padding: '6px 12px', textAlign: 'center' }}>{numInput(r, 'presents')}</td>
                     <td style={{ padding: '6px 12px', textAlign: 'center' }}>{numInput(r, 'late')}</td>
@@ -211,7 +211,7 @@ function AllTimeDetailModal({ emp, onClose }: { emp: EmpSummary; onClose: () => 
             {emp.userName}
           </h2>
           <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700, fontFamily: '"Inter", sans-serif' }}>
-            {roleLabel(emp.userRole)}
+            {staffRole(emp.userRole, emp.userType)}
           </span>
           <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 600, fontFamily: '"Inter", sans-serif' }}>
             All Time
@@ -299,11 +299,10 @@ function AllTimeDetailModal({ emp, onClose }: { emp: EmpSummary; onClose: () => 
 }
 
 // ── Monthly Detail Modal (calendar view) ──────────────────────────────────────
-function DetailModal({ emp, month, year, onClose }: { emp: EmpSummary; month: number; year: number; isPartner?: boolean; onClose: () => void }) {
+function DetailModal({ emp, month, year, onClose }: { emp: EmpSummary; month: number; year: number; onClose: () => void }) {
   const { user: authUser } = useAuth()
-  const isAdminOrDirector = authUser?.role === 'ADMIN' || authUser?.role === 'DIRECTOR'
-  // Managers cannot edit other managers' (or their own) attendance, only ADMIN/DIRECTOR can
-  const canEdit   = isAdminOrDirector || (authUser?.role === 'MANAGER' && emp.userRole !== 'MANAGER')
+  // Call-center scope: HR desk edits all staff, Floor/QA managers edit agents, nobody edits their own
+  const canEdit   = canManage(authUser, { id: emp.userId, role: emp.userRole })
   const canCreate = canEdit
   const [records, setRecords] = useState<any[]>(emp.records)
   const [editId,      setEditId]      = useState<string | null | 'NEW'>(null)
@@ -396,7 +395,7 @@ function DetailModal({ emp, month, year, onClose }: { emp: EmpSummary; month: nu
               {emp.userName}
             </h2>
             <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700, fontFamily: '"Inter", sans-serif' }}>
-              {roleLabel(emp.userRole)}
+              {staffRole(emp.userRole, emp.userType)}
             </span>
             <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 600, fontFamily: '"Inter", sans-serif' }}>
               {MONTH_NAMES[month - 1]} {year}
@@ -570,7 +569,7 @@ function DetailModal({ emp, month, year, onClose }: { emp: EmpSummary; month: nu
 async function exportExcel(summaries: EmpSummary[], month: number, year: number, viewMode: 'monthly' | 'all') {
   const ExcelJS = (await import('exceljs')).default
   const wb = new ExcelJS.Workbook()
-  wb.creator = 'CA Firm CRM'
+  wb.creator = 'Call Center CRM'
   const ws = wb.addWorksheet('Attendance Report')
 
   const NAVY_HEX   = '132E57'
@@ -622,7 +621,7 @@ async function exportExcel(summaries: EmpSummary[], month: number, year: number,
     const row  = ws.addRow([])
     const bg   = idx % 2 === 0 ? 'FFFFFFFF' : 'FFF0F9FA'
     const total = s.present + s.absent + s.leave
-    const rowData: (string | number)[] = [idx + 1, s.userName, s.userRole, s.present, s.late, s.absent, s.leave, total]
+    const rowData: (string | number)[] = [idx + 1, s.userName, staffRole(s.userRole, s.userType), s.present, s.late, s.absent, s.leave, total]
     cols.forEach((c, i) => {
       const cell = row.getCell(i + 1)
       cell.value = rowData[i] as ExcelJS.CellValue
@@ -664,13 +663,13 @@ async function exportExcel(summaries: EmpSummary[], month: number, year: number,
 }
 
 // ── Main ──────────────────────────────────────────────────────────────────────
-export default function AttendanceReportPage({ isPartner = false }: { isPartner?: boolean }) {
+export default function AttendanceReportPage() {
   const now      = new Date()
   const nowYear  = now.getFullYear()
   const nowMonth = now.getMonth() + 1
 
   const { user: authUser } = useAuth()
-  const canEditOpening = authUser?.role === 'ADMIN' || authUser?.role === 'DIRECTOR' || authUser?.role === 'MANAGER'
+  const canEditOpening = hasHrDesk(authUser)
 
   const [viewMode,      setViewMode]      = useState<'monthly' | 'all'>('monthly')
   const [month,         setMonth]         = useState(nowMonth)
@@ -747,7 +746,7 @@ export default function AttendanceReportPage({ isPartner = false }: { isPartner?
                    : merged
     if (!search.trim()) return filtered
     const q = search.toLowerCase()
-    return filtered.filter(s => s.userName.toLowerCase().includes(q) || s.userRole.toLowerCase().includes(q))
+    return filtered.filter(s => s.userName.toLowerCase().includes(q) || staffRole(s.userRole, s.userType).toLowerCase().includes(q))
   }, [records, search, viewMode, openings, statusFilter])
 
   const pillBtn = (label: string, active: boolean, onClick: () => void) => (
@@ -819,7 +818,7 @@ export default function AttendanceReportPage({ isPartner = false }: { isPartner?
             <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.3)', flexShrink: 0, margin: '0 2px' }} />
           </>)}
 
-          {/* Opening Balance button. All Time + admin/partner only */}
+          {/* Opening Balance button. All Time + HR desk only */}
           {viewMode === 'all' && canEditOpening && (
             <button onClick={() => setShowOpening(true)} style={{
               flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5,
@@ -900,9 +899,7 @@ export default function AttendanceReportPage({ isPartner = false }: { isPartner?
                     </td>
                   </tr>
                 ) : summaries.map((s, idx) => {
-                  const roleStyle = s.userRole === 'DIRECTOR'
-                    ? { bg: '#FEF3C7', color: '#92400E' }
-                    : s.userRole === 'MANAGER' ? { bg: '#DBEAFE', color: '#1D4ED8' } : { bg: '#CFFAFE', color: '#0E7490' }
+                  const roleStyle = rolePill(s.userRole)
                   const workingDays = s.present + s.absent + s.leave
                   const tdBase: React.CSSProperties = { padding: '6px 12px', borderBottom: '1px solid #F1F5F9', fontSize: 12, fontFamily: '"Inter", sans-serif' }
                   return (
@@ -912,7 +909,7 @@ export default function AttendanceReportPage({ isPartner = false }: { isPartner?
                       <td style={{ ...tdBase, fontWeight: 700, color: '#94A3B8', width: 40 }}>{idx + 1}</td>
                       <td style={{ ...tdBase, fontWeight: 700, color: P.navy }}>{s.userName}</td>
                       <td style={tdBase}>
-                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: roleStyle.bg, color: roleStyle.color }}>{roleLabel(s.userRole)}</span>
+                        <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: roleStyle.bg, color: roleStyle.color }}>{staffRole(s.userRole, s.userType)}</span>
                       </td>
                       <td style={{ ...tdBase, fontWeight: 700, color: P.teal }}>{s.present}</td>
                       <td style={{ ...tdBase, fontWeight: 700, color: P.brick }}>{s.late}</td>

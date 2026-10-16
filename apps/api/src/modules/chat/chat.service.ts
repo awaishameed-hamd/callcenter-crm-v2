@@ -3,7 +3,7 @@ import { Role } from '@crm/shared'
 import { PrismaService } from '../prisma/prisma.service'
 import { PresenceService } from './presence.service'
 
-const CONTACT_SELECT = { id: true, displayName: true, role: true, avatar: true, lastSeenAt: true }
+const CONTACT_SELECT = { id: true, displayName: true, role: true, managerType: true, agentType: true, avatar: true, lastSeenAt: true }
 
 @Injectable()
 export class ChatService {

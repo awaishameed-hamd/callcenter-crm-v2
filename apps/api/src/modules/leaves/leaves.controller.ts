@@ -27,24 +27,24 @@ export class LeavesController {
   @Get('pending')
   @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
   getPending(@CurrentUser() user: any) {
-    return this.svc.getPending(user.role)
+    return this.svc.getPending(user)
   }
 
   @Get('all')
   @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
   getAll(@CurrentUser() user: any) {
-    return this.svc.getAll(user.role)
+    return this.svc.getAll(user)
   }
 
   @Patch(':id/approve')
   @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
   approve(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.svc.approve(id, user.id, user.role)
+    return this.svc.approve(id, user)
   }
 
   @Patch(':id/reject')
   @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
   reject(@Param('id') id: string, @CurrentUser() user: any, @Body('reason') reason?: string) {
-    return this.svc.reject(id, user.id, user.role, reason)
+    return this.svc.reject(id, user, reason)
   }
 }

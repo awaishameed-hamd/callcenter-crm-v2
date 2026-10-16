@@ -84,7 +84,7 @@ export class AttendanceSchedulerService implements OnModuleInit {
       this.logger.log(`[AutoAttendance] Batch marking early logins for ${dateStr} at ${reportingTime} ${tz}`)
 
       const today      = new Date(dateStr + 'T00:00:00Z')
-      const dayOfWeek  = today.getDay()
+      const dayOfWeek  = today.getUTCDay()
       const workingDay = await this.prisma.workingDay.findUnique({ where: { date: today } })
       const resolvedType = workingDay?.dayType ?? (dayOfWeek !== 0 && dayOfWeek !== 6 ? DayType.WORKING_DAY : DayType.WEEKEND)
       if (resolvedType !== DayType.WORKING_DAY) {
@@ -163,7 +163,7 @@ export class AttendanceSchedulerService implements OnModuleInit {
       this.logger.log(`[AutoAbsent] Running absent sweep for ${dateStr}`)
 
       const today      = new Date(dateStr + 'T00:00:00Z')
-      const dayOfWeek  = today.getDay()
+      const dayOfWeek  = today.getUTCDay()
       const workingDay = await this.prisma.workingDay.findUnique({ where: { date: today } })
       const resolvedType = workingDay?.dayType ?? (dayOfWeek !== 0 && dayOfWeek !== 6 ? DayType.WORKING_DAY : DayType.WEEKEND)
 

@@ -6,6 +6,7 @@ import { P } from '@/lib/palette'
 import StyledSelect from '@/components/ui/StyledSelect'
 import DataTable from '@/components/ui/DataTable'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
+import { staffRole } from '@/lib/roles'
 
 const LEAVE_TYPE_OPTIONS = [
   { value: 'sick',   label: 'Sick Leave'   },
@@ -155,7 +156,7 @@ export default function MyLeavesPage() {
             </span>
           ) },
           { key: 'reviewedBy', label: 'Reviewed By', width: 160, cellStyle: { fontSize: 12, color: '#64748B' },
-            render: (l: any) => l.reviewedBy ? `${l.reviewedBy.displayName} (${l.reviewedBy.role.replace(/_/g, ' ')})` : 'Pending' },
+            render: (l: any) => l.reviewedBy ? `${l.reviewedBy.displayName} (${staffRole(l.reviewedBy.role, l.reviewedBy.managerType)})` : 'Pending' },
           { key: 'rejectionReason', label: 'Rejection Reason', width: 170, cellStyle: { fontSize: 12, color: '#DC2626' },
             render: (l: any) => l.rejectionReason ?? '' },
         ]}

@@ -1,10 +1,11 @@
 ﻿'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Fragment } from 'react'
 import api from '@/lib/api'
 import { P } from '@/lib/palette'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { formatTime12h } from '@/lib/utils'
+import { staffRole, rolePill } from '@/lib/roles'
 
 function todayStr() {
   return new Date().toISOString().split('T')[0]
@@ -22,12 +23,7 @@ function StatCard({ label, value, border, fill, textColor }: { label: string; va
 
 // ── Unified attendance table ──────────────────────────────────────────────────
 function AttendanceTable({ present, absent, leave }: { present: any[]; absent: any[]; leave: any[] }) {
-  const roleStyle = (role: string) =>
-    role === 'DIRECTOR'  ? { bg: '#FEF3C7', color: '#92400E' } :
-    role === 'MANAGER'  ? { bg: '#DBEAFE', color: '#1D4ED8' } :
-    role === 'ADMIN'    ? { bg: '#E0E7FF', color: '#3730A3' } :
-    role === 'TEAM_LEAD'? { bg: '#D1FAE5', color: '#065F46' } :
-    { bg: '#CFFAFE', color: '#0E7490' }
+  const roleStyle = rolePill
 
   const statusStyle = (status: string) =>
     status === 'PRESENT' ? { bg: '#E6F4F6', color: P.teal,    label: 'Present' } :
@@ -67,7 +63,7 @@ function AttendanceTable({ present, absent, leave }: { present: any[]; absent: a
         </thead>
         <tbody>
           {sections.map(sec => (
-            <>
+            <Fragment key={sec.label}>
               {/* Sub-heading row */}
               <tr key={`sh-${sec.label}`}>
                 <td colSpan={5} style={{ padding: '6px 14px', background: sec.bgColor, borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
@@ -88,7 +84,7 @@ function AttendanceTable({ present, absent, leave }: { present: any[]; absent: a
                     <td style={{ ...tdBase, fontWeight: 700, color: '#94A3B8', width: 40 }}>{rowNum}</td>
                     <td style={{ ...tdBase, fontWeight: 700 }}>{u.displayName}</td>
                     <td style={tdBase}>
-                      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: rs.bg, color: rs.color }}>{u.role.replace(/_/g, ' ')}</span>
+                      <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: rs.bg, color: rs.color }}>{staffRole(u.role, u.roleType)}</span>
                     </td>
                     <td style={tdBase}>{formatTime12h(u.loginTime) ?? <span style={{ color: '#94A3B8' }}>N/A</span>}</td>
                     <td style={tdBase}>
@@ -102,7 +98,7 @@ function AttendanceTable({ present, absent, leave }: { present: any[]; absent: a
                   </tr>
                 )
               })}
-            </>
+            </Fragment>
           ))}
         </tbody>
       </table>

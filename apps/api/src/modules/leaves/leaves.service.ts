@@ -1,17 +1,8 @@
-import { Injectable, BadRequestException, ForbiddenException, NotFoundException, Logger } from '@nestjs/common'
+import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { AttendanceStatus, DayType } from '@prisma/client'
-import { Role } from '@crm/shared'
 import { CreateLeaveDto } from './dto/create-leave.dto'
-
-const CAN_APPROVE: Record<string, string[]> = {
-  [Role.DIRECTOR]: [Role.AGENT, Role.MANAGER],
-  [Role.ADMIN]:    [Role.AGENT, Role.MANAGER, Role.DIRECTOR],
-  [Role.MANAGER]:  [Role.AGENT],
-}
-
-// Manager-level leaves can only be approved by DIRECTOR or ADMIN
-const DIRECTOR_ADMIN_ONLY: string[] = [Role.MANAGER]
+import { Actor, manageableRoles, assertCanManage } from '../../common/utils/staff-policy'
 
 function calcDays(from: string, to: string): number {
   const f = new Date(from), t = new Date(to)
@@ -85,82 +76,60 @@ export class LeavesService {
     return this.prisma.leaveApplication.findMany({
       where:   { applicantId },
       orderBy: { createdAt: 'desc' },
-      include: { reviewedBy: { select: { displayName: true, role: true } } },
+      include: { reviewedBy: { select: { displayName: true, role: true, managerType: true } } },
     })
   }
 
-  async getPending(actorRole: string) {
-    const approvableRoles = (CAN_APPROVE[actorRole] ?? [])
-      .filter(r => actorRole === Role.MANAGER ? !DIRECTOR_ADMIN_ONLY.includes(r) : true)
-    if (!approvableRoles.length) return []
+  private scope(actor: Actor) {
+    return { role: { in: manageableRoles(actor) as any }, id: { not: actor.id } }
+  }
 
+  private static readonly APPLICANT = { select: { displayName: true, role: true, userCode: true, managerType: true, agentType: true } }
+
+  async getPending(actor: Actor) {
+    if (!manageableRoles(actor).length) return []
     return this.prisma.leaveApplication.findMany({
-      where: {
-        status:    'pending',
-        applicant: { role: { in: approvableRoles as any } },
-      },
+      where:   { status: 'pending', applicant: this.scope(actor) },
       orderBy: { createdAt: 'asc' },
-      include: {
-        applicant:  { select: { displayName: true, role: true, userCode: true } },
-        reviewedBy: { select: { displayName: true } },
-      },
+      include: { applicant: LeavesService.APPLICANT, reviewedBy: { select: { displayName: true } } },
     })
   }
 
-  async getAll(actorRole: string) {
-    const approvableRoles = (CAN_APPROVE[actorRole] ?? [])
-      .filter(r => actorRole === Role.MANAGER ? !DIRECTOR_ADMIN_ONLY.includes(r) : true)
-    if (!approvableRoles.length) return []
-
+  async getAll(actor: Actor) {
+    if (!manageableRoles(actor).length) return []
     return this.prisma.leaveApplication.findMany({
-      where:   { applicant: { role: { in: approvableRoles as any } } },
+      where:   { applicant: this.scope(actor) },
       orderBy: { createdAt: 'desc' },
-      include: {
-        applicant:  { select: { displayName: true, role: true, userCode: true } },
-        reviewedBy: { select: { displayName: true } },
-      },
+      include: { applicant: LeavesService.APPLICANT, reviewedBy: { select: { displayName: true } } },
     })
   }
 
-  async approve(id: string, actorId: string, actorRole: string) {
+  private async reviewable(id: string, actor: Actor) {
     const leave = await this.prisma.leaveApplication.findUnique({
       where:   { id },
-      include: { applicant: { select: { role: true } } },
+      include: { applicant: { select: { id: true, role: true } } },
     })
     if (!leave) throw new NotFoundException('Leave application not found')
     if (leave.status !== 'pending') throw new BadRequestException('Already reviewed')
+    assertCanManage(actor, leave.applicant)
+    return leave
+  }
 
-    const approvableRoles = (CAN_APPROVE[actorRole] ?? [])
-      .filter(r => actorRole === Role.MANAGER ? !DIRECTOR_ADMIN_ONLY.includes(r) : true)
-    if (!approvableRoles.includes(leave.applicant.role as string))
-      throw new ForbiddenException('Not authorised to approve this leave')
-
+  async approve(id: string, actor: Actor) {
+    const leave = await this.reviewable(id, actor)
     const updated = await this.prisma.leaveApplication.update({
       where: { id },
-      data:  { status: 'approved', reviewedById: actorId, reviewedAt: new Date() },
+      data:  { status: 'approved', reviewedById: actor.id, reviewedAt: new Date() },
     })
-
     await this.markLeaveAttendance(leave.applicantId, leave.fromDate, leave.toDate)
-
     return updated
   }
 
-  async reject(id: string, actorId: string, actorRole: string, reason?: string) {
-    const leave = await this.prisma.leaveApplication.findUnique({
-      where:   { id },
-      include: { applicant: { select: { role: true } } },
-    })
-    if (!leave) throw new NotFoundException('Leave application not found')
-    if (leave.status !== 'pending') throw new BadRequestException('Already reviewed')
-
-    const approvableRoles = (CAN_APPROVE[actorRole] ?? [])
-      .filter(r => actorRole === Role.MANAGER ? !DIRECTOR_ADMIN_ONLY.includes(r) : true)
-    if (!approvableRoles.includes(leave.applicant.role as string))
-      throw new ForbiddenException('Not authorised to reject this leave')
-
+  async reject(id: string, actor: Actor, reason?: string) {
+    await this.reviewable(id, actor)
     return this.prisma.leaveApplication.update({
       where: { id },
-      data:  { status: 'rejected', reviewedById: actorId, reviewedAt: new Date(), rejectionReason: reason ?? null },
+      data:  { status: 'rejected', reviewedById: actor.id, reviewedAt: new Date(), rejectionReason: reason ?? null },
     })
   }
 }

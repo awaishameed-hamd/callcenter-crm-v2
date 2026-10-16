@@ -1,7 +1,13 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { AttendanceStatus, DayType, Role } from '@prisma/client'
+import { ManagerType } from '@crm/shared'
 import { UpdateAttendanceDto } from './dto/update-attendance.dto'
+import { Actor, manageableRoles as policyRoles, assertCanManage } from '../../common/utils/staff-policy'
+
+const manageableRoles = (a: Actor) => policyRoles(a) as Role[]
+// Accountants never appear on attendance screens (same as the Laravel CRM).
+const NOT_ACCOUNTANT = { OR: [{ managerType: null }, { managerType: { not: ManagerType.ACCOUNTANT } }] }
 
 const MONTH_NAMES = [
   'January','February','March','April','May','June',
@@ -85,10 +91,10 @@ export class AttendanceService {
   async getApplicability() {
     const users = await this.prisma.user.findMany({
       where: { role: { in: INTERNAL_STAFF_ROLES }, isActive: true },
-      select: { id: true, displayName: true, userCode: true, role: true, attendanceApplicable: true },
+      select: { id: true, displayName: true, userCode: true, role: true, managerType: true, agentType: true, attendanceApplicable: true },
       orderBy: [{ role: 'asc' }, { displayName: 'asc' }],
     })
-    const grouped: Record<string, { id: string; displayName: string; userCode: string; role: string; attendanceApplicable: boolean }[]> = {}
+    const grouped: Record<string, { id: string; displayName: string; userCode: string; role: string; managerType: string | null; agentType: string | null; attendanceApplicable: boolean }[]> = {}
     for (const u of users) {
       if (!grouped[u.role]) grouped[u.role] = []
       grouped[u.role].push(u)
@@ -178,7 +184,7 @@ export class AttendanceService {
     }
 
     const workingDay = await this.prisma.workingDay.findUnique({ where: { date: today } })
-    const dayOfWeek  = today.getDay()
+    const dayOfWeek  = today.getUTCDay()
     const resolvedType = workingDay?.dayType ?? (dayOfWeek !== 0 && dayOfWeek !== 6 ? DayType.WORKING_DAY : DayType.WEEKEND)
     if (resolvedType !== DayType.WORKING_DAY) {
       const satEnabled = settings.saturday_attendance_enabled === 'true'
@@ -234,7 +240,7 @@ export class AttendanceService {
     if (this.minutesDiff(timeStr, cutoff) > 0) return null
 
     const today      = new Date(dateStr + 'T00:00:00Z')
-    const dayOfWeek  = today.getDay()
+    const dayOfWeek  = today.getUTCDay()
 
     if (dayOfWeek === 6 && settings.saturday_attendance_enabled !== 'true') return null
     if (dayOfWeek === 0 && settings.sunday_attendance_enabled   !== 'true') return null
@@ -327,7 +333,7 @@ export class AttendanceService {
 
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr   = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-      const dayOfWeek = new Date(dateStr).getDay()
+      const dayOfWeek = new Date(dateStr).getUTCDay()
       const wd        = wdMap.get(dateStr)
       const att       = attMap.get(dateStr)
       const isUpcoming  = dateStr > today
@@ -384,36 +390,34 @@ export class AttendanceService {
     return { calendar, summary, joining_date: joinDateStr }
   }
 
-  async pendingApprovalCount(actorRole: Role, actorId: string) {
+  /** Staff the actor may see on attendance screens: their call-center scope, never themselves. */
+  private scopeUsers(actor: Actor) {
+    return { attendanceApplicable: true, role: { in: manageableRoles(actor) }, id: { not: actor.id }, ...NOT_ACCOUNTANT }
+  }
+
+  async pendingApprovalCount(actor: Actor) {
+    const roles = manageableRoles(actor)
+    if (!roles.length) return 0
     const now = new Date()
     const startDate = new Date(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01T00:00:00Z`)
     const endDate   = new Date(now.getFullYear(), now.getMonth() + 1, 1)
 
     const attWhere: any = {
-      user:           { attendanceApplicable: true, role: { in: INTERNAL_STAFF_ROLES } },
+      user:           this.scopeUsers(actor),
       date:           { gte: startDate, lt: endDate },
       approvalStatus: 'pending',
       status:         { in: [AttendanceStatus.PRESENT, AttendanceStatus.LATE] },
     }
 
-    const leaveApprovableRoles: Record<string, Role[]> = {
-      [Role.DIRECTOR]: [Role.AGENT, Role.MANAGER],
-      [Role.ADMIN]:    [Role.AGENT, Role.MANAGER, Role.DIRECTOR],
-      [Role.MANAGER]:  [Role.AGENT],
-    }
-    const approvableRoles = leaveApprovableRoles[actorRole] ?? []
-
     const [attCount, leaveCount] = await Promise.all([
       this.prisma.attendance.count({ where: attWhere }),
-      approvableRoles.length
-        ? this.prisma.leaveApplication.count({ where: { status: 'pending', applicant: { role: { in: approvableRoles } } } })
-        : Promise.resolve(0),
+      this.prisma.leaveApplication.count({ where: { status: 'pending', applicant: { role: { in: roles }, id: { not: actor.id } } } }),
     ])
     return attCount + leaveCount
   }
 
-  async getReport(month: number | null, year: number | null, actorRole: Role, actorId: string, targetUserId?: string) {
-    const where: any = { user: { attendanceApplicable: true, role: { in: INTERNAL_STAFF_ROLES } } }
+  async getReport(month: number | null, year: number | null, actor: Actor, targetUserId?: string) {
+    const where: any = { user: this.scopeUsers(actor) }
     if (month && year) {
       const startDate = new Date(`${year}-${String(month).padStart(2,'0')}-01T00:00:00Z`)
       const endDate   = new Date(year, month, 1)
@@ -425,7 +429,7 @@ export class AttendanceService {
     const records = await this.prisma.attendance.findMany({
       where,
       include: {
-        user: { select: { id: true, displayName: true, role: true, isActive: true, dateOfJoining: true } },
+        user: { select: { id: true, displayName: true, role: true, managerType: true, agentType: true, isActive: true, dateOfJoining: true } },
       },
       orderBy: [{ date: 'asc' }, { user: { displayName: 'asc' } }],
     })
@@ -435,6 +439,7 @@ export class AttendanceService {
       userId:      r.userId,
       userName:    r.user.displayName,
       userRole:    r.user.role,
+      userType:    r.user.managerType ?? r.user.agentType ?? null,
       isActive:    r.user.isActive,
       joinDate:    r.user.dateOfJoining ? r.user.dateOfJoining.toISOString().split('T')[0] : null,
       date:        r.date.toISOString().split('T')[0],
@@ -463,14 +468,14 @@ export class AttendanceService {
     })
   }
 
-  async getDailyAttendance(date: string, actorRole: Role, actorId: string) {
+  async getDailyAttendance(date: string, actor: Actor) {
     const day       = new Date(date + 'T00:00:00Z')
     const nextDay   = new Date(day.getTime() + 24 * 60 * 60 * 1000)
-    const dayOfWeek = day.getDay()
+    const dayOfWeek = day.getUTCDay()
 
     const users = await this.prisma.user.findMany({
-      where:   { role: { in: INTERNAL_STAFF_ROLES }, isActive: true, attendanceApplicable: true },
-      select:  { id: true, displayName: true, role: true },
+      where:   { ...this.scopeUsers(actor), isActive: true },
+      select:  { id: true, displayName: true, role: true, managerType: true, agentType: true },
       orderBy: { displayName: 'asc' },
     })
 
@@ -495,6 +500,7 @@ export class AttendanceService {
           userId:      u.id,
           displayName: u.displayName,
           role:        u.role,
+          roleType:    u.managerType ?? u.agentType ?? null,
           status:      att?.status ?? (resolvedType === DayType.WORKING_DAY ? 'ABSENT' : 'N/A'),
           loginTime:   att?.loginTime
             ? new Date(att.loginTime).toLocaleTimeString('en-PK', { timeZone: 'Asia/Karachi', hour: '2-digit', minute: '2-digit', hour12: false })
@@ -506,21 +512,18 @@ export class AttendanceService {
     }
   }
 
-  private async assertNotManagerEditingManager(editorId: string, targetUserId: string) {
-    const [editor, target] = await Promise.all([
-      this.prisma.user.findUnique({ where: { id: editorId }, select: { role: true } }),
-      this.prisma.user.findUnique({ where: { id: targetUserId }, select: { role: true } }),
-    ])
-    if (editor?.role === Role.MANAGER && target?.role === Role.MANAGER) {
-      throw new ForbiddenException('Managers cannot edit another manager\'s attendance')
-    }
+  private async assertManages(actor: Actor, targetUserId: string) {
+    const target = await this.prisma.user.findUnique({ where: { id: targetUserId }, select: { id: true, role: true } })
+    if (!target) throw new NotFoundException('Staff member not found')
+    assertCanManage(actor, target)
   }
 
-  async createAttendance(userId: string, date: string, dto: UpdateAttendanceDto, editorId: string) {
-    await this.assertNotManagerEditingManager(editorId, userId)
+  async createAttendance(userId: string, date: string, dto: UpdateAttendanceDto, actor: Actor) {
+    await this.assertManages(actor, userId)
+    const editorId = actor.id
 
     const existing = await this.prisma.attendance.findFirst({ where: { userId, date: new Date(date) } })
-    if (existing) return this.updateAttendance(existing.id, dto, editorId)
+    if (existing) return this.updateAttendance(existing.id, dto, actor)
 
     const data: any = {
       userId,
@@ -540,13 +543,13 @@ export class AttendanceService {
     return this.prisma.attendance.create({ data })
   }
 
-  async updateAttendance(id: string, dto: UpdateAttendanceDto, editorId: string) {
+  async updateAttendance(id: string, dto: UpdateAttendanceDto, actor: Actor) {
     const att = await this.prisma.attendance.findUnique({ where: { id } })
     if (!att) throw new NotFoundException('Attendance record not found')
 
-    await this.assertNotManagerEditingManager(editorId, att.userId)
+    await this.assertManages(actor, att.userId)
 
-    const data: any = { editedById: editorId }
+    const data: any = { editedById: actor.id }
     if (dto.status !== undefined)      data.status      = dto.status
     if (dto.isLate !== undefined)      data.isLate      = dto.isLate
     if (dto.lateMinutes !== undefined) data.lateMinutes = dto.lateMinutes
@@ -630,7 +633,7 @@ export class AttendanceService {
 
     while (cursor <= yesterday) {
       const dateStr   = cursor.toISOString().split('T')[0]
-      const dayOfWeek = cursor.getDay()
+      const dayOfWeek = cursor.getUTCDay()
       const wd        = wdMap.get(dateStr)
       const resolved  = wd?.dayType ?? (dayOfWeek !== 0 && dayOfWeek !== 6 ? DayType.WORKING_DAY : DayType.WEEKEND)
 
@@ -670,15 +673,16 @@ export class AttendanceService {
     return { created: toCreate.length }
   }
 
-  async approveAttendance(id: string, approverId: string, approve: boolean) {
+  async approveAttendance(id: string, actor: Actor, approve: boolean) {
     const att = await this.prisma.attendance.findUnique({ where: { id } })
     if (!att) throw new NotFoundException('Attendance record not found')
+    await this.assertManages(actor, att.userId)
 
     return this.prisma.attendance.update({
       where: { id },
       data: {
         approvalStatus: approve ? 'approved' : 'rejected',
-        approvedById:   approverId,
+        approvedById:   actor.id,
         approvedAt:     new Date(),
         ...(approve ? {} : { status: AttendanceStatus.ABSENT, isLate: false, lateMinutes: null }),
       },

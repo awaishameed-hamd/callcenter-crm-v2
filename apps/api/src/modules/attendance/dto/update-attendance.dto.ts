@@ -1,4 +1,4 @@
-import { IsEnum, IsOptional, IsString, IsBoolean, IsInt, Min } from 'class-validator'
+import { IsEnum, IsOptional, IsString, IsBoolean, IsInt, Min, Matches } from 'class-validator'
 import { AttendanceStatus } from '@prisma/client'
 
 export class UpdateAttendanceDto {
@@ -22,4 +22,13 @@ export class UpdateAttendanceDto {
   @IsOptional()
   @IsString()
   notes?: string
+}
+
+/** Body of POST /attendance/create: the staff member and day plus the same editable fields. */
+export class CreateAttendanceDto extends UpdateAttendanceDto {
+  @IsString()
+  userId: string
+
+  @Matches(/^\d{4}-\d{2}-\d{2}$/)
+  date: string
 }

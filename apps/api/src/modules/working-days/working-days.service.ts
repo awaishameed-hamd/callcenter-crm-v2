@@ -30,7 +30,7 @@ export class WorkingDaysService {
     const days = []
     for (let d = 1; d <= daysInMonth; d++) {
       const dateStr   = `${year}-${String(month).padStart(2,'0')}-${String(d).padStart(2,'0')}`
-      const dayOfWeek = new Date(dateStr).getDay()
+      const dayOfWeek = new Date(dateStr).getUTCDay()
       const ex        = wdMap.get(dateStr)
 
       const dayType = ex?.dayType

@@ -6,6 +6,7 @@ import { P } from '@/lib/palette'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import DataTable from '@/components/ui/DataTable'
 import { formatTime12h } from '@/lib/utils'
+import { staffRole, rolePill } from '@/lib/roles'
 
 const labelCls     = 'block text-xs font-bold uppercase tracking-widest mb-1'
 const inputCls     = 'rounded-lg px-3 py-1.5 text-sm outline-none transition'
@@ -334,10 +335,9 @@ export default function AttendanceApprovalPage() {
               { key: 'n', label: '#', width: 52, resizable: false,
                 cellStyle: { fontWeight: 700, color: '#94A3B8' }, render: (_r: any, i: number) => i + 1 },
               { key: 'userName', label: 'Name', width: 170, cellStyle: { fontWeight: 700, color: P.navy } },
-              { key: 'userRole', label: 'Role', width: 110, render: (rec: any) => {
-                const s = rec.userRole === 'DIRECTOR' ? { bg: '#FEF3C7', color: '#92400E' }
-                  : rec.userRole === 'MANAGER' ? { bg: '#DBEAFE', color: '#1D4ED8' } : { bg: '#CFFAFE', color: '#0E7490' }
-                return <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: s.bg, color: s.color }}>{rec.userRole.replace(/_/g, ' ')}</span>
+              { key: 'userRole', label: 'Role', width: 170, render: (rec: any) => {
+                const s = rolePill(rec.userRole)
+                return <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: s.bg, color: s.color }}>{staffRole(rec.userRole, rec.userType)}</span>
               } },
               { key: 'date', label: 'Date', width: 104, cellStyle: { color: P.navy } },
               { key: 'loginTime', label: 'Login Time', width: 130, cellStyle: { overflow: 'visible' },
@@ -423,12 +423,9 @@ export default function AttendanceApprovalPage() {
                   cellStyle: { color: '#94A3B8' }, render: (_l: any, i: number) => i + 1 },
                 { key: 'applicant', label: 'Applicant', width: 160,
                   cellStyle: { fontWeight: 700, color: P.navy }, render: (l: any) => l.applicant?.displayName },
-                { key: 'role', label: 'Role', width: 110, render: (l: any) => {
-                  const s = l.applicant?.role === 'DIRECTOR' ? { bg: '#FEF3C7', color: '#92400E' }
-                    : l.applicant?.role === 'MANAGER'   ? { bg: '#DBEAFE', color: '#1D4ED8' }
-                    : l.applicant?.role === 'TEAM_LEAD' ? { bg: '#F0FDF4', color: '#15803D' }
-                    : { bg: '#CFFAFE', color: '#0E7490' }
-                  return <span style={{ display: 'inline-flex', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: s.bg, color: s.color }}>{l.applicant?.role?.replace(/_/g, ' ')}</span>
+                { key: 'role', label: 'Role', width: 170, render: (l: any) => {
+                  const s = rolePill(l.applicant?.role)
+                  return <span style={{ display: 'inline-flex', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: s.bg, color: s.color }}>{staffRole(l.applicant?.role, l.applicant?.managerType ?? l.applicant?.agentType)}</span>
                 } },
                 { key: 'leaveType', label: 'Type', width: 100, cellStyle: { textTransform: 'capitalize', color: P.navy } },
                 { key: 'fromDate', label: 'From', width: 100, cellStyle: { color: P.navy }, render: (l: any) => l.fromDate?.split('T')[0] },

@@ -18,7 +18,10 @@ const SUB_NOTES_REQUIRED = ['Property, Plant & Equipment', 'Intangible Assets', 
 const normalBalance = (type: string) => (type === 'asset' || type === 'expense' ? 'debit' : 'credit')
 const n = (v: Prisma.Decimal | number | null | undefined) => Number(v ?? 0)
 const r2 = (v: number) => Math.round(v * 100) / 100
-const POSTED: Prisma.VoucherWhereInput = { status: 'posted' }
+// A reversed voucher stays in the ledger next to its reversing journal, so the two net to zero.
+// (The Laravel CRM dropped reversed originals from totals, which double-counted every reversal.)
+const POSTED: Prisma.VoucherWhereInput = { status: { in: ['posted', 'reversed'] } }
+const OPEN_ONLY: Prisma.VoucherWhereInput = { status: 'posted' }
 
 @Injectable()
 export class AccountingService {
@@ -603,7 +606,7 @@ export class AccountingService {
   async arAgeing(q: Record<string, string | undefined>) {
     const asOf = V.date(q.asOf, 'As of') ?? todayIn(PKT_TZ)
     const invoices = await this.prisma.voucher.findMany({
-      where: { voucherType: 'INV', ...POSTED, date: { lte: dateOnly(asOf) } },
+      where: { voucherType: 'INV', ...OPEN_ONLY, date: { lte: dateOnly(asOf) } },
       include: { party: true, lines: { select: { creditPkr: true } } },
       orderBy: [{ date: 'asc' }, { createdAt: 'asc' }],
     })

@@ -7,8 +7,10 @@ import { RolesGuard }   from '../../common/guards/roles.guard'
 import { Roles }        from '../../common/decorators/roles.decorator'
 import { CurrentUser }  from '../../common/decorators/current-user.decorator'
 import { AttendanceService } from './attendance.service'
-import { UpdateAttendanceDto } from './dto/update-attendance.dto'
+import { UpdateAttendanceDto, CreateAttendanceDto } from './dto/update-attendance.dto'
 import { Role } from '@crm/shared'
+import { assertHrDesk, assertReviewer } from '../../common/utils/staff-policy'
+import { PKT_TZ, todayIn } from '../../common/utils/time'
 
 @Controller('attendance')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -34,7 +36,7 @@ export class AttendanceController {
   @Get('pending-count')
   @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
   getPendingCount(@CurrentUser() user: any) {
-    return this.svc.pendingApprovalCount(user.role, user.id)
+    return this.svc.pendingApprovalCount(user)
   }
 
   @Get('report')
@@ -47,7 +49,8 @@ export class AttendanceController {
     @Query('userId') userId?: string,
   ) {
     const all = mode === 'all'
-    return this.svc.getReport(all ? null : month, all ? null : year, user.role, user.id, userId)
+    assertReviewer(user)
+    return this.svc.getReport(all ? null : month, all ? null : year, user, userId)
   }
 
   @Get('daily')
@@ -56,22 +59,26 @@ export class AttendanceController {
     @CurrentUser() user: any,
     @Query('date') date?: string,
   ) {
-    const d = date ?? new Date().toISOString().split('T')[0]
-    return this.svc.getDailyAttendance(d, user.role, user.id)
+    const d = date ?? todayIn(PKT_TZ)
+    assertReviewer(user)
+    return this.svc.getDailyAttendance(d, user)
   }
 
   @Get('opening')
   @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
-  getOpeningBalances() {
+  getOpeningBalances(@CurrentUser() user: any) {
+    assertReviewer(user)
     return this.svc.getOpeningBalances()
   }
 
   @Put('opening/:userId')
   @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
   upsertOpeningBalance(
+    @CurrentUser() user: any,
     @Param('userId') userId: string,
     @Body() body: { presents: number; late: number; absents: number; leaves: number; workingDays: number },
   ) {
+    assertHrDesk(user)
     return this.svc.upsertOpeningBalance(userId, body)
   }
 
@@ -94,30 +101,28 @@ export class AttendanceController {
   }
 
   @Get('settings')
-  @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
+  @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER, Role.AGENT)
   getSettings() {
     return this.svc.getSettings()
   }
 
   @Patch('settings/:key')
-  @Roles(Role.ADMIN, Role.DIRECTOR)
+  @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
   updateSetting(
+    @CurrentUser() user: any,
     @Param('key') key: string,
     @Body('value') value: string,
     @Body('label') label?: string,
   ) {
+    assertHrDesk(user)
     return this.svc.updateSetting(key, value, label)
   }
 
   @Post('create')
   @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
-  createAttendance(
-    @Body('userId')  userId: string,
-    @Body('date')    date:   string,
-    @Body()          dto:    UpdateAttendanceDto,
-    @CurrentUser()   user:   any,
-  ) {
-    return this.svc.createAttendance(userId, date, dto, user.id)
+  createAttendance(@Body() dto: CreateAttendanceDto, @CurrentUser() user: any) {
+    const { userId, date, ...fields } = dto
+    return this.svc.createAttendance(userId, date, fields, user)
   }
 
   @Patch(':id')
@@ -127,18 +132,18 @@ export class AttendanceController {
     @Body() dto: UpdateAttendanceDto,
     @CurrentUser() user: any,
   ) {
-    return this.svc.updateAttendance(id, dto, user.id)
+    return this.svc.updateAttendance(id, dto, user)
   }
 
   @Patch(':id/approve')
   @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
   approve(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.svc.approveAttendance(id, user.id, true)
+    return this.svc.approveAttendance(id, user, true)
   }
 
   @Patch(':id/reject')
   @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
   reject(@Param('id') id: string, @CurrentUser() user: any) {
-    return this.svc.approveAttendance(id, user.id, false)
+    return this.svc.approveAttendance(id, user, false)
   }
 }

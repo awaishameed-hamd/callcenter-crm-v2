@@ -7,6 +7,7 @@ import PillSelect from '@/components/ui/PillSelect'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { useAuth } from '@/contexts/AuthContext'
 import { formatTime12h } from '@/lib/utils'
+import { staffRole } from '@/lib/roles'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const DAY_NAMES   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat']
@@ -78,7 +79,7 @@ function CalendarView({ calendar, year, month, userName, userRole, summary }: {
           </h2>
           {userRole && (
             <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700, fontFamily: '"Inter", sans-serif' }}>
-              {userRole.replace(/_/g, ' ')}
+              {userRole}
             </span>
           )}
           <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 600, fontFamily: '"Inter", sans-serif' }}>
@@ -402,7 +403,7 @@ export default function MyAttendancePage() {
             ? <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: 160 }}>
                 <div style={{ width: 32, height: 32, borderRadius: '50%', border: `4px solid ${P.teal}30`, borderTopColor: P.teal, animation: 'spin 0.75s linear infinite' }} />
               </div>
-            : <CalendarView calendar={calendar} year={year} month={month} userName={user?.displayName} userRole={user?.role} summary={summary} />
+            : <CalendarView calendar={calendar} year={year} month={month} userName={user?.displayName} userRole={staffRole(user?.role, user?.managerType ?? user?.agentType)} summary={summary} />
         )}
       </div>
     </div>

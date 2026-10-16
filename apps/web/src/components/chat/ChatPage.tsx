@@ -8,6 +8,7 @@ import { uploadFile, fileHref } from '@/lib/storage'
 import { getSocket } from '@/lib/socket'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { usePhone } from '@/hooks/useMediaQuery'
+import { staffRole } from '@/lib/roles'
 
 // ── WhatsApp-authentic palette + font, scoped to this page only ─────────────
 const WA = {
@@ -43,6 +44,8 @@ interface Contact {
   id:         string
   displayName:   string
   role:       string
+  managerType?: string | null
+  agentType?:   string | null
   avatar:     string | null
   isOnline?:  boolean
   lastSeenAt?: string | null
@@ -339,8 +342,8 @@ function NewChatModal({ onClose, onSelect, title = 'New chat' }: { onClose: () =
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontSize: 14, fontWeight: 400, color: WA.textPrimary }}>{c.displayName}</p>
               </div>
-              <span style={{ fontSize: 11, color: WA.textSecondary, textTransform: 'capitalize' }}>
-                {c.role.toLowerCase()}
+              <span style={{ fontSize: 11, color: WA.textSecondary }}>
+                {staffRole(c.role, c.managerType ?? c.agentType)}
               </span>
             </div>
           ))}
@@ -386,7 +389,7 @@ function ContactPickerList({ excludeIds = [], selected, onToggle }: {
               <Avatar name={c.displayName} photo={c.avatar} size={38} />
               <div style={{ flex: 1, minWidth: 0 }}>
                 <p style={{ margin: 0, fontSize: 14, color: WA.textPrimary }}>{c.displayName}</p>
-                <p style={{ margin: 0, fontSize: 11, color: WA.textSecondary, textTransform: 'capitalize' }}>{c.role.toLowerCase()}</p>
+                <p style={{ margin: 0, fontSize: 11, color: WA.textSecondary }}>{staffRole(c.role, c.managerType ?? c.agentType)}</p>
               </div>
               <span style={{
                 width: 20, height: 20, borderRadius: '50%', flexShrink: 0,
@@ -554,7 +557,7 @@ function GroupInfoModal({ conversationId, currentUserId, onClose, onChanged, onL
                     <p style={{ margin: 0, fontSize: 14, color: WA.textPrimary }}>
                       {m.id === currentUserId ? 'You' : m.displayName}
                     </p>
-                    <p style={{ margin: 0, fontSize: 11, color: WA.textSecondary, textTransform: 'capitalize' }}>{m.role?.toLowerCase()}</p>
+                    <p style={{ margin: 0, fontSize: 11, color: WA.textSecondary }}>{staffRole(m.role, m.managerType ?? m.agentType)}</p>
                   </div>
                   {m.isAdmin && <span style={{ fontSize: 11, color: WA.green, fontWeight: 600, background: '#D9FDD3', borderRadius: 12, padding: '2px 8px' }}>Admin</span>}
                   {isAdmin && m.id !== currentUserId && (
@@ -976,7 +979,7 @@ export default function ChatPage() {
         background: WA.panelBg,
       }}>
         {/* 52px band with no top padding, matching the sidebar brand header, so
-            "Chats" lines up with ASIF ASSOCIATES the way the other pages do. */}
+            "Chats" lines up with the sidebar brand the way the other pages do. */}
         <div style={{ padding: phone ? '16px 16px 16px 58px' : '0 20px', minHeight: phone ? undefined : 52, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <h1 style={{ fontSize: 26, color: '#1E8496', margin: 0, fontFamily: "'Faster One', cursive", textTransform: 'uppercase', lineHeight: 1.15 }}>
             Chats
