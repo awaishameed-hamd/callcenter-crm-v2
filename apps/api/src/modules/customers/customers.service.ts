@@ -7,6 +7,15 @@ import { CustomerStatus, Role } from '@crm/shared'
 
 const CANCEL_REASONS = ['XFER','No LA','Ringing','Over Age','Out of State','Hangup','No medicare card']
 
+// Format a Date in a given IANA timezone with label suffix
+function fmtTz(date: Date, tz: string, label: string): string {
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: tz,
+    day: '2-digit', month: 'short', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hour12: true,
+  }).format(date).replace(',', '') + ` ${label}`
+}
+
 @Injectable()
 export class CustomersService {
   constructor(private prisma: PrismaService) {}
@@ -20,6 +29,7 @@ export class CustomersService {
     })
     const customerCode = `C-${String(counter.value).padStart(7, '0')}`
 
+    const now = new Date()
     return this.prisma.customer.create({
       data: {
         customerCode,
@@ -35,6 +45,9 @@ export class CustomersService {
         policyNumber:  dto.policyNumber,
         notes:         dto.notes,
         agentId,
+        // Freeze both timezone timestamps at submission — never changes
+        submittedAtPkt: fmtTz(now, 'Asia/Karachi',      'PKT'),
+        submittedAtEst: fmtTz(now, 'America/New_York',  'EST'),
       },
       include: this.baseInclude(Role.AGENT),
     })
@@ -86,9 +99,10 @@ export class CustomersService {
 
   async finalApprove(id: string, directorId: string) {
     await this.requireStatus(id, CustomerStatus.APPROVED)
+    const snapshot = await this.getDidSnapshot(id)
     return this.prisma.customer.update({
       where: { id },
-      data:  { status: CustomerStatus.FINAL_APPROVED, directorId, finalActedAt: new Date() },
+      data:  { status: CustomerStatus.FINAL_APPROVED, directorId, finalActedAt: new Date(), ...snapshot },
       include: this.baseInclude(Role.DIRECTOR),
     })
   }
@@ -96,9 +110,10 @@ export class CustomersService {
   async finalReject(id: string, directorId: string, cancelReason: string) {
     this.validateCancelReason(cancelReason)
     await this.requireStatus(id, CustomerStatus.APPROVED)
+    const snapshot = await this.getDidSnapshot(id)
     return this.prisma.customer.update({
       where: { id },
-      data:  { status: CustomerStatus.FINAL_DISAPPROVED, directorId, cancelReason, finalActedAt: new Date() },
+      data:  { status: CustomerStatus.FINAL_DISAPPROVED, directorId, cancelReason, finalActedAt: new Date(), ...snapshot },
       include: this.baseInclude(Role.DIRECTOR),
     })
   }
@@ -110,6 +125,17 @@ export class CustomersService {
     if (!c) throw new NotFoundException('Customer not found')
     if (c.status !== expected) throw new BadRequestException(`Customer is not in ${expected} status`)
     return c
+  }
+
+  private async getDidSnapshot(customerId: string) {
+    const c = await this.prisma.customer.findUnique({
+      where:   { id: customerId },
+      include: { did: { include: { client: true } } },
+    })
+    return {
+      saleDid:         c?.did?.didCode        ?? null,
+      saleCompanyName: c?.did?.client?.companyName ?? null,
+    }
   }
 
   private validateCancelReason(reason: string) {

@@ -382,6 +382,14 @@ model Customer {
   status       CustomerStatus @default(PENDING)
   cancelReason String?
 
+  // Snapshot — frozen at finalApprove/finalReject so history survives DID reassignments
+  saleDid         String?
+  saleCompanyName String?
+
+  // Submission timestamps in both timezones (set at create, never changed)
+  submittedAtPkt String?  // "16 Oct 2025 07:30 PM PKT"
+  submittedAtEst String?  // "16 Oct 2025 09:30 AM EST"
+
   // Actors
   agentId    String
   agent      User   @relation("AgentSales",       fields: [agentId],    references: [id])

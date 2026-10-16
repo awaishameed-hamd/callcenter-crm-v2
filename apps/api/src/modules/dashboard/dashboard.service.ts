@@ -35,11 +35,24 @@ export class DashboardService {
     return { total, pending, approved, disapproved, finalApproved, finalDisapproved, recent }
   }
 
+  // All period boundaries use Asia/Karachi (PKT = UTC+5)
   private periodStart(period: string): Date | null {
-    const now = new Date()
-    if (period === 'daily')   { now.setHours(0,0,0,0); return now }
-    if (period === 'weekly')  { now.setDate(now.getDate() - 7); return now }
-    if (period === 'monthly') { now.setDate(1); now.setHours(0,0,0,0); return now }
+    const PKT_OFFSET = 5 * 60 // minutes
+    const nowUtcMs   = Date.now()
+    const nowPktMs   = nowUtcMs + PKT_OFFSET * 60_000
+
+    const pkt = new Date(nowPktMs)
+    const y   = pkt.getUTCFullYear()
+    const m   = pkt.getUTCMonth()
+    const d   = pkt.getUTCDate()
+
+    // Construct PKT midnight then convert back to UTC
+    const pktMidnight = (offsetDays = 0) =>
+      new Date(Date.UTC(y, m, d + offsetDays) - PKT_OFFSET * 60_000)
+
+    if (period === 'daily')   return pktMidnight(0)
+    if (period === 'weekly')  return pktMidnight(-6)   // last 7 days incl. today
+    if (period === 'monthly') return new Date(Date.UTC(y, m, 1) - PKT_OFFSET * 60_000)
     return null
   }
 }
