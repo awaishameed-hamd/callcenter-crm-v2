@@ -9,7 +9,7 @@ import { CurrentUser }  from '../../common/decorators/current-user.decorator'
 import { AttendanceService } from './attendance.service'
 import { UpdateAttendanceDto, CreateAttendanceDto } from './dto/update-attendance.dto'
 import { Role } from '@crm/shared'
-import { assertHrDesk, assertReviewer } from '../../common/utils/staff-policy'
+import { assertHrDesk } from '../../common/utils/staff-policy'
 import { PKT_TZ, todayIn } from '../../common/utils/time'
 
 @Controller('attendance')
@@ -49,7 +49,7 @@ export class AttendanceController {
     @Query('userId') userId?: string,
   ) {
     const all = mode === 'all'
-    assertReviewer(user)
+    assertHrDesk(user)
     return this.svc.getReport(all ? null : month, all ? null : year, user, userId)
   }
 
@@ -60,14 +60,14 @@ export class AttendanceController {
     @Query('date') date?: string,
   ) {
     const d = date ?? todayIn(PKT_TZ)
-    assertReviewer(user)
+    assertHrDesk(user)
     return this.svc.getDailyAttendance(d, user)
   }
 
   @Get('opening')
   @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
   getOpeningBalances(@CurrentUser() user: any) {
-    assertReviewer(user)
+    assertHrDesk(user)
     return this.svc.getOpeningBalances()
   }
 

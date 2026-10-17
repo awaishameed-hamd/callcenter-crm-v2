@@ -107,9 +107,8 @@ function navFor(user: NonNullable<ReturnType<typeof useAuth>['user']>): NavItem[
         it('reports', 'Sales Report', `${b}/reports`),
         it('myAtt', 'My Attendance', `${b}/attendance`),
         it('myLeaves', 'Leave', `${b}/leaves`),
-        it('attReport', 'Attendance Report', `${b}/attendance/report`),
-        it('attApproval', 'Attendance Approval', `${b}/attendance/approval`),
-        it('dailyAtt', 'Daily Attendance', `${b}/attendance/daily`),
+        // Attendance reports and approval are HR-only in the call center; Floor/QA managers approve agents' leaves.
+        it('attApproval', 'Leave Approval', `${b}/attendance/approval`),
         it('messages', 'Chats', `${b}/messages`),
         it('profile', 'Profile', `${b}/profile`),
       ]

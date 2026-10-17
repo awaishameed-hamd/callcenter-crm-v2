@@ -3,9 +3,10 @@ import { PrismaService } from '../prisma/prisma.service'
 import { AttendanceStatus, DayType, Role } from '@prisma/client'
 import { ManagerType } from '@crm/shared'
 import { UpdateAttendanceDto } from './dto/update-attendance.dto'
-import { Actor, manageableRoles as policyRoles, assertCanManage } from '../../common/utils/staff-policy'
+import { Actor, attendanceRoles as policyAttendanceRoles, leaveRoles as policyLeaveRoles, assertCanManage } from '../../common/utils/staff-policy'
 
-const manageableRoles = (a: Actor) => policyRoles(a) as Role[]
+const attendanceRoles = (a: Actor) => policyAttendanceRoles(a) as Role[]
+const leaveRoles      = (a: Actor) => policyLeaveRoles(a) as Role[]
 // Accountants never appear on attendance screens (same as the Laravel CRM).
 const NOT_ACCOUNTANT = { OR: [{ managerType: null }, { managerType: { not: ManagerType.ACCOUNTANT } }] }
 
@@ -392,12 +393,12 @@ export class AttendanceService {
 
   /** Staff the actor may see on attendance screens: their call-center scope, never themselves. */
   private scopeUsers(actor: Actor) {
-    return { attendanceApplicable: true, role: { in: manageableRoles(actor) }, id: { not: actor.id }, ...NOT_ACCOUNTANT }
+    return { attendanceApplicable: true, role: { in: attendanceRoles(actor) }, id: { not: actor.id }, ...NOT_ACCOUNTANT }
   }
 
   async pendingApprovalCount(actor: Actor) {
-    const roles = manageableRoles(actor)
-    if (!roles.length) return 0
+    const attRoles = attendanceRoles(actor), lvRoles = leaveRoles(actor)
+    if (!attRoles.length && !lvRoles.length) return 0
     const now = new Date()
     const startDate = new Date(`${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01T00:00:00Z`)
     const endDate   = new Date(now.getFullYear(), now.getMonth() + 1, 1)
@@ -410,8 +411,8 @@ export class AttendanceService {
     }
 
     const [attCount, leaveCount] = await Promise.all([
-      this.prisma.attendance.count({ where: attWhere }),
-      this.prisma.leaveApplication.count({ where: { status: 'pending', applicant: { role: { in: roles }, id: { not: actor.id } } } }),
+      attRoles.length ? this.prisma.attendance.count({ where: attWhere }) : Promise.resolve(0),
+      this.prisma.leaveApplication.count({ where: { status: 'pending', applicant: { role: { in: lvRoles }, id: { not: actor.id } } } }),
     ])
     return attCount + leaveCount
   }
@@ -515,7 +516,7 @@ export class AttendanceService {
   private async assertManages(actor: Actor, targetUserId: string) {
     const target = await this.prisma.user.findUnique({ where: { id: targetUserId }, select: { id: true, role: true } })
     if (!target) throw new NotFoundException('Staff member not found')
-    assertCanManage(actor, target)
+    assertCanManage(actor, target, policyAttendanceRoles(actor))
   }
 
   async createAttendance(userId: string, date: string, dto: UpdateAttendanceDto, actor: Actor) {

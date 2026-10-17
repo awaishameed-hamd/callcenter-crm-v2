@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, NotFoundException, Logger } from '@nes
 import { PrismaService } from '../prisma/prisma.service'
 import { AttendanceStatus, DayType } from '@prisma/client'
 import { CreateLeaveDto } from './dto/create-leave.dto'
-import { Actor, manageableRoles, assertCanManage } from '../../common/utils/staff-policy'
+import { Actor, leaveRoles, assertCanManage } from '../../common/utils/staff-policy'
 
 function calcDays(from: string, to: string): number {
   const f = new Date(from), t = new Date(to)
@@ -81,13 +81,13 @@ export class LeavesService {
   }
 
   private scope(actor: Actor) {
-    return { role: { in: manageableRoles(actor) as any }, id: { not: actor.id } }
+    return { role: { in: leaveRoles(actor) as any }, id: { not: actor.id } }
   }
 
   private static readonly APPLICANT = { select: { displayName: true, role: true, userCode: true, managerType: true, agentType: true } }
 
   async getPending(actor: Actor) {
-    if (!manageableRoles(actor).length) return []
+    if (!leaveRoles(actor).length) return []
     return this.prisma.leaveApplication.findMany({
       where:   { status: 'pending', applicant: this.scope(actor) },
       orderBy: { createdAt: 'asc' },
@@ -96,7 +96,7 @@ export class LeavesService {
   }
 
   async getAll(actor: Actor) {
-    if (!manageableRoles(actor).length) return []
+    if (!leaveRoles(actor).length) return []
     return this.prisma.leaveApplication.findMany({
       where:   { applicant: this.scope(actor) },
       orderBy: { createdAt: 'desc' },
@@ -111,7 +111,7 @@ export class LeavesService {
     })
     if (!leave) throw new NotFoundException('Leave application not found')
     if (leave.status !== 'pending') throw new BadRequestException('Already reviewed')
-    assertCanManage(actor, leave.applicant)
+    assertCanManage(actor, leave.applicant, leaveRoles(actor))
     return leave
   }
 

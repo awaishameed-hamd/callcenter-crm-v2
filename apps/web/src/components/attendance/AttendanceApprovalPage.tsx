@@ -6,7 +6,8 @@ import { P } from '@/lib/palette'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import DataTable from '@/components/ui/DataTable'
 import { formatTime12h } from '@/lib/utils'
-import { staffRole, rolePill } from '@/lib/roles'
+import { staffRole, rolePill, hasHrDesk } from '@/lib/roles'
+import { useAuth } from '@/contexts/AuthContext'
 
 const labelCls     = 'block text-xs font-bold uppercase tracking-widest mb-1'
 const inputCls     = 'rounded-lg px-3 py-1.5 text-sm outline-none transition'
@@ -91,6 +92,9 @@ function todayStr() {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export default function AttendanceApprovalPage() {
+  // Attendance approval is the HR desk's job; Floor and QA managers only review their agents' leaves here.
+  const { user } = useAuth()
+  const hrDesk = hasHrDesk(user)
   const [date,      setDate]      = useState(todayStr())
   const [search,    setSearch]    = useState('')
   const [statusTab, setStatusTab] = useState('all')
@@ -102,7 +106,7 @@ export default function AttendanceApprovalPage() {
   const [bulkActing,  setBulkActing]  = useState(false)
 
   // ── Leave approval state ───────────────────────────────────────────────────
-  const [moduleTab,    setModuleTab]    = useState<'attendance' | 'leaves'>('attendance')
+  const [moduleTab,    setModuleTab]    = useState<'attendance' | 'leaves'>(hrDesk ? 'attendance' : 'leaves')
   const [leaveRecords, setLeaveRecords] = useState<any[]>([])
   const [leaveLoading, setLeaveLoading] = useState(false)
   const [leaveSTab,    setLeaveSTab]    = useState('pending')
@@ -112,6 +116,7 @@ export default function AttendanceApprovalPage() {
   const [leaveActing,  setLeaveActing]  = useState(false)
 
   const fetchData = useCallback(async (silent = false) => {
+    if (!hrDesk) { setLoading(false); return }
     if (!silent) setLoading(true)
     try {
       const d    = new Date(date)
@@ -124,7 +129,7 @@ export default function AttendanceApprovalPage() {
       // and they get locked at 6pm on their own, so they do not belong here.
       setRecords(all.filter(r => r.date === date && (r.status === 'PRESENT' || r.status === 'LATE')))
     } catch { /* ignore */ } finally { if (!silent) setLoading(false) }
-  }, [date])
+  }, [date, hrDesk])
 
   useEffect(() => { fetchData() }, [fetchData])
 
@@ -246,7 +251,7 @@ export default function AttendanceApprovalPage() {
         </h1>
         {/* Module tabs */}
         <div style={{ display: 'flex', gap: 2, background: P.navy + '15', borderRadius: 10, padding: 4 }}>
-          {[{ key: 'attendance', label: 'Attendance' }, { key: 'leaves', label: 'Leave Approvals' }].map(m => (
+          {(hrDesk ? [{ key: 'attendance', label: 'Attendance' }, { key: 'leaves', label: 'Leave Approvals' }] : []).map(m => (
             <button key={m.key} onClick={() => setModuleTab(m.key as 'attendance' | 'leaves')}
               style={{
                 padding: '5px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',

@@ -8,7 +8,7 @@ import PillSelect from '@/components/ui/PillSelect'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { formatTime12h } from '@/lib/utils'
-import { staffRole, rolePill, hasHrDesk, canManage } from '@/lib/roles'
+import { staffRole, rolePill, hasHrDesk, canManageAttendance } from '@/lib/roles'
 
 const MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
 const MODULE_START_YEAR  = 2026
@@ -301,8 +301,8 @@ function AllTimeDetailModal({ emp, onClose }: { emp: EmpSummary; onClose: () => 
 // ── Monthly Detail Modal (calendar view) ──────────────────────────────────────
 function DetailModal({ emp, month, year, onClose }: { emp: EmpSummary; month: number; year: number; onClose: () => void }) {
   const { user: authUser } = useAuth()
-  // Call-center scope: HR desk edits all staff, Floor/QA managers edit agents, nobody edits their own
-  const canEdit   = canManage(authUser, { id: emp.userId, role: emp.userRole })
+  // Call-center rule: only the HR desk edits attendance, and never their own
+  const canEdit   = canManageAttendance(authUser, { id: emp.userId, role: emp.userRole })
   const canCreate = canEdit
   const [records, setRecords] = useState<any[]>(emp.records)
   const [editId,      setEditId]      = useState<string | null | 'NEW'>(null)
