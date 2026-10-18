@@ -156,7 +156,7 @@ export default function LoginPage() {
           <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, #d4dade, transparent)', margin: '6px 0 4px' }} />
 
           <button type="submit" disabled={loading} className="lbtn"
-            style={{ width: '100%', padding: 16, border: 0, borderRadius: 12, background: 'linear-gradient(180deg, #1E8496 0%, #132E57 100%)', color: '#fff', fontFamily: "'Outfit', sans-serif", fontSize: 15, fontWeight: 600, letterSpacing: '.18em', textTransform: 'uppercase', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: '0 8px 20px -8px rgba(30,132,150,.55), inset 0 1px 0 rgba(255,255,255,.18)', opacity: loading ? 0.7 : 1, transition: 'all .2s' }}>
+            style={{ width: '100%', padding: 16, border: 0, borderRadius: 12, background: 'linear-gradient(180deg, #5d6f78 0%, #4a5a63 100%)', color: '#fff', fontFamily: "'Outfit', sans-serif", fontSize: 15, fontWeight: 600, letterSpacing: '.18em', textTransform: 'uppercase', cursor: loading ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 10, boxShadow: '0 8px 20px -8px rgba(74,90,99,.55), inset 0 1px 0 rgba(255,255,255,.18)', opacity: loading ? 0.7 : 1, transition: 'all .2s' }}>
             {loading ? (
               <>
                 <svg style={{ width: 16, height: 16 }} viewBox="0 0 24 24" fill="none" className="animate-spin">

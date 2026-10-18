@@ -114,7 +114,7 @@ function navFor(user: NonNullable<ReturnType<typeof useAuth>['user']>): NavItem[
       ]
     default: return [
       it('dashboard', 'Sales Dashboard', `${b}/dashboard`),
-      it('newSale', 'New Sale', `${b}/new-sale`),
+      // New Sale is the quick button above the nav (argroup's "+ New Task" spot)
       it('mySales', 'My Sales', `${b}/my-sales`),
       it('myAtt', 'My Attendance', `${b}/attendance`),
       it('myLeaves', 'Leave', `${b}/leaves`),
@@ -348,6 +348,27 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
           <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
         </button>
       </div>
+
+      {/* New Sale quick button: agents are the only role that submits sales */}
+      {user?.role === Role.AGENT && (
+        <div style={{ padding: '8px 12px 4px', minWidth: 256, flexShrink: 0 }}>
+          <Link href="/agent/new-sale" onClick={() => { if (compact && !collapsed) onToggle() }}
+            style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+              width: '100%', padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
+              background: '#7EC8D0', color: C.navy, fontFamily: "'Ethnocentric Rg', sans-serif", fontSize: 14, fontWeight: 300,
+              letterSpacing: '0.06em', textDecoration: 'none', boxSizing: 'border-box', transition: 'opacity .15s',
+              outline: isActive('/agent/new-sale') ? `2px solid ${C.teal}` : 'none', outlineOffset: -2,
+            }}
+            onMouseEnter={e => (e.currentTarget.style.opacity = '0.88')}
+            onMouseLeave={e => (e.currentTarget.style.opacity = '1')}>
+            <svg width={15} height={15} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+            </svg>
+            New Sale
+          </Link>
+        </div>
+      )}
 
       {/* Navigation */}
       <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 12px 16px', minWidth: 256 }}>
