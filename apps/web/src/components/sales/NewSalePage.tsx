@@ -7,6 +7,7 @@ import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
 import { apiGet, apiPost, errMsg, errFields } from '@/lib/api'
 import type { FormField } from '@/types'
+import { PageTitle } from '@/components/ui/PageChrome'
 
 const inputCls  = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20'
 /** StyledSelect reports a plain value; the form's handlers expect a change event. */
@@ -241,10 +242,9 @@ export default function NewSalePage() {
   return (
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <div className="p-6 max-w-3xl mx-auto space-y-5">
-        <div>
-          <h1 className="text-2xl font-black" style={{ color: '#132E57', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>New Sale</h1>
-          <p className="text-sm text-gray-500 mt-0.5">Submit a new customer record</p>
+      <div className="px-6 pb-6 max-w-3xl mx-auto space-y-5">
+        <div style={{ display: 'flex', alignItems: 'center', minHeight: 52 }}>
+          <PageTitle>New Sale</PageTitle>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-5">
@@ -270,7 +270,7 @@ export default function NewSalePage() {
               Reset
             </button>
             <button type="submit" disabled={loading} className="px-6 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
-              style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>
+              style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em' }}>
               {loading ? 'Submitting' : 'Record Sale'}
             </button>
           </div>

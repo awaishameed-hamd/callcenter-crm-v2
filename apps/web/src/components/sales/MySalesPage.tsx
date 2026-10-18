@@ -5,6 +5,9 @@ import { CustomerStatus } from '@crm/shared'
 import { apiGet } from '@/lib/api'
 import { StatusBadge, fmtWithPKT, fullName } from '@/lib/format'
 import type { Customer, Page } from '@/types'
+import DataTable, { type Column } from '@/components/ui/DataTable'
+import { PageShell, PageHeader, FilterBar, FilterSep, FilterPills, FilterSearch, FilterCount, Pager } from '@/components/ui/PageChrome'
+import { P } from '@/lib/palette'
 
 const TABS = [
   { key: '',                                 label: 'All' },
@@ -113,6 +116,7 @@ export default function MySalesPage() {
   const [data, setData]       = useState<Page<Customer> | null>(null)
   const [page, setPage]       = useState(1)
   const [search, setSearch]   = useState('')
+  const [searchInput, setSearchInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<Customer | null>(null)
 
@@ -131,85 +135,46 @@ export default function MySalesPage() {
 
   const rows = data?.data ?? []
   const from = data ? (data.currentPage - 1) * data.perPage + 1 : 0
+  const muted = (v: React.ReactNode) => <span style={{ fontSize: 12, color: P.slate }}>{v}</span>
+
+  const columns: Column<Customer>[] = [
+    { key: 'idx', label: '#', width: 50, resizable: false, render: (_, i) => <span style={{ fontSize: 11, color: P.textMuted }}>{from + i}</span> },
+    { key: 'code', label: 'Code', width: 110, render: c => <span style={{ fontSize: 12, fontWeight: 700, color: P.teal, letterSpacing: '0.04em' }}>{c.customerCode}</span> },
+    { key: 'name', label: 'Name', width: 165, render: c => <span style={{ fontWeight: 600, color: P.textHeading }}>{c.firstName} {c.lastName}</span> },
+    { key: 'phone', label: 'Phone', width: 130, render: c => muted(c.phone ?? 'N/A') },
+    { key: 'zip', label: 'ZIP', width: 90, render: c => muted(c.postalCode ?? 'N/A') },
+    { key: 'vertical', label: 'Vertical', width: 130, render: c => muted(c.verticalType ?? 'N/A') },
+    { key: 'did', label: 'DID', width: 110, render: c => muted(c.client?.didCode ?? 'N/A') },
+    { key: 'date', label: 'Date', width: 130, render: c => muted(c.submittedAtEst?.split(' ').slice(0, 3).join(' ') ?? c.createdAt.slice(0, 10)) },
+    { key: 'status', label: 'Status', width: 150, render: c => <StatusBadge status={c.status} /> },
+    { key: 'view', label: '', width: 70, align: 'right', resizable: false, render: c => (
+      <button onClick={e => { e.stopPropagation(); setSelected(c) }} style={{ border: 0, background: 'transparent', color: P.teal, fontSize: 12, fontWeight: 700, cursor: 'pointer', fontFamily: "'Aptos', sans-serif" }}>View</button>
+    ) },
+  ]
 
   return (
-    <div className="p-5 space-y-4 max-w-6xl mx-auto" style={{ background: '#EDF0F3', minHeight: '100vh' }}>
-      <div>
-        <h1 className="text-2xl font-black" style={{ color: '#132E57', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>My Sales</h1>
-        <p className="text-sm mt-0.5" style={{ color: '#5C5C5C' }}>All customer records you have submitted</p>
-      </div>
+    <PageShell>
+      <PageHeader title="My Sales" />
 
-      <div className="flex flex-wrap items-center gap-2 rounded-xl px-4 py-2.5 shadow-sm" style={{ background: 'linear-gradient(135deg, #0E5F6E 0%, #1E8496 100%)', border: '1px solid #1A7888' }}>
-        <div className="flex gap-1 overflow-x-auto" style={{ background: 'rgba(0,0,0,0.15)', borderRadius: 8, padding: 3 }}>
-          {TABS.map(t => (
-            <button key={t.key} onClick={() => { setTab(t.key); setPage(1) }}
-              className="px-3 py-1.5 rounded-md text-xs font-bold whitespace-nowrap transition-all"
-              style={tab === t.key
-                ? { background: 'linear-gradient(135deg, #132E57 0%, #1E8496 100%)', color: '#fff', fontFamily: "'Rajdhani', sans-serif" }
-                : { background: 'transparent', color: '#FFFFFF', fontFamily: "'Rajdhani', sans-serif" }}>
-              {t.label}
-            </button>
-          ))}
-        </div>
-        <div className="w-px h-6 self-center" style={{ background: 'rgba(255,255,255,0.2)' }} />
-        <input type="text" placeholder="Search by name or code (press Enter)" defaultValue={search}
-          onKeyDown={e => { if (e.key === 'Enter') { setSearch((e.target as HTMLInputElement).value); setPage(1) } }}
-          className="rounded-lg px-3 py-1.5 text-xs outline-none transition placeholder-white/70"
-          style={{ background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff', minWidth: 240 }} />
-        {loading && (
-          <svg className="h-4 w-4 animate-spin text-white" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z" />
-          </svg>
-        )}
-      </div>
+      <FilterBar>
+        <FilterPills value={tab} onChange={v => { setTab(v); setPage(1) }} options={TABS.map(t => ({ value: t.key, label: t.label }))} />
+        <FilterSep />
+        <FilterSearch value={searchInput} onChange={setSearchInput} onEnter={() => { setSearch(searchInput.trim()); setPage(1) }} placeholder="Name or code, then Enter" width={230} />
+        {data && <FilterCount>{data.total} record{data.total !== 1 ? 's' : ''}</FilterCount>}
+      </FilterBar>
 
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr style={{ background: 'linear-gradient(90deg, #4A5568 0%, #5A6880 100%)', borderBottom: '2px solid #3A4558' }}>
-                {['#', 'Code', 'Name', 'Phone', 'ZIP', 'Vertical', 'DID', 'Date', 'Status', ''].map((h, i) => (
-                  <th key={i} className="px-4 py-2.5 text-left text-xs font-bold uppercase" style={{ color: '#FFFFFF', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.07em' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-50">
-              {rows.length === 0 && !loading && (
-                <tr><td colSpan={10} className="px-4 py-10 text-center text-sm text-gray-400">No records found.</td></tr>
-              )}
-              {rows.map((c, i) => (
-                <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 text-gray-400 text-xs">{from + i}</td>
-                  <td className="px-4 py-3 font-mono font-bold text-xs text-gray-700">{c.customerCode}</td>
-                  <td className="px-4 py-3 font-medium text-gray-800">{c.firstName} {c.lastName}</td>
-                  <td className="px-4 py-3 text-gray-600">{c.phone ?? 'N/A'}</td>
-                  <td className="px-4 py-3 text-gray-600">{c.postalCode ?? 'N/A'}</td>
-                  <td className="px-4 py-3 text-gray-600">{c.verticalType ?? 'N/A'}</td>
-                  <td className="px-4 py-3 font-mono text-xs text-gray-600">{c.client?.didCode ?? 'N/A'}</td>
-                  <td className="px-4 py-3 text-gray-500 text-xs">{c.submittedAtEst?.split(' ').slice(0, 3).join(' ') ?? c.createdAt.slice(0, 10)}</td>
-                  <td className="px-4 py-3"><StatusBadge status={c.status} /></td>
-                  <td className="px-4 py-3 text-right">
-                    <button onClick={() => setSelected(c)} className="text-xs font-medium text-blue-600 hover:text-blue-800 transition-colors">View</button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-
-        {data && data.lastPage > 1 && (
-          <div className="px-4 py-3 border-t border-gray-100 flex items-center justify-between">
-            <p className="text-xs text-gray-500">Showing {from} to {from + rows.length - 1} of {data.total}</p>
-            <div className="flex gap-1">
-              <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-3 py-1.5 rounded-md border border-gray-200 text-xs font-medium text-gray-600 disabled:opacity-40 hover:bg-gray-50 transition-colors">Prev</button>
-              <button disabled={page === data.lastPage} onClick={() => setPage(p => p + 1)} className="px-3 py-1.5 rounded-md border border-gray-200 text-xs font-medium text-gray-600 disabled:opacity-40 hover:bg-gray-50 transition-colors">Next</button>
-            </div>
-          </div>
-        )}
-      </div>
+      <DataTable<Customer>
+        id="my-sales"
+        rows={rows}
+        loading={loading}
+        rowKey={c => c.id}
+        emptyText="No records found."
+        onRowClick={c => setSelected(c)}
+        columns={columns}
+      />
+      {data && <Pager page={data.currentPage} lastPage={data.lastPage} perPage={data.perPage} total={data.total} shown={rows.length} noun="records" onPage={setPage} />}
 
       <DetailModal customer={selected} onClose={() => setSelected(null)} />
-    </div>
+    </PageShell>
   )
 }

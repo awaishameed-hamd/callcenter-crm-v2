@@ -15,7 +15,7 @@ function todayStr() {
 function StatCard({ label, value, border, fill, textColor }: { label: string; value: number; border: string; fill: string; textColor: string }) {
   return (
     <div style={{ flex: 1, minWidth: 100, background: fill, border: `1px solid ${border}30`, borderRadius: 10, padding: '11px 14px' }}>
-      <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: textColor, fontFamily: '"Inter", sans-serif' }}>{value ?? 0}</p>
+      <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: textColor, fontFamily: '"Aptos", sans-serif' }}>{value ?? 0}</p>
       <p style={{ margin: '2px 0 0', fontSize: 10, fontWeight: 300, fontFamily: "'Ethnocentric Rg', sans-serif", color: '#64748B' }}>{label}</p>
     </div>
   )
@@ -35,7 +35,7 @@ function AttendanceTable({ present, absent, leave }: { present: any[]; absent: a
 
   const tdBase: React.CSSProperties = {
     padding: '6px 12px', borderBottom: '1px solid #F1F5F9',
-    fontSize: 12, fontFamily: '"Inter", sans-serif', color: P.navy,
+    fontSize: 12, fontFamily: '"Aptos", sans-serif', color: P.navy,
   }
 
   const sections = [
@@ -55,7 +55,7 @@ function AttendanceTable({ present, absent, leave }: { present: any[]; absent: a
         <thead>
           <tr style={{ background: '#F2AC18' }}>
             {['#', 'Name', 'Role', 'Login Time', 'Status'].map(h => (
-              <th key={h} style={{ padding: '7px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#1a1a1a', fontFamily: '"Inter", sans-serif', letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>
+              <th key={h} style={{ padding: '7px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#1a1a1a', fontFamily: '"Aptos", sans-serif', letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>
                 {h}
               </th>
             ))}
@@ -67,7 +67,7 @@ function AttendanceTable({ present, absent, leave }: { present: any[]; absent: a
               {/* Sub-heading row */}
               <tr key={`sh-${sec.label}`}>
                 <td colSpan={5} style={{ padding: '6px 14px', background: sec.bgColor, borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: sec.borderColor, fontFamily: '"Inter", sans-serif' }}>{sec.label}</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: sec.borderColor, fontFamily: '"Aptos", sans-serif' }}>{sec.label}</span>
                   <span style={{ marginLeft: 8, fontSize: 11, fontWeight: 700, color: sec.borderColor, background: 'rgba(255,255,255,0.7)', padding: '1px 7px', borderRadius: 99 }}>{sec.count}</span>
                 </td>
               </tr>
@@ -166,9 +166,9 @@ export default function DailyAttendancePage() {
       <div style={{ flexShrink: 0, marginBottom: 16 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, background: P.teal, borderRadius: 40, padding: '5px 14px' }}>
           <input type="date" value={date} max={todayStr()} onChange={e => setDate(e.target.value)}
-            style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 30, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: '"Inter", sans-serif', background: 'rgba(255,255,255,0.18)', color: '#fff', outline: 'none', colorScheme: 'dark' }} />
+            style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 30, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: '"Aptos", sans-serif', background: 'rgba(255,255,255,0.18)', color: '#fff', outline: 'none', colorScheme: 'dark' }} />
           <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', fontFamily: '"Inter", sans-serif', whiteSpace: 'nowrap' }}>{dateLabel}</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', fontFamily: '"Aptos", sans-serif', whiteSpace: 'nowrap' }}>{dateLabel}</span>
         </div>
       </div>
 
@@ -177,7 +177,7 @@ export default function DailyAttendancePage() {
         {loading ? (
           <div style={{ background: '#fff', borderRadius: 12, padding: '48px 16px', textAlign: 'center', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
             <div style={{ display: 'inline-block', width: 32, height: 32, border: `4px solid ${P.teal}33`, borderTop: `4px solid ${P.teal}`, borderRadius: '50%', animation: 'spin 0.8s linear infinite' }} />
-            <p style={{ fontSize: 13, color: '#94A3B8', marginTop: 12, fontFamily: '"Inter", sans-serif' }}>Loading attendance…</p>
+            <p style={{ fontSize: 13, color: '#94A3B8', marginTop: 12, fontFamily: '"Aptos", sans-serif' }}>Loading attendance…</p>
           </div>
         ) : !data ? (
           <div style={{ background: '#fff', borderRadius: 12, padding: '48px 16px', textAlign: 'center', color: '#94A3B8', fontSize: 13, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>Failed to load data.</div>
@@ -197,7 +197,7 @@ export default function DailyAttendancePage() {
           <>
             <AttendanceTable present={present} absent={absent} leave={leave} />
             {present.length === 0 && absent.length === 0 && leave.length === 0 && (
-              <div style={{ background: '#fff', borderRadius: 12, padding: '48px 16px', textAlign: 'center', color: '#94A3B8', fontSize: 13, fontFamily: '"Inter", sans-serif', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+              <div style={{ background: '#fff', borderRadius: 12, padding: '48px 16px', textAlign: 'center', color: '#94A3B8', fontSize: 13, fontFamily: '"Aptos", sans-serif', boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
                 {data.isWorkingDay ? 'No attendance data recorded for this date yet.' : 'This date is not configured as a working day.'}
               </div>
             )}

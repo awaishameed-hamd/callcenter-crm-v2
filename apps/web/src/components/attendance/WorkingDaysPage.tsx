@@ -166,7 +166,7 @@ export default function WorkingDaysPage() {
           style={{
             padding: '9px 20px', border: 0, borderRadius: 8, cursor: 'pointer',
             background: `linear-gradient(135deg, ${P.teal} 0%, ${P.deepTeal} 100%)`,
-            color: '#fff', fontFamily: '"Inter", sans-serif', fontSize: 13,
+            color: '#fff', fontFamily: '"Aptos", sans-serif', fontSize: 13,
             fontWeight: 700, letterSpacing: '0.04em', opacity: saving || loading ? 0.6 : 1,
           }}
         >
@@ -183,7 +183,7 @@ export default function WorkingDaysPage() {
           { label: 'Total',    val: summary.total,    border: P.teal,    fill: '#C8E9EE', textColor: '#111827' },
         ].map(({ label, val, border, fill, textColor }) => (
           <div key={label} style={{ flex: 1, minWidth: 100, background: fill, border: `1px solid ${border}30`, borderRadius: 10, padding: '11px 14px' }}>
-            <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: textColor, fontFamily: '"Inter", sans-serif' }}>{val ?? 0}</p>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: textColor, fontFamily: '"Aptos", sans-serif' }}>{val ?? 0}</p>
             <p style={{ margin: '2px 0 0', fontSize: 10, fontWeight: 300, fontFamily: "'Ethnocentric Rg', sans-serif", color: '#64748B' }}>{label}</p>
           </div>
         ))}
@@ -197,7 +197,7 @@ export default function WorkingDaysPage() {
           <PillSelect value={String(year)} onChange={v => setYear(Number(v))} minWidth={100}
             options={availableYears.map(y => ({ value: String(y), label: String(y) }))} />
           <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.3)', flexShrink: 0, margin: '0 2px' }} />
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', fontFamily: '"Inter", sans-serif' }}>{MONTH_NAMES[month - 1]} {year}</span>
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', fontFamily: '"Aptos", sans-serif' }}>{MONTH_NAMES[month - 1]} {year}</span>
         </div>
       </div>
 
@@ -214,7 +214,7 @@ export default function WorkingDaysPage() {
                   <th key={h} style={{
                     padding: '7px 16px', textAlign: 'left', fontSize: 11, fontWeight: 700,
                     textTransform: 'uppercase', color: P.navy,
-                    fontFamily: '"Inter", sans-serif', letterSpacing: '0.07em',
+                    fontFamily: '"Aptos", sans-serif', letterSpacing: '0.07em',
                   }}>{h}</th>
                 ))}
               </tr>
@@ -243,7 +243,7 @@ export default function WorkingDaysPage() {
                         <td style={{ ...CELL, borderBottom: `1px solid ${P.gridLine}`, fontWeight: 600, color: P.textHeading }}>
                           {row.date}
                         </td>
-                        <td style={{ ...CELL, borderBottom: `1px solid ${P.gridLine}`, color: P.textMuted, fontFamily: '"Inter", sans-serif', letterSpacing: '0.02em' }}>
+                        <td style={{ ...CELL, borderBottom: `1px solid ${P.gridLine}`, color: P.textMuted, fontFamily: '"Aptos", sans-serif', letterSpacing: '0.02em' }}>
                           {DAY_NAMES[new Date(row.date).getDay()]}
                         </td>
                         <td style={{ ...CELL, borderBottom: `1px solid ${P.gridLine}` }}>
@@ -299,7 +299,7 @@ export default function WorkingDaysPage() {
                             if (dayType === 'WORKING_DAY' || isEnabledWeekend) {
                               const val = row.login_time_formatted ?? (isEnabledWeekend ? weekendDefault : loginTime)
                               return isLocked
-                                ? <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, color: P.textHeading, letterSpacing: '0.04em' }}>
+                                ? <span style={{ fontFamily: '"Aptos", sans-serif', fontWeight: 700, color: P.textHeading, letterSpacing: '0.04em' }}>
                                     {val}
                                   </span>
                                 : <input

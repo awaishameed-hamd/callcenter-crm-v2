@@ -115,7 +115,7 @@ export default function MyLeavesPage() {
             display: 'flex', alignItems: 'center', gap: 7,
             padding: '7px 18px', borderRadius: 8, border: 'none', cursor: 'pointer',
             background: P.teal, color: '#fff',
-            fontSize: 13, fontWeight: 700, fontFamily: '"Inter", sans-serif',
+            fontSize: 13, fontWeight: 700, fontFamily: '"Aptos", sans-serif',
           }}
         >
           <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -129,7 +129,7 @@ export default function MyLeavesPage() {
       <div style={{ display: 'flex', gap: 12, marginBottom: 16 }}>
         {STAT_CARDS.map(c => (
           <div key={c.label} style={{ flex: 1, minWidth: 100, background: c.fill, border: `1px solid ${c.border}30`, borderRadius: 10, padding: '11px 14px' }}>
-            <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: c.text, fontFamily: '"Inter", sans-serif' }}>{c.value}</p>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: c.text, fontFamily: '"Aptos", sans-serif' }}>{c.value}</p>
             <p style={{ margin: '2px 0 0', fontSize: 10, fontWeight: 300, fontFamily: "'Ethnocentric Rg', sans-serif", color: '#64748B' }}>{c.label}</p>
           </div>
         ))}
@@ -151,7 +151,7 @@ export default function MyLeavesPage() {
           { key: 'days', label: 'Days', width: 64, cellStyle: { fontWeight: 700, color: P.navy } },
           { key: 'reason', label: 'Reason', width: 190, cellStyle: { fontSize: 12, color: '#374151' } },
           { key: 'status', label: 'Status', width: 110, render: (l: any) => (
-            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, fontFamily: '"Inter", sans-serif', textTransform: 'capitalize', ...(STATUS_BADGE[l.status] ?? {}) }}>
+            <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 10px', borderRadius: 99, fontSize: 11, fontWeight: 700, fontFamily: '"Aptos", sans-serif', textTransform: 'capitalize', ...(STATUS_BADGE[l.status] ?? {}) }}>
               {l.status}
             </span>
           ) },
@@ -192,13 +192,13 @@ export default function MyLeavesPage() {
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B', marginBottom: 5 }}>From Date</label>
                   <input type="date" value={form.fromDate}
                     onChange={e => setForm(f => ({ ...f, fromDate: e.target.value }))}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: '"Inter", sans-serif' }} />
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: '"Aptos", sans-serif' }} />
                 </div>
                 <div>
                   <label style={{ display: 'block', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.08em', color: '#64748B', marginBottom: 5 }}>To Date</label>
                   <input type="date" value={form.toDate}
                     onChange={e => setForm(f => ({ ...f, toDate: e.target.value }))}
-                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: '"Inter", sans-serif' }} />
+                    style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: '"Aptos", sans-serif' }} />
                 </div>
               </div>
 
@@ -211,17 +211,17 @@ export default function MyLeavesPage() {
                   value={form.reason}
                   onChange={e => setForm(f => ({ ...f, reason: e.target.value }))}
                   placeholder="Enter reason for leave..."
-                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: '"Inter", sans-serif', color: '#1E293B' }} />
+                  style={{ width: '100%', padding: '9px 12px', borderRadius: 8, border: '1.5px solid #CBD5E1', fontSize: 13, outline: 'none', resize: 'vertical', boxSizing: 'border-box', fontFamily: '"Aptos", sans-serif', color: '#1E293B' }} />
               </div>
 
               {/* Actions */}
               <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                 <button type="button" onClick={() => setShowForm(false)}
-                  style={{ padding: '8px 22px', borderRadius: 8, border: '1.5px solid #CBD5E1', background: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#64748B', fontFamily: '"Inter", sans-serif' }}>
+                  style={{ padding: '8px 22px', borderRadius: 8, border: '1.5px solid #CBD5E1', background: '#fff', fontSize: 13, fontWeight: 600, cursor: 'pointer', color: '#64748B', fontFamily: '"Aptos", sans-serif' }}>
                   Cancel
                 </button>
                 <button type="submit" disabled={saving}
-                  style={{ padding: '8px 22px', borderRadius: 8, border: 'none', background: P.teal, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.7 : 1, fontFamily: '"Inter", sans-serif' }}>
+                  style={{ padding: '8px 22px', borderRadius: 8, border: 'none', background: P.teal, color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', opacity: saving ? 0.7 : 1, fontFamily: '"Aptos", sans-serif' }}>
                   {saving ? 'Submitting…' : 'Submit Application'}
                 </button>
               </div>

@@ -123,7 +123,7 @@ function OpeningBalanceModal({ onClose, onSaved }: { onClose: () => void; onSave
     <input
       type="number" min={0} value={row[field] as number}
       onChange={e => update(row.userId, field, e.target.value)}
-      style={{ width: 64, padding: '4px 8px', borderRadius: 6, border: `1px solid ${P.border}`, fontSize: 12, textAlign: 'center', fontFamily: '"Inter", sans-serif', color: P.navy, outline: 'none' }}
+      style={{ width: 64, padding: '4px 8px', borderRadius: 6, border: `1px solid ${P.border}`, fontSize: 12, textAlign: 'center', fontFamily: '"Aptos", sans-serif', color: P.navy, outline: 'none' }}
     />
   )
 
@@ -133,7 +133,7 @@ function OpeningBalanceModal({ onClose, onSaved }: { onClose: () => void; onSave
         {/* Header */}
         <div style={{ padding: '16px 24px', background: 'linear-gradient(135deg, #DDE3EC 0%, #D0D8E4 100%)', borderRadius: '18px 18px 0 0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: `1px solid ${P.border}` }}>
           <div>
-            <h2 style={{ margin: 0, fontFamily: '"Inter", sans-serif', fontSize: 17, fontWeight: 900, color: P.navy }}>Opening Details</h2>
+            <h2 style={{ margin: 0, fontFamily: '"Aptos", sans-serif', fontSize: 17, fontWeight: 900, color: P.navy }}>Opening Details</h2>
           </div>
           <button onClick={onClose} style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 22, color: P.textMuted, lineHeight: 1 }}>×</button>
         </div>
@@ -143,7 +143,7 @@ function OpeningBalanceModal({ onClose, onSaved }: { onClose: () => void; onSave
           {loading ? (
             <div style={{ padding: 40, textAlign: 'center', color: P.textMuted, fontSize: 13 }}>Loading…</div>
           ) : (
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: '"Inter", sans-serif' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: '"Aptos", sans-serif' }}>
               <thead>
                 <tr style={{ background: '#F2AC18', position: 'sticky', top: 0, zIndex: 1 }}>
                   {['Name', 'Role', 'Present', 'Late', 'Absent', 'Leave', 'Working Days'].map(h => (
@@ -172,10 +172,10 @@ function OpeningBalanceModal({ onClose, onSaved }: { onClose: () => void; onSave
 
         {/* Footer */}
         <div style={{ padding: '14px 24px', borderTop: `1px solid ${P.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#fff', borderRadius: '0 0 18px 18px' }}>
-          <span style={{ fontSize: 12, color: toast.includes('Failed') ? '#DC2626' : '#16A34A', fontFamily: '"Inter", sans-serif', fontWeight: 600 }}>{toast}</span>
+          <span style={{ fontSize: 12, color: toast.includes('Failed') ? '#DC2626' : '#16A34A', fontFamily: '"Aptos", sans-serif', fontWeight: 600 }}>{toast}</span>
           <div style={{ display: 'flex', gap: 10 }}>
-            <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 8, border: `1px solid ${P.border}`, background: '#fff', color: P.textMuted, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: '"Inter", sans-serif' }}>Cancel</button>
-            <button onClick={save} disabled={saving || loading} style={{ padding: '8px 22px', borderRadius: 8, border: 0, background: `linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: '"Inter", sans-serif' }}>
+            <button onClick={onClose} style={{ padding: '8px 18px', borderRadius: 8, border: `1px solid ${P.border}`, background: '#fff', color: P.textMuted, fontSize: 13, fontWeight: 600, cursor: 'pointer', fontFamily: '"Aptos", sans-serif' }}>Cancel</button>
+            <button onClick={save} disabled={saving || loading} style={{ padding: '8px 22px', borderRadius: 8, border: 0, background: `linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1, fontFamily: '"Aptos", sans-serif' }}>
               {saving ? 'Saving…' : 'Save All'}
             </button>
           </div>
@@ -207,13 +207,13 @@ function AllTimeDetailModal({ emp, onClose }: { emp: EmpSummary; onClose: () => 
       {/* Header */}
       <div style={{ background: '#64748B', padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <h2 style={{ fontFamily: "'Inter', sans-serif", fontSize: 22, fontWeight: 800, display: 'inline-block', color: '#F1F5F9', letterSpacing: '0.04em', margin: 0 }}>
+          <h2 style={{ fontFamily: "'Aptos', sans-serif", fontSize: 22, fontWeight: 800, display: 'inline-block', color: '#F1F5F9', letterSpacing: '0.04em', margin: 0 }}>
             {emp.userName}
           </h2>
-          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700, fontFamily: '"Inter", sans-serif' }}>
+          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700, fontFamily: '"Aptos", sans-serif' }}>
             {staffRole(emp.userRole, emp.userType)}
           </span>
-          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 600, fontFamily: '"Inter", sans-serif' }}>
+          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 600, fontFamily: '"Aptos", sans-serif' }}>
             All Time
           </span>
         </div>
@@ -225,15 +225,15 @@ function AllTimeDetailModal({ emp, onClose }: { emp: EmpSummary; onClose: () => 
             { label: 'Leave',   val: emp.leave   },
           ].map(({ label, val }) => (
             <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-              <span style={{ fontWeight: 900, color: '#F1F5F9', fontSize: 14, fontFamily: '"Inter", sans-serif' }}>{val}</span>
-              <span style={{ color: '#CBD5E1', fontWeight: 600, fontFamily: '"Inter", sans-serif' }}>{label}</span>
+              <span style={{ fontWeight: 900, color: '#F1F5F9', fontSize: 14, fontFamily: '"Aptos", sans-serif' }}>{val}</span>
+              <span style={{ color: '#CBD5E1', fontWeight: 600, fontFamily: '"Aptos", sans-serif' }}>{label}</span>
             </span>
           ))}
           <button onClick={onClose} style={{
             marginLeft: 8, cursor: 'pointer', color: '#E2E8F0', fontWeight: 700,
             background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)',
             borderRadius: 8, padding: '4px 12px', fontSize: 12,
-            fontFamily: '"Inter", sans-serif', display: 'flex', alignItems: 'center', gap: 5,
+            fontFamily: '"Aptos", sans-serif', display: 'flex', alignItems: 'center', gap: 5,
           }}>
             ← Back
           </button>
@@ -243,7 +243,7 @@ function AllTimeDetailModal({ emp, onClose }: { emp: EmpSummary; onClose: () => 
       {/* Records table grouped by month */}
       <div style={{ overflowY: 'auto', maxHeight: 'calc(100vh - 280px)', padding: '16px 20px' }}>
         {grouped.length === 0 ? (
-          <div style={{ textAlign: 'center', padding: '48px 0', color: P.textMuted, fontSize: 13, fontFamily: '"Inter", sans-serif' }}>
+          <div style={{ textAlign: 'center', padding: '48px 0', color: P.textMuted, fontSize: 13, fontFamily: '"Aptos", sans-serif' }}>
             No records found.
           </div>
         ) : grouped.map(([monthLabel, recs]) => (
@@ -251,14 +251,14 @@ function AllTimeDetailModal({ emp, onClose }: { emp: EmpSummary; onClose: () => 
             {/* Month header */}
             <div style={{
               padding: '5px 12px', background: P.navy, borderRadius: 8, marginBottom: 8,
-              fontFamily: '"Inter", sans-serif', fontSize: 12, fontWeight: 700,
+              fontFamily: '"Aptos", sans-serif', fontSize: 12, fontWeight: 700,
               color: '#F2AC18', letterSpacing: '0.07em', textTransform: 'uppercase',
               display: 'inline-block',
             }}>
               {monthLabel}
             </div>
 
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: '"Inter", sans-serif' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, fontFamily: '"Aptos", sans-serif' }}>
               <thead>
                 <tr style={{ background: '#F8FAFC' }}>
                   {['Date', 'Day', 'Status', 'Login Time', 'Late Min.', 'Notes'].map(h => (
@@ -391,17 +391,17 @@ function DetailModal({ emp, month, year, onClose }: { emp: EmpSummary; month: nu
     <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${P.border}`, overflow: 'hidden', boxShadow: '0 2px 12px rgba(0,0,0,0.06)' }}>
         <div style={{ background: '#64748B', padding: '10px 20px', borderBottom: `1px solid ${P.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-            <h2 style={{ fontFamily: "'Inter', sans-serif", fontSize: 22, fontWeight: 800, display: 'inline-block', color: '#F1F5F9', letterSpacing: '0.04em', margin: 0 }}>
+            <h2 style={{ fontFamily: "'Aptos', sans-serif", fontSize: 22, fontWeight: 800, display: 'inline-block', color: '#F1F5F9', letterSpacing: '0.04em', margin: 0 }}>
               {emp.userName}
             </h2>
-            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700, fontFamily: '"Inter", sans-serif' }}>
+            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700, fontFamily: '"Aptos", sans-serif' }}>
               {staffRole(emp.userRole, emp.userType)}
             </span>
-            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 600, fontFamily: '"Inter", sans-serif' }}>
+            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 600, fontFamily: '"Aptos", sans-serif' }}>
               {MONTH_NAMES[month - 1]} {year}
             </span>
             {canEdit && (
-              <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.15)', color: '#E2E8F0', fontWeight: 700, border: '1px solid rgba(255,255,255,0.25)', fontFamily: '"Inter", sans-serif' }}>
+              <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.15)', color: '#E2E8F0', fontWeight: 700, border: '1px solid rgba(255,255,255,0.25)', fontFamily: '"Aptos", sans-serif' }}>
                 ✎ Edit Mode
               </span>
             )}
@@ -414,15 +414,15 @@ function DetailModal({ emp, month, year, onClose }: { emp: EmpSummary; month: nu
               { label: 'Leave',   val: summary.leave   },
             ].map(({ label, val }) => (
               <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
-                <span style={{ fontWeight: 900, color: '#F1F5F9', fontSize: 14, fontFamily: '"Inter", sans-serif' }}>{val}</span>
-                <span style={{ color: '#CBD5E1', fontWeight: 600, fontFamily: '"Inter", sans-serif' }}>{label}</span>
+                <span style={{ fontWeight: 900, color: '#F1F5F9', fontSize: 14, fontFamily: '"Aptos", sans-serif' }}>{val}</span>
+                <span style={{ color: '#CBD5E1', fontWeight: 600, fontFamily: '"Aptos", sans-serif' }}>{label}</span>
               </span>
             ))}
             <button onClick={onClose} style={{
               marginLeft: 8, cursor: 'pointer', color: '#E2E8F0', fontWeight: 700,
               background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)',
               borderRadius: 8, padding: '4px 12px', fontSize: 12,
-              fontFamily: '"Inter", sans-serif', display: 'flex', alignItems: 'center', gap: 5,
+              fontFamily: '"Aptos", sans-serif', display: 'flex', alignItems: 'center', gap: 5,
             }}>
               ← Back
             </button>
@@ -432,7 +432,7 @@ function DetailModal({ emp, month, year, onClose }: { emp: EmpSummary; month: nu
         <div style={{ overflowY: 'auto', flex: 1, padding: '16px 20px 24px' }}>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 5, marginBottom: 8 }}>
             {['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].map(d => (
-              <div key={d} style={{ textAlign: 'center', padding: '7px 0', fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: P.navy, fontFamily: '"Inter", sans-serif', borderBottom: `2px solid ${P.gold}` }}>{d}</div>
+              <div key={d} style={{ textAlign: 'center', padding: '7px 0', fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', color: P.navy, fontFamily: '"Aptos", sans-serif', borderBottom: `2px solid ${P.gold}` }}>{d}</div>
             ))}
           </div>
 
@@ -451,27 +451,27 @@ function DetailModal({ emp, month, year, onClose }: { emp: EmpSummary; month: nu
               return (
                 <div key={d} style={{ minHeight: 86, borderRadius: 10, background: cs ? cs.bg : '#F8FAFC', border: isToday ? `2px solid ${P.teal}` : '1.5px solid #E2E8F0', boxShadow: isToday ? `0 0 0 3px ${P.teal}18` : '0 1px 2px rgba(0,0,0,0.04)', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '7px 8px 8px', position: 'relative' }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                    <span style={{ fontSize: 13, fontWeight: 800, color: isToday ? P.teal : (cs?.dayColor ?? '#cbd5e1'), fontFamily: '"Inter", sans-serif', lineHeight: 1 }}>
+                    <span style={{ fontSize: 13, fontWeight: 800, color: isToday ? P.teal : (cs?.dayColor ?? '#cbd5e1'), fontFamily: '"Aptos", sans-serif', lineHeight: 1 }}>
                       {isToday
                         ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: P.teal, color: '#fff', fontSize: 11, fontWeight: 900 }}>{d}</span>
                         : d}
                     </span>
                     {cs?.pill && (
-                      <span style={{ padding: '2px 7px', borderRadius: 6, background: cs.pill, color: cs.pillText, fontSize: 9, fontWeight: 800, fontFamily: '"Inter", sans-serif', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                      <span style={{ padding: '2px 7px', borderRadius: 6, background: cs.pill, color: cs.pillText, fontSize: 9, fontWeight: 800, fontFamily: '"Aptos", sans-serif', letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                         {cs.label}
                       </span>
                     )}
                   </div>
                   <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {rec?.loginTime && (
-                      <span style={{ fontSize: 16, fontWeight: 900, color: cs?.dayColor ?? P.navy, fontFamily: '"Inter", sans-serif', letterSpacing: '0.05em' }}>
+                      <span style={{ fontSize: 16, fontWeight: 900, color: cs?.dayColor ?? P.navy, fontFamily: '"Aptos", sans-serif', letterSpacing: '0.05em' }}>
                         {formatTime12h(rec.loginTime)}
                       </span>
                     )}
                   </div>
                   <div style={{ display: 'flex', justifyContent: 'center', minHeight: 18 }}>
                     {rec?.isLate && (
-                      <span style={{ padding: '1px 7px', borderRadius: 5, background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontSize: 9, fontWeight: 800, fontFamily: '"Inter", sans-serif' }}>
+                      <span style={{ padding: '1px 7px', borderRadius: 5, background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a', fontSize: 9, fontWeight: 800, fontFamily: '"Aptos", sans-serif' }}>
                         {rec.lateMinutes}m
                       </span>
                     )}
@@ -480,7 +480,7 @@ function DetailModal({ emp, month, year, onClose }: { emp: EmpSummary; month: nu
                     <span style={{ position: 'absolute', top: 7, right: 7, width: 6, height: 6, borderRadius: '50%', background: P.gold }} title="Edited" />
                   )}
                   {inEditWin && rec && (
-                    <button onClick={() => openEdit(rec)} style={{ position: 'absolute', bottom: 5, right: 5, display: 'flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700, background: 'rgba(30,132,150,0.12)', color: P.teal, border: `1px solid ${P.teal}55`, cursor: 'pointer', fontFamily: '"Inter", sans-serif', letterSpacing: '0.04em', lineHeight: 1.4 }}
+                    <button onClick={() => openEdit(rec)} style={{ position: 'absolute', bottom: 5, right: 5, display: 'flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700, background: 'rgba(30,132,150,0.12)', color: P.teal, border: `1px solid ${P.teal}55`, cursor: 'pointer', fontFamily: '"Aptos", sans-serif', letterSpacing: '0.04em', lineHeight: 1.4 }}
                       onMouseEnter={e => { e.currentTarget.style.background = P.teal; e.currentTarget.style.color = '#fff' }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(30,132,150,0.12)'; e.currentTarget.style.color = P.teal }}>
                       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
@@ -490,7 +490,7 @@ function DetailModal({ emp, month, year, onClose }: { emp: EmpSummary; month: nu
                     </button>
                   )}
                   {canCreate && dateStr >= sevenDaysAgo && dateStr <= todayStr2 && !rec && (
-                    <button onClick={() => openCreate(dateStr)} style={{ position: 'absolute', bottom: 5, right: 5, display: 'flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700, background: 'rgba(242,172,24,0.12)', color: '#b45309', border: '1px solid rgba(242,172,24,0.4)', cursor: 'pointer', fontFamily: '"Inter", sans-serif', letterSpacing: '0.04em', lineHeight: 1.4 }}
+                    <button onClick={() => openCreate(dateStr)} style={{ position: 'absolute', bottom: 5, right: 5, display: 'flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 5, fontSize: 10, fontWeight: 700, background: 'rgba(242,172,24,0.12)', color: '#b45309', border: '1px solid rgba(242,172,24,0.4)', cursor: 'pointer', fontFamily: '"Aptos", sans-serif', letterSpacing: '0.04em', lineHeight: 1.4 }}
                       onMouseEnter={e => { e.currentTarget.style.background = '#F2AC18'; e.currentTarget.style.color = '#fff' }}
                       onMouseLeave={e => { e.currentTarget.style.background = 'rgba(242,172,24,0.12)'; e.currentTarget.style.color = '#b45309' }}>
                       <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
@@ -510,14 +510,14 @@ function DetailModal({ emp, month, year, onClose }: { emp: EmpSummary; month: nu
         <div style={{ position: 'fixed', inset: 0, zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)' }}>
           <div style={{ background: '#fff', borderRadius: 16, width: 400, boxShadow: '0 20px 60px rgba(0,0,0,0.25)', border: `1px solid ${P.border}`, overflow: 'hidden' }}>
             <div style={{ background: P.gold, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-              <span style={{ fontFamily: '"Inter", sans-serif', fontWeight: 900, fontSize: 15, color: P.navy, letterSpacing: '0.04em' }}>
+              <span style={{ fontFamily: '"Aptos", sans-serif', fontWeight: 900, fontSize: 15, color: P.navy, letterSpacing: '0.04em' }}>
                 {editId === 'NEW' ? `Add Record: ${editDate}` : 'Edit Record'}
               </span>
               <button onClick={() => setEditId(null)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.navy, fontSize: 18, lineHeight: 1, fontWeight: 700, padding: '0 2px' }}>×</button>
             </div>
             <div style={{ padding: '20px 20px 0' }}>
               <div style={{ marginBottom: 16 }}>
-                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: P.textMuted, fontFamily: '"Inter", sans-serif', marginBottom: 8 }}>Status</div>
+                <div style={{ fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: P.textMuted, fontFamily: '"Aptos", sans-serif', marginBottom: 8 }}>Status</div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8 }}>
                   {[
                     { key: 'PRESENT', label: 'Present', activeBg: P.teal,    activeText: '#fff' },
@@ -532,7 +532,7 @@ function DetailModal({ emp, month, year, onClose }: { emp: EmpSummary; month: nu
                         status: key,
                         // Switching to Present/Late from a status with no login time (e.g. Absent, Not Joined), default to 10 AM
                         loginTime: (key === 'PRESENT' || key === 'LATE') && !f.loginTime ? '10:00' : f.loginTime,
-                      }))} style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, fontFamily: '"Inter", sans-serif', cursor: 'pointer', transition: 'all 0.15s', background: isActive ? activeBg : '#F8FAFC', color: isActive ? activeText : P.textMuted, border: isActive ? `1.5px solid ${activeBg}` : `1.5px solid ${P.border}`, boxShadow: isActive ? `0 2px 8px ${activeBg}40` : 'none' }}>
+                      }))} style={{ padding: '7px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, fontFamily: '"Aptos", sans-serif', cursor: 'pointer', transition: 'all 0.15s', background: isActive ? activeBg : '#F8FAFC', color: isActive ? activeText : P.textMuted, border: isActive ? `1.5px solid ${activeBg}` : `1.5px solid ${P.border}`, boxShadow: isActive ? `0 2px 8px ${activeBg}40` : 'none' }}>
                         {label}
                       </button>
                     )
@@ -541,20 +541,20 @@ function DetailModal({ emp, month, year, onClose }: { emp: EmpSummary; month: nu
               </div>
               {(editForm.status === 'PRESENT' || editForm.status === 'LATE') && (
                 <div style={{ marginBottom: 16 }}>
-                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: P.textMuted, fontFamily: '"Inter", sans-serif', marginBottom: 6 }}>Login Time</label>
+                  <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: P.textMuted, fontFamily: '"Aptos", sans-serif', marginBottom: 6 }}>Login Time</label>
                   <input type="time" value={editForm.loginTime} onChange={e => setEditForm(f => ({ ...f, loginTime: e.target.value }))}
-                    style={{ border: `1.5px solid ${P.border}`, borderRadius: 8, padding: '8px 12px', fontSize: 13, fontWeight: 600, outline: 'none', fontFamily: '"Inter", sans-serif', color: P.textHeading, background: '#F8FAFC' }} />
+                    style={{ border: `1.5px solid ${P.border}`, borderRadius: 8, padding: '8px 12px', fontSize: 13, fontWeight: 600, outline: 'none', fontFamily: '"Aptos", sans-serif', color: P.textHeading, background: '#F8FAFC' }} />
                 </div>
               )}
               <div style={{ marginBottom: 20 }}>
-                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: P.textMuted, fontFamily: '"Inter", sans-serif', marginBottom: 6 }}>Notes (optional)</label>
+                <label style={{ display: 'block', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: P.textMuted, fontFamily: '"Aptos", sans-serif', marginBottom: 6 }}>Notes (optional)</label>
                 <input type="text" value={editForm.notes} placeholder="Optional note…" onChange={e => setEditForm(f => ({ ...f, notes: e.target.value }))}
-                  style={{ width: '100%', border: `1.5px solid ${P.border}`, borderRadius: 8, padding: '8px 12px', fontSize: 13, outline: 'none', fontFamily: '"Inter", sans-serif', color: P.textHeading, background: '#F8FAFC', boxSizing: 'border-box' }} />
+                  style={{ width: '100%', border: `1.5px solid ${P.border}`, borderRadius: 8, padding: '8px 12px', fontSize: 13, outline: 'none', fontFamily: '"Aptos", sans-serif', color: P.textHeading, background: '#F8FAFC', boxSizing: 'border-box' }} />
               </div>
             </div>
             <div style={{ padding: '14px 20px', borderTop: `1px solid ${P.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10, background: '#FAFBFC' }}>
-              <button onClick={() => setEditId(null)} style={{ padding: '9px 18px', borderRadius: 8, fontSize: 12, fontWeight: 700, border: `1.5px solid ${P.border}`, background: '#fff', color: P.textMuted, cursor: 'pointer', fontFamily: '"Inter", sans-serif' }}>Cancel</button>
-              <button onClick={saveEdit} disabled={saving} style={{ padding: '9px 22px', borderRadius: 8, fontSize: 12, fontWeight: 700, border: 'none', cursor: saving ? 'default' : 'pointer', background: `linear-gradient(135deg, ${P.teal} 0%, ${P.deepTeal} 100%)`, color: '#fff', fontFamily: '"Inter", sans-serif', opacity: saving ? 0.6 : 1, boxShadow: '0 2px 8px rgba(30,132,150,0.3)' }}>
+              <button onClick={() => setEditId(null)} style={{ padding: '9px 18px', borderRadius: 8, fontSize: 12, fontWeight: 700, border: `1.5px solid ${P.border}`, background: '#fff', color: P.textMuted, cursor: 'pointer', fontFamily: '"Aptos", sans-serif' }}>Cancel</button>
+              <button onClick={saveEdit} disabled={saving} style={{ padding: '9px 22px', borderRadius: 8, fontSize: 12, fontWeight: 700, border: 'none', cursor: saving ? 'default' : 'pointer', background: `linear-gradient(135deg, ${P.teal} 0%, ${P.deepTeal} 100%)`, color: '#fff', fontFamily: '"Aptos", sans-serif', opacity: saving ? 0.6 : 1, boxShadow: '0 2px 8px rgba(30,132,150,0.3)' }}>
                 {saving ? 'Saving…' : editId === 'NEW' ? 'Add Record' : 'Save Changes'}
               </button>
             </div>
@@ -593,7 +593,7 @@ async function exportExcel(summaries: EmpSummary[], month: number, year: number,
   ws.mergeCells(1, 1, 1, cols.length)
   const titleCell = ws.getCell('A1')
   titleCell.value = `Attendance Report  |  ${periodLabel}`
-  titleCell.font  = { name: 'Inter', bold: true, size: 14, color: { argb: 'FF' + NAVY_HEX } }
+  titleCell.font  = { name: 'Aptos', bold: true, size: 14, color: { argb: 'FF' + NAVY_HEX } }
   titleCell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + GOLD_HEX } }
   titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
   ws.getRow(1).height = 28
@@ -601,7 +601,7 @@ async function exportExcel(summaries: EmpSummary[], month: number, year: number,
   ws.mergeCells(2, 1, 2, cols.length)
   const dateCell = ws.getCell('A2')
   dateCell.value = `Exported: ${new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}`
-  dateCell.font  = { name: 'Inter', size: 10, italic: true, color: { argb: 'FF' + NAVY_HEX } }
+  dateCell.font  = { name: 'Aptos', size: 10, italic: true, color: { argb: 'FF' + NAVY_HEX } }
   dateCell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF9EC' } }
   dateCell.alignment = { horizontal: 'center' }
   ws.getRow(2).height = 18
@@ -610,7 +610,7 @@ async function exportExcel(summaries: EmpSummary[], month: number, year: number,
   cols.forEach((c, i) => {
     const cell = headerRow.getCell(i + 1)
     cell.value = c.header
-    cell.font  = { name: 'Inter', bold: true, size: 10, color: { argb: 'FF' + NAVY_HEX } }
+    cell.font  = { name: 'Aptos', bold: true, size: 10, color: { argb: 'FF' + NAVY_HEX } }
     cell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + GOLD_HEX } }
     cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true }
     cell.border = { bottom: { style: 'medium', color: { argb: 'FF' + NAVY_HEX } } }
@@ -625,7 +625,7 @@ async function exportExcel(summaries: EmpSummary[], month: number, year: number,
     cols.forEach((c, i) => {
       const cell = row.getCell(i + 1)
       cell.value = rowData[i] as ExcelJS.CellValue
-      cell.font  = { name: 'Inter', size: 10, color: { argb: 'FF' + NAVY_HEX } }
+      cell.font  = { name: 'Aptos', size: 10, color: { argb: 'FF' + NAVY_HEX } }
       cell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: bg } }
       cell.alignment = { horizontal: c.isNum ? 'center' : 'left', vertical: 'middle' }
       cell.border = { bottom: { style: 'hair', color: { argb: 'FFE2E8F0' } } }
@@ -641,7 +641,7 @@ async function exportExcel(summaries: EmpSummary[], month: number, year: number,
     if (i === 0)        cell.value = ''
     else if (i === 1)   cell.value = 'TOTAL'
     else if (c.isNum)   cell.value = { formula: `SUM(${colLetter}${dataStart}:${colLetter}${dataEnd})` }
-    cell.font   = { name: 'Inter', bold: true, size: 10, color: { argb: 'FF' + NAVY_HEX } }
+    cell.font   = { name: 'Aptos', bold: true, size: 10, color: { argb: 'FF' + NAVY_HEX } }
     cell.fill   = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + LIGHT_GOLD } }
     cell.alignment = { horizontal: c.isNum ? 'center' : 'left', vertical: 'middle' }
     cell.border = { top: { style: 'medium', color: { argb: 'FF' + GOLD_HEX } } }
@@ -752,7 +752,7 @@ export default function AttendanceReportPage() {
   const pillBtn = (label: string, active: boolean, onClick: () => void) => (
     <button onClick={onClick} style={{
       flexShrink: 0, padding: '4px 14px', borderRadius: 40, border: 'none', cursor: 'pointer',
-      fontSize: 12, fontWeight: 700, fontFamily: '"Inter", sans-serif',
+      fontSize: 12, fontWeight: 700, fontFamily: '"Aptos", sans-serif',
       transition: 'all .15s', whiteSpace: 'nowrap',
       background: active ? P.navy : 'transparent',
       color: active ? '#fff' : 'rgba(255,255,255,0.85)',
@@ -796,7 +796,7 @@ export default function AttendanceReportPage() {
           {(['all', 'active', 'inactive'] as const).map(v => (
             <button key={v} onClick={() => setStatusFilter(v)} style={{
               flexShrink: 0, padding: '4px 12px', borderRadius: 40, border: 'none', cursor: 'pointer',
-              fontSize: 12, fontWeight: 600, fontFamily: '"Inter", sans-serif', whiteSpace: 'nowrap',
+              fontSize: 12, fontWeight: 600, fontFamily: '"Aptos", sans-serif', whiteSpace: 'nowrap',
               background: statusFilter === v ? P.navy : 'transparent',
               color: statusFilter === v ? '#fff' : 'rgba(255,255,255,0.85)',
             }}>
@@ -824,7 +824,7 @@ export default function AttendanceReportPage() {
               flexShrink: 0, display: 'flex', alignItems: 'center', gap: 5,
               padding: '4px 12px', borderRadius: 20, border: '1px solid rgba(255,255,255,0.4)',
               background: 'rgba(255,255,255,0.15)', color: '#fff',
-              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Inter", sans-serif',
+              fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Aptos", sans-serif',
             }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                 <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" />
@@ -839,7 +839,7 @@ export default function AttendanceReportPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
             <input type="text" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}
-              style={{ width: '100%', boxSizing: 'border-box', paddingLeft: 28, paddingRight: 8, paddingTop: 4, paddingBottom: 4, borderRadius: 30, border: '1.5px solid rgba(255,255,255,0.35)', fontSize: 12, outline: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', fontFamily: '"Inter", sans-serif' }} />
+              style={{ width: '100%', boxSizing: 'border-box', paddingLeft: 28, paddingRight: 8, paddingTop: 4, paddingBottom: 4, borderRadius: 30, border: '1.5px solid rgba(255,255,255,0.35)', fontSize: 12, outline: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', fontFamily: '"Aptos", sans-serif' }} />
           </div>
 
           {/* Record count */}
@@ -873,7 +873,7 @@ export default function AttendanceReportPage() {
               <thead style={{ position: 'sticky', top: 0, zIndex: 10 }}>
                 <tr style={{ background: '#F2AC18' }}>
                   {['#','Name','Role','Present','Late','Absent','Leave','Working Days',''].map(h => (
-                    <th key={h} style={{ padding: '7px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#1a1a1a', fontFamily: '"Inter", sans-serif', letterSpacing: '0.07em', whiteSpace: 'nowrap', background: 'transparent' }}>
+                    <th key={h} style={{ padding: '7px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#1a1a1a', fontFamily: '"Aptos", sans-serif', letterSpacing: '0.07em', whiteSpace: 'nowrap', background: 'transparent' }}>
                       {h}
                     </th>
                   ))}
@@ -892,7 +892,7 @@ export default function AttendanceReportPage() {
                   ))
                 ) : summaries.length === 0 ? (
                   <tr>
-                    <td colSpan={9} style={{ padding: '48px 14px', textAlign: 'center', color: '#94A3B8', fontSize: 13, fontFamily: '"Inter", sans-serif' }}>
+                    <td colSpan={9} style={{ padding: '48px 14px', textAlign: 'center', color: '#94A3B8', fontSize: 13, fontFamily: '"Aptos", sans-serif' }}>
                       {viewMode === 'all'
                         ? 'No attendance records found.'
                         : `No attendance records found for ${MONTH_NAMES[month - 1]} ${year}.`}
@@ -901,7 +901,7 @@ export default function AttendanceReportPage() {
                 ) : summaries.map((s, idx) => {
                   const roleStyle = rolePill(s.userRole)
                   const workingDays = s.present + s.absent + s.leave
-                  const tdBase: React.CSSProperties = { padding: '6px 12px', borderBottom: '1px solid #F1F5F9', fontSize: 12, fontFamily: '"Inter", sans-serif' }
+                  const tdBase: React.CSSProperties = { padding: '6px 12px', borderBottom: '1px solid #F1F5F9', fontSize: 12, fontFamily: '"Aptos", sans-serif' }
                   return (
                     <tr key={s.userId} style={{ background: '#fff', transition: 'background .15s' }}
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F8FAFC'}
@@ -918,7 +918,7 @@ export default function AttendanceReportPage() {
                       <td style={{ ...tdBase, fontWeight: 700, color: '#475569' }}>{workingDays}</td>
                       <td style={tdBase}>
                         <button onClick={() => setSelected(s)}
-                          style={{ padding: '3px 12px', borderRadius: 6, border: `1px solid ${P.teal}`, background: 'transparent', color: P.teal, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Inter", sans-serif' }}>
+                          style={{ padding: '3px 12px', borderRadius: 6, border: `1px solid ${P.teal}`, background: 'transparent', color: P.teal, fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Aptos", sans-serif' }}>
                           View
                         </button>
                       </td>

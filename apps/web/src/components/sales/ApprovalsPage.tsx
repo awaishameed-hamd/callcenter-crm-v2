@@ -1,36 +1,41 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { CustomerStatus, VERTICALS, CANCEL_REASONS } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
+import { PageTitle } from '@/components/ui/PageChrome'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLayout } from '@/components/layout/AppLayout'
 import { apiGet, apiPost, apiPut, apiDelete, errMsg } from '@/lib/api'
 import { StatusBadge, fmtWithPKT, fullName } from '@/lib/format'
 import { isFinalApprover as finalRole } from '@/lib/roles'
+import { P } from '@/lib/palette'
 import type { Customer, Page } from '@/types'
 
+const FONT = "'Aptos', sans-serif"
 const inputCls  = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
 const VERTICAL_TO_CAMPAIGN: Record<string, string> = { Medicare: 'Medicare', 'Final Expense': 'Final Expense', ACA: 'ACA' }
-const MIN_COL_W = 50
-const LS_KEY = 'approvals_col_widths'
-const DEFAULT_COLS = [
-  { key: 'name',     label: 'Name',     w: 140 },
-  { key: 'agent',    label: 'Agent',    w: 90  },
-  { key: 'phone',    label: 'Phone',    w: 115 },
-  { key: 'vertical', label: 'Vertical', w: 82  },
-  { key: 'did',      label: 'DID',      w: 60  },
-]
+
+// One colour per status, used by the top pills, their underline bars and the list rows (argroup Tasks style).
+const STATUS_COLOR: Record<string, string> = {
+  [CustomerStatus.PENDING]:           '#1565C0',
+  [CustomerStatus.APPROVED]:          '#1E8496',
+  [CustomerStatus.DISAPPROVED]:       '#C25A1F',
+  [CustomerStatus.FINAL_APPROVED]:    '#3A6B3A',
+  [CustomerStatus.FINAL_DISAPPROVED]: '#7B2D8E',
+  [CustomerStatus.AGENT_REJECTED]:    '#B45309',
+  '':                                 '#374151',
+}
 
 type EditForm = Record<string, string>
 type DidOption = { id: string; didCode: string; saleType: string | null }
 
 function SectionTitle({ children }: { children: React.ReactNode }) {
   return (
-    <div className="-mx-5 px-5 py-1.5 mt-3" style={{ background: 'rgba(61,71,83,0.08)', borderTop: '1px solid rgba(92,109,130,0.18)', borderBottom: '1px solid rgba(92,109,130,0.18)' }}>
-      <span className="text-sm font-black uppercase tracking-widest" style={{ color: '#111827', fontFamily: "'Rajdhani', sans-serif" }}>{children}</span>
+    <div className="-mx-5 px-5 py-1.5 mt-3" style={{ background: '#F1F5F9', borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
+      <span style={{ fontSize: 12, fontWeight: 700, color: P.navy, fontFamily: FONT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{children}</span>
     </div>
   )
 }
@@ -68,7 +73,7 @@ const toEditForm = (c: Customer): EditForm => ({
 
 export default function ApprovalsPage() {
   const { user } = useAuth()
-  const { setSidebarCollapsed } = useLayout()
+  const { sidebarCollapsed, setSidebarCollapsed } = useLayout()
   const isFinalApprover = finalRole(user)
 
   const [customers, setCustomers]       = useState<Customer[]>([])
@@ -94,43 +99,13 @@ export default function ApprovalsPage() {
   const [rateInput, setRateInput]       = useState('')
   const [toast, setToast]               = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [listCollapsed, setListCollapsed] = useState(false)
+  const [searchInput, setSearchInput]   = useState('')
+  const [counts, setCounts]             = useState<Record<string, number>>({})
 
-  const [cols, setCols] = useState(DEFAULT_COLS)
-  const resizingRef  = useRef<{ key: string; nextKey?: string; startX: number; startW: number; nextStartW: number } | null>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const userResized  = useRef(false)
-
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(LS_KEY) ?? 'null')
-      if (Array.isArray(saved) && saved.length === DEFAULT_COLS.length) { setCols(DEFAULT_COLS.map((c, i) => ({ ...c, w: saved[i] ?? c.w }))); return }
-    } catch { /* ignore */ }
-    const w = containerRef.current?.clientWidth ?? 0
-    if (w > 0) {
-      const total = DEFAULT_COLS.reduce((s, c) => s + c.w, 0)
-      setCols(DEFAULT_COLS.map(c => ({ ...c, w: Math.max(MIN_COL_W, Math.floor(c.w * (w / total))) })))
-    }
+  const loadCounts = useCallback(() => {
+    apiGet<Record<string, number>>('/customers/counts').then(setCounts).catch(() => {})
   }, [])
-
-  useEffect(() => {
-    if (!userResized.current) return
-    try { localStorage.setItem(LS_KEY, JSON.stringify(cols.map(c => c.w))) } catch { /* ignore */ }
-  }, [cols])
-
-  useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      const r = resizingRef.current
-      if (!r) return
-      let d = e.clientX - r.startX
-      if (r.startW + d < MIN_COL_W) d = MIN_COL_W - r.startW
-      if (r.nextKey && r.nextStartW - d < MIN_COL_W) d = r.nextStartW - MIN_COL_W
-      setCols(prev => prev.map(c => c.key === r.key ? { ...c, w: r.startW + d } : c.key === r.nextKey ? { ...c, w: r.nextStartW - d } : c))
-    }
-    const onUp = () => { resizingRef.current = null }
-    document.addEventListener('mousemove', onMove)
-    document.addEventListener('mouseup', onUp)
-    return () => { document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp) }
-  }, [])
+  useEffect(() => { loadCounts() }, [loadCounts])
 
   const TABS = isFinalApprover
     ? [
@@ -226,6 +201,7 @@ export default function ApprovalsPage() {
       if (action === 'reject') body = { reason: noteReason, managerNote: noteReason + (noteText.trim() ? `: ${noteText.trim()}` : ''), qaComments: noteQa }
       const { customer } = await apiPost<{ customer: Customer }>(`/customers/${selected.id}/${action}`, body)
       replaceRow(customer)
+      loadCounts()
       setToast({ message: 'Action completed successfully.', type: 'success' })
     } catch (e) {
       setToast({ message: errMsg(e, 'Action failed.'), type: 'error' })
@@ -241,6 +217,7 @@ export default function ApprovalsPage() {
     try {
       await apiDelete(`/customers/${selected.id}`)
       setCustomers(prev => prev.filter(c => c.id !== selected.id))
+      loadCounts()
       setSelected(null)
       setDeleteModal(false)
       setToast({ message: 'Record permanently deleted.', type: 'success' })
@@ -257,109 +234,126 @@ export default function ApprovalsPage() {
 
   const extras = Object.entries(selected?.extraFields ?? {}).filter(([, v]) => v !== null && v !== '')
 
+  const activeTab = TABS.find(t => t.key === statusFilter) ?? TABS[0]
+  const tabColor  = (key: string) => STATUS_COLOR[key] ?? '#374151'
+
+  // Status pills with live counts, centred at the top of the detail pane (argroup Tasks layout).
+  const PillsRow = (
+    <div style={{ flexShrink: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '14px 24px 8px', background: '#f7f8fa', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', gap: 2, background: '#fff', border: `1px solid ${P.border}`, borderRadius: 8, padding: 3 }}>
+          {TABS.map(tab => {
+            const active = statusFilter === tab.key
+            const cnt = counts[tab.key || 'ALL'] ?? 0
+            const color = tabColor(tab.key)
+            return (
+              <button key={tab.key || 'all'} onClick={() => handleTab(tab.key)}
+                style={{ flexShrink: 0, paddingTop: 5, paddingBottom: 5, paddingLeft: 14, paddingRight: cnt > 0 ? 4 : 14, borderRadius: 6, cursor: 'pointer', fontFamily: FONT, fontSize: 12, fontWeight: active ? 700 : 500, transition: 'all .15s', border: 'none', background: active ? color : 'transparent', color: active ? '#fff' : '#5C5C5C', whiteSpace: 'nowrap', display: 'flex', alignItems: 'stretch', gap: 5 }}>
+                <span style={{ display: 'flex', alignItems: 'center' }}>{tab.label}</span>
+                {cnt > 0 && (
+                  <span style={{ background: active ? 'rgba(255,255,255,0.25)' : color, color: '#fff', fontSize: 10, fontWeight: 700, padding: '0 6px', borderRadius: 3, lineHeight: 1, display: 'flex', alignItems: 'center' }}>
+                    {cnt > 999 ? '999+' : cnt}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      <div style={{ display: 'flex', gap: 3, padding: '0 20px', height: 3 }}>
+        {TABS.map(tab => (
+          <div key={tab.key || 'all'} style={{ flex: 1, background: tabColor(tab.key), borderRadius: 2, opacity: statusFilter === tab.key ? 1 : 0.35, transition: 'opacity .2s' }} />
+        ))}
+      </div>
+    </div>
+  )
+
+  const pageBtn = (label: string, to: number, off: boolean) => (
+    <button key={label} disabled={off} onClick={() => setPage(to)}
+      style={{ padding: '3px 10px', borderRadius: 6, border: `1px solid ${P.border}`, background: '#fff', color: P.navy, fontSize: 11, fontWeight: 600, cursor: off ? 'not-allowed' : 'pointer', opacity: off ? 0.4 : 1, fontFamily: FONT }}>
+      {label}
+    </button>
+  )
+
   return (
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      <div className="flex h-full overflow-hidden" style={{ minHeight: '100vh' }}>
-        {/* List panel */}
-        <div className="flex-shrink-0 flex flex-col transition-all duration-300"
-          style={{ width: listCollapsed ? 0 : 480, overflow: 'hidden', background: '#EDF0F3', borderRight: listCollapsed ? 'none' : '1px solid rgba(92,109,130,0.25)' }}>
-          <div className="px-3 pt-3 pb-3 space-y-2.5" style={{ borderBottom: '1px solid rgba(92,109,130,0.18)' }}>
-            <div className="flex items-center justify-between">
-              <h1 style={{ fontSize: 24, fontWeight: 900, color: '#132E57', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em', margin: 0 }}>Approvals</h1>
-              <button onClick={() => setListCollapsed(true)} title="Collapse list" className="flex items-center justify-center w-6 h-6 rounded transition-all text-[#9FA7B2] hover:text-[#132E57] hover:bg-[#132E57]/10">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
+      <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: P.bgMain, fontFamily: FONT }}>
+        {/* Left panel: records in the selected status */}
+        <div style={{ width: listCollapsed ? 0 : 340, flexShrink: 0, display: 'flex', flexDirection: 'column', background: '#EDF0F3', borderRight: `1px solid ${P.border}`, overflow: 'hidden', transition: 'width .25s' }}>
+          <div style={{ flexShrink: 0, borderBottom: `1px solid ${P.border}` }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: 52, padding: sidebarCollapsed ? '0 14px 0 54px' : '0 14px', transition: 'padding .2s' }}>
+              <PageTitle size={18}>{activeTab.label}</PageTitle>
+              <button onClick={() => setListCollapsed(true)} title="Collapse list" style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: P.iconMuted, padding: 4, borderRadius: 6 }}>
+                <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
               </button>
             </div>
-            <div className="flex gap-1 overflow-x-auto pb-0.5 scrollbar-none">
-              {TABS.map(t => (
-                <button key={t.key} onClick={() => handleTab(t.key)} className="flex-shrink-0 px-2.5 py-1 rounded text-xs font-bold transition-all"
-                  style={statusFilter === t.key
-                    ? { background: 'linear-gradient(135deg, #132E57 0%, #1E8496 100%)', color: '#fff', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.03em' }
-                    : { background: 'rgba(19,46,87,0.45)', color: '#fff', fontFamily: "'Rajdhani', sans-serif" }}>
-                  {t.label}
-                </button>
-              ))}
-            </div>
-            <div className="relative">
-              <svg className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 pointer-events-none" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="#9FA7B2">
-                <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
-              </svg>
-              <input type="text" placeholder="Search name / code (press Enter)" defaultValue={search}
-                onKeyDown={e => { if (e.key === 'Enter') { setSearch((e.target as HTMLInputElement).value); setPage(1); setSelected(null) } }}
-                className="w-full rounded-lg pl-8 pr-3 py-1.5 text-xs outline-none transition focus:border-teal-600"
-                style={{ background: '#fff', border: '1px solid #E0DDD5', color: '#132E57' }} />
-            </div>
-          </div>
-
-          <div ref={containerRef} className="overflow-hidden">
-            <div className="flex select-none" style={{ background: 'linear-gradient(90deg, #4A5568 0%, #5A6880 100%)', borderBottom: '2px solid #3A4558' }}>
-              {cols.map((col, idx) => (
-                <div key={col.key} className="relative flex items-center px-2 py-2.5 flex-shrink-0" style={{ width: col.w }}>
-                  <span className="text-xs font-bold uppercase tracking-widest truncate" style={{ color: '#FFFFFF', fontFamily: "'Rajdhani', sans-serif" }}>{col.label}</span>
-                  {idx < cols.length - 1 && (
-                    <div className="absolute right-0 top-0 h-full w-3 flex items-center justify-center cursor-col-resize z-10"
-                      onMouseDown={e => {
-                        e.preventDefault()
-                        userResized.current = true
-                        const next = cols[idx + 1]
-                        resizingRef.current = { key: col.key, nextKey: next?.key, startX: e.clientX, startW: col.w, nextStartW: next?.w ?? 0 }
-                      }}>
-                      <div className="w-px h-3.5 rounded-full" style={{ background: '#5C6D82' }} />
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex-1 overflow-y-auto">
-            {loading && (
-              <div className="flex justify-center py-6">
-                <svg className="h-4 w-4 animate-spin text-blue-500" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 0 1 8-8V0C5.373 0 0 5.373 0 12h4Z" /></svg>
+            <div style={{ padding: '0 14px 10px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8, background: '#fff', border: `1px solid ${P.border}`, borderRadius: 8, padding: '7px 10px' }}>
+                <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke={P.iconMuted} strokeWidth={2} style={{ flexShrink: 0 }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+                </svg>
+                <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search name or code, then Enter"
+                  onKeyDown={e => { if (e.key === 'Enter') { setSearch(searchInput.trim()); setPage(1); setSelected(null) } }}
+                  style={{ border: 'none', outline: 'none', flex: 1, fontSize: 12, fontFamily: FONT, background: 'transparent', color: P.navy }} />
+                {search && (
+                  <button onClick={() => { setSearchInput(''); setSearch(''); setPage(1) }} title="Clear search" style={{ border: 'none', background: 'transparent', cursor: 'pointer', color: P.iconMuted, fontSize: 14, lineHeight: 1, padding: 0 }}>×</button>
+                )}
               </div>
-            )}
-            {!loading && customers.length === 0 && <p className="px-3 py-6 text-center text-xs text-gray-400">No records found.</p>}
-            {customers.map(c => (
-              <button key={c.id} onClick={() => selectCustomer(c)}
-                className={`w-full text-left flex border-b border-gray-50 hover:bg-blue-50 transition-colors ${selected?.id === c.id ? 'bg-blue-50 border-l-2 border-l-blue-500' : ''}`}>
-                {cols.map(col => (
-                  <div key={col.key} className="px-2 py-1.5 flex items-center flex-shrink-0 min-w-0 overflow-hidden" style={{ width: col.w }}>
-                    {col.key === 'name'     && <span className="text-xs text-gray-700 truncate">{c.firstName} {c.lastName}</span>}
-                    {col.key === 'agent'    && <span className="text-xs text-gray-700 truncate">{c.agent?.displayName ?? 'N/A'}</span>}
-                    {col.key === 'phone'    && <span className="text-xs font-mono text-gray-600 truncate">{c.phone ?? 'N/A'}</span>}
-                    {col.key === 'vertical' && <span className="text-xs text-gray-700 truncate">{c.verticalType ?? 'N/A'}</span>}
-                    {col.key === 'did'      && <span className="text-xs font-mono text-gray-700 truncate">{c.client?.didCode ?? 'N/A'}</span>}
+            </div>
+          </div>
+
+          <div style={{ flex: 1, overflowY: 'auto', padding: '8px 10px' }}>
+            {loading && <div style={{ padding: 24, textAlign: 'center', color: P.textMuted, fontSize: 12 }}>Loading...</div>}
+            {!loading && customers.length === 0 && <div style={{ padding: 24, textAlign: 'center', color: P.textMuted, fontSize: 12 }}>No records found.</div>}
+            {!loading && customers.map((c, idx) => {
+              const isActive = selected?.id === c.id
+              return (
+                <button key={c.id} onClick={() => selectCustomer(c)}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '4px 6px', border: `1px solid ${isActive ? P.teal : P.border}`, borderRadius: 8, cursor: 'pointer', marginBottom: 4, background: isActive ? '#E8EEF7' : '#F8FAFC', fontFamily: FONT }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#EEF2F7' }}
+                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = '#F8FAFC' }}>
+                  <div style={{ display: 'flex', gap: 9, alignItems: 'center' }}>
+                    <span style={{ flexShrink: 0, minWidth: 16, height: 16, padding: '0 3px', borderRadius: 5, background: '#A5D8DD', color: '#000', fontSize: 9, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{((meta?.currentPage ?? 1) - 1) * (meta?.perPage ?? 20) + idx + 1}</span>
+                    <span style={{ fontSize: 12, fontWeight: 700, color: '#000', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.firstName} {c.lastName}</span>
+                    {c.client?.didCode && <span style={{ fontSize: 10, fontWeight: 700, color: P.navy, background: '#E8EEF7', border: `1px solid ${P.navy}22`, padding: '2px 8px', borderRadius: 6, flexShrink: 0 }}>{c.client.didCode}</span>}
+                    <span title={c.agent?.displayName ?? ''} style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 20, color: '#fff', background: tabColor(c.status), flexShrink: 0, maxWidth: 110, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      {c.agent?.displayName ?? 'No agent'}
+                    </span>
                   </div>
-                ))}
-              </button>
-            ))}
+                </button>
+              )
+            })}
           </div>
 
           {meta && meta.lastPage > 1 && (
-            <div className="px-3 py-2 border-t border-gray-100 flex justify-between items-center">
-              <span className="text-xs text-gray-400">{meta.total} total</span>
-              <div className="flex gap-1">
-                <button disabled={page === 1} onClick={() => setPage(p => p - 1)} className="px-2 py-1 rounded border border-gray-200 text-xs disabled:opacity-40 hover:bg-gray-50">Prev</button>
-                <button disabled={page === meta.lastPage} onClick={() => setPage(p => p + 1)} className="px-2 py-1 rounded border border-gray-200 text-xs disabled:opacity-40 hover:bg-gray-50">Next</button>
+            <div style={{ flexShrink: 0, padding: '6px 12px', borderTop: `1px solid ${P.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 11, color: P.textMuted }}>
+              <span>Page {meta.currentPage} of {meta.lastPage} · {meta.total} records</span>
+              <div style={{ display: 'flex', gap: 4 }}>
+                {pageBtn('Prev', page - 1, page === 1)}
+                {pageBtn('Next', page + 1, page === meta.lastPage)}
               </div>
             </div>
           )}
         </div>
 
-        {/* Detail panel */}
-        <div className="flex-1 overflow-y-auto bg-gray-50 relative">
+        {/* Right panel: status pills on top, record details below */}
+        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', background: '#f7f8fa', overflow: 'hidden', minWidth: 0 }}>
+          {PillsRow}
+          <div style={{ flex: 1, overflowY: 'auto', position: 'relative' }}>
           {listCollapsed && (
-            <button onClick={() => setListCollapsed(false)} title="Expand list" className="absolute top-3 left-3 z-20 flex items-center justify-center w-7 h-7 rounded-lg shadow-lg transition-all"
-              style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', border: '1px solid #1E8496' }}>
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+            <button onClick={() => setListCollapsed(false)} title="Expand list" style={{ position: 'absolute', top: 12, left: 12, zIndex: 20, width: 28, height: 28, borderRadius: 8, border: 'none', cursor: 'pointer', background: `linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
+              <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
             </button>
           )}
 
           {!selected && (
-            <div className="flex items-center justify-center h-full" style={{ minHeight: '60vh' }}>
-              <p className="text-sm text-gray-400">Select a record to view details</p>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+              <div style={{ textAlign: 'center' }}>
+                <p style={{ fontSize: 40, color: P.border, margin: 0 }}>←</p>
+                <p style={{ fontSize: 13, color: P.textMuted, fontFamily: FONT }}>Select a record to view details</p>
+              </div>
             </div>
           )}
 
@@ -570,6 +564,7 @@ export default function ApprovalsPage() {
               </div>
             </div>
           )}
+          </div>
         </div>
       </div>
 

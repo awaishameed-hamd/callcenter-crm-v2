@@ -1,10 +1,14 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { Role, AGENT_TYPES, MANAGER_TYPES, DEPARTMENTS, STANDARD_FIELD_KEYS, snakeToCamel } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
+import PillSelect from '@/components/ui/PillSelect'
+import DataTable, { type Column } from '@/components/ui/DataTable'
+import { PageShell, PageHeader, FilterBar, FilterSep, FilterPills, FilterSearch, FilterCount, PrimaryButton, SecondaryButton, DownloadIcon, ColumnPicker, PlusIcon, Pager } from '@/components/ui/PageChrome'
+import { P } from '@/lib/palette'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiGet, apiPost, apiPut, apiDelete, errMsg, errFields, downloadText } from '@/lib/api'
 import { fmtDay, pktToday } from '@/lib/format'
@@ -26,6 +30,7 @@ const ALL_COLUMNS = [
   { key: 'joined', label: 'Joined' }, { key: 'salary', label: 'Basic Salary' }, { key: 'status', label: 'Status' },
 ]
 const ALL_COL_KEYS = ALL_COLUMNS.map(c => c.key)
+const COL_WIDTH: Record<string, number> = { userId: 85, name: 160, role: 95, roleType: 165, department: 110, contact: 140, joined: 95, salary: 110, status: 100 }
 const LS_COLS = 'mv_users_cols_v3', LS_ROLE = 'mv_users_role', LS_STATUS = 'mv_users_status'
 const DEFAULT_PASSWORD = '12345678'
 const CORE_KEYS = new Set(STANDARD_FIELD_KEYS.user)
@@ -254,48 +259,11 @@ function UserForm({ initial, allowedRoles, onSubmit, loading, errors }: {
 
       <div className="flex justify-end gap-3 pt-2">
         <button type="submit" disabled={loading} className="px-6 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
-          style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>
+          style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em' }}>
           {loading ? 'Saving' : isEdit ? 'Save Changes' : 'Create User'}
         </button>
       </div>
     </form>
-  )
-}
-
-function ColumnPicker({ visible, onChange }: { visible: string[]; onChange: (v: string[]) => void }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    const h = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false) }
-    document.addEventListener('mousedown', h)
-    return () => document.removeEventListener('mousedown', h)
-  }, [])
-  const all = visible.length === ALL_COLUMNS.length
-  const toggle = (key: string) => {
-    if (visible.includes(key) && visible.length === 1) return
-    onChange(visible.includes(key) ? visible.filter(k => k !== key) : [...visible, key])
-  }
-  return (
-    <div ref={ref} className="relative">
-      <button onClick={() => setOpen(o => !o)} className="flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all"
-        style={{ background: open ? 'linear-gradient(135deg,#132E57,#1E8496)' : 'rgba(255,255,255,0.15)', color: '#FFFFFF', border: '1px solid', borderColor: open ? '#D7A520' : 'rgba(255,255,255,0.3)', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>
-        Columns {visible.length < ALL_COLUMNS.length && <span className="ml-0.5 opacity-70">({visible.length}/{ALL_COLUMNS.length})</span>}
-      </button>
-      {open && (
-        <div className="absolute left-0 top-full mt-1.5 z-30 rounded-xl shadow-xl border overflow-hidden w-52" style={{ background: '#0D1B2A', borderColor: '#3F4753' }}>
-          <label className="flex items-center gap-2.5 px-3 py-2.5 cursor-pointer border-b" style={{ borderColor: '#3F4753', background: 'rgba(170,127,86,0.08)' }}>
-            <input type="checkbox" checked={all} onChange={() => onChange(all ? [ALL_COL_KEYS[0]] : ALL_COL_KEYS)} className="w-3.5 h-3.5 accent-amber-500 cursor-pointer" />
-            <span className="text-xs font-bold uppercase tracking-wide" style={{ color: '#FBDCB4' }}>{all ? 'Deselect All' : 'Select All'}</span>
-          </label>
-          {ALL_COLUMNS.map(col => (
-            <label key={col.key} className="flex items-center gap-2.5 px-3 py-2 cursor-pointer transition-colors hover:bg-white/5">
-              <input type="checkbox" checked={visible.includes(col.key)} onChange={() => toggle(col.key)} className="w-3.5 h-3.5 accent-amber-500 cursor-pointer" />
-              <span className="text-xs" style={{ color: visible.includes(col.key) ? '#FBDCB4' : '#9FA7B2' }}>{col.label}</span>
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
   )
 }
 
@@ -413,9 +381,65 @@ export default function UsersPage() {
   }
 
   const users = data?.data ?? []
-  const from = data ? (data.currentPage - 1) * data.perPage + 1 : 0
   const col = (k: string) => visibleCols.includes(k)
-  const th = (right = false): React.CSSProperties => ({ color: '#FFFFFF', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.07em', textAlign: right ? 'right' : 'left' })
+  const pill = (bg: string, color: string, text: React.ReactNode, round = true) => (
+    <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: round ? 99 : 4, fontSize: 11, fontWeight: 600, background: bg, color, width: 'fit-content' }}>{text}</span>
+  )
+
+  const cell = (key: string, u: User): React.ReactNode => {
+    const inactive = !u.isActive
+    switch (key) {
+      case 'userId': return <span style={{ fontSize: 12, fontWeight: 700, color: P.teal, letterSpacing: '0.04em' }}>{u.userCode}</span>
+      case 'name': return (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
+          <div style={{ width: 20, height: 20, borderRadius: '50%', background: inactive ? '#9CA3AF' : P.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{(u.displayName || u.userCode)[0].toUpperCase()}</div>
+          <span style={{ fontWeight: 600, color: P.textHeading }}>{u.displayName}</span>
+        </div>
+      )
+      case 'role': { const b = ROLE_BADGE[u.role] ?? { bg: '#F3F4F6', color: '#6B7280' }; return pill(b.bg, b.color, roleName(u.role)) }
+      case 'roleType': return u.agentType || u.managerType
+        ? pill(u.agentType ? '#FEF3C7' : '#EDE9FE', u.agentType ? '#92400E' : '#5B21B6', u.agentType ?? u.managerType, false)
+        : <span style={{ fontSize: 12, color: P.textMuted }}>N/A</span>
+      case 'department': return <span style={{ fontSize: 12, color: P.slate }}>{u.department ?? 'N/A'}</span>
+      case 'contact': return <span style={{ fontSize: 12, color: P.slate }}>{u.email ?? u.phone ?? 'N/A'}</span>
+      case 'joined': return <span style={{ fontSize: 12, color: P.slate }}>{fmtDay(u.dateOfJoining?.slice(0, 10) ?? u.createdAt)}</span>
+      case 'salary': return <span style={{ fontSize: 12, fontWeight: 600, color: u.basicSalary ? '#AA7F56' : '#9CA3AF' }}>{fmtPKR(u.basicSalary)}</span>
+      case 'status': return (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+          {inactive ? (
+            <>
+              {pill('#FEE2E2', '#DC2626', 'Inactive')}
+              {u.inactiveSince && <span style={{ fontSize: 11, color: P.textMuted }}>since {fmtDay(u.inactiveSince.slice(0, 10))}</span>}
+            </>
+          ) : pill('#DCFCE7', '#15803D', 'Active')}
+          {u.profileLocked && pill('#FEF3C7', '#B45309', 'Locked')}
+        </div>
+      )
+      default: return null
+    }
+  }
+
+  const iconBtn = (title: string, onClick: () => void, hover: string, d: string, tint?: string) => (
+    <button onClick={onClick} title={title}
+      style={{ padding: 6, borderRadius: 8, border: 0, background: 'transparent', color: tint ?? '#9CA3AF', cursor: 'pointer', display: 'flex' }}
+      onMouseEnter={e => { e.currentTarget.style.color = hover; e.currentTarget.style.background = `${hover}14` }}
+      onMouseLeave={e => { e.currentTarget.style.color = tint ?? '#9CA3AF'; e.currentTarget.style.background = 'transparent' }}>
+      <svg width={14} height={14} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d={d} /></svg>
+    </button>
+  )
+
+  const actions = (u: User) => {
+    const inactive = !u.isActive
+    if (!canManage(u)) return null
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+        {!inactive && iconBtn('Edit', () => { setEditUser(u); setFormErrors({}) }, '#2563EB', 'm16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931zm0 0L19.5 7.125')}
+        {me?.role === Role.ADMIN && !inactive && iconBtn(u.profileLocked ? 'Unlock profile' : 'Lock profile', () => setConfirm({ type: 'lock', user: u }), '#D97706', 'M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z', u.profileLocked ? '#D97706' : undefined)}
+        {!inactive && iconBtn('Disable user', () => { setDisableUser(u); setDisableDate('') }, '#DC2626', 'M22 10.5h-6m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z')}
+        {inactive && iconBtn('Re-activate user', () => setConfirm({ type: 'activate', user: u }), '#16A34A', 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z')}
+      </div>
+    )
+  }
 
   return (
     <>
@@ -461,152 +485,45 @@ export default function UsersPage() {
         </Confirm>
       )}
 
-      <div className="p-5 space-y-4" style={{ background: '#EDF0F3', minHeight: '100vh' }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-black" style={{ color: '#132E57', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>My Team</h1>
-            <p className="text-sm mt-0.5" style={{ color: '#5C5C5C' }}>{me?.role === Role.MANAGER ? 'Manage your agents' : 'Create and manage system users'}</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={handleExport} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold transition-all hover:bg-[#AA7F56]/25"
-              style={{ background: 'rgba(170,127,86,0.12)', color: '#AA7F56', border: '1px solid rgba(170,127,86,0.3)', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>
-              Export
-            </button>
-            {allowedRoles.length > 0 && (
-              <button onClick={() => { setShowCreate(true); setFormErrors({}) }} className="flex items-center gap-2 px-5 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all"
-                style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>
-                + New User
-              </button>
-            )}
-          </div>
-        </div>
+      <PageShell>
+        <PageHeader title="My Team" actions={<>
+          <SecondaryButton onClick={handleExport}><DownloadIcon /> Export</SecondaryButton>
+          {allowedRoles.length > 0 && <PrimaryButton onClick={() => { setShowCreate(true); setFormErrors({}) }}><PlusIcon /> New User</PrimaryButton>}
+        </>} />
 
-        <div className="flex flex-wrap items-center gap-2 rounded-xl px-4 py-2.5 shadow-sm" style={{ background: 'linear-gradient(135deg, #0E5F6E 0%, #1E8496 100%)', border: '1px solid #1A7888' }}>
+        <FilterBar>
           {me?.role !== Role.MANAGER && (
-            <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: 'rgba(0,0,0,0.15)' }}>
-              {[{ label: 'All Roles', value: '' }, ...(VISIBLE_ROLES[me?.role as Role] ?? []).map(r => ({ label: roleName(r), value: r }))].map(({ label, value }) => (
-                <button key={value} onClick={() => { setRoleFilter(value); setPage(1) }} className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                  style={roleFilter === value
-                    ? { background: 'linear-gradient(135deg, #132E57 0%, #1E8496 100%)', color: '#fff', fontFamily: "'Rajdhani', sans-serif", boxShadow: '0 2px 8px rgba(19,46,87,0.4)' }
-                    : { background: 'transparent', color: '#FFFFFF', fontFamily: "'Rajdhani', sans-serif" }}>
-                  {label}
-                </button>
-              ))}
-            </div>
+            <>
+              <PillSelect value={roleFilter} onChange={v => { setRoleFilter(v); setPage(1) }} dimValue=""
+                options={[{ value: '', label: 'All Roles' }, ...(VISIBLE_ROLES[me?.role as Role] ?? []).map(r => ({ value: r, label: roleName(r) }))]} />
+              <FilterSep />
+            </>
           )}
-          <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: 'rgba(0,0,0,0.15)' }}>
-            {[{ label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }, { label: 'All', value: 'all' }].map(({ label, value }) => (
-              <button key={value} onClick={() => { setStatusFilter(value); setPage(1) }} className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all"
-                style={statusFilter === value
-                  ? { background: value === 'inactive' ? 'linear-gradient(135deg, #C25A1F 0%, #E07840 100%)' : 'linear-gradient(135deg, #132E57 0%, #1E8496 100%)', color: '#fff', fontFamily: "'Rajdhani', sans-serif" }
-                  : { background: 'transparent', color: '#FFFFFF', fontFamily: "'Rajdhani', sans-serif" }}>
-                {label}
-              </button>
-            ))}
-          </div>
-          <input type="text" placeholder="Search" value={search} onChange={e => { setSearch(e.target.value); setPage(1) }}
-            className="px-3 py-1.5 rounded-lg text-xs outline-none transition w-44 placeholder-white/70"
-            style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff' }} />
-          <ColumnPicker visible={visibleCols} onChange={setVisibleCols} />
-          {data && <span className="ml-auto text-xs font-bold text-white">{data.total} user{data.total !== 1 ? 's' : ''}</span>}
-        </div>
+          <FilterPills value={statusFilter} onChange={v => { setStatusFilter(v); setPage(1) }}
+            options={[['active', 'Active'], ['inactive', 'Inactive'], ['all', 'All']] as const} />
+          <FilterSep />
+          <FilterSearch value={search} onChange={v => { setSearch(v); setPage(1) }} />
+          <ColumnPicker columns={ALL_COLUMNS} visible={visibleCols} onChange={setVisibleCols} />
+          {data && <FilterCount>{data.total} user{data.total !== 1 ? 's' : ''}</FilterCount>}
+        </FilterBar>
 
-        <div className="rounded-xl overflow-hidden shadow-sm" style={{ border: '1px solid #E0DDD5', background: '#FFFFFF' }}>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr style={{ background: 'linear-gradient(90deg, #4A5568 0%, #5A6880 100%)' }}>
-                  {ALL_COLUMNS.filter(c => col(c.key)).map(c => <th key={c.key} className="px-4 py-2.5 text-xs font-bold uppercase" style={th()}>{c.label}</th>)}
-                  <th className="px-4 py-2.5 text-xs font-bold uppercase" style={th(true)}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {loading ? Array.from({ length: 8 }).map((_, i) => (
-                  <tr key={i}>{Array.from({ length: visibleCols.length + 1 }).map((__, j) => <td key={j} className="px-4 py-2.5"><div className="h-3 bg-gray-100 rounded animate-pulse w-24" /></td>)}</tr>
-                )) : users.length === 0 ? (
-                  <tr><td colSpan={visibleCols.length + 1} className="px-5 py-10 text-center text-gray-400 text-sm">No users found.</td></tr>
-                ) : users.map(u => {
-                  const badge = ROLE_BADGE[u.role] ?? { bg: '#F3F4F6', color: '#6B7280' }
-                  const inactive = !u.isActive
-                  return (
-                    <tr key={u.id} className="bg-white transition-colors hover:bg-gray-50" style={{ borderBottom: '1px solid #F3F4F6', ...(inactive ? { opacity: 0.65 } : {}) }}>
-                      {col('userId') && <td className="px-4 py-2"><span className="font-mono text-xs font-semibold text-gray-500">{u.userCode}</span></td>}
-                      {col('name') && (
-                        <td className="px-4 py-2">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-full flex items-center justify-center text-white text-xs font-bold shrink-0" style={{ background: inactive ? '#9CA3AF' : '#3F4753' }}>{(u.displayName || u.userCode)[0].toUpperCase()}</div>
-                            <span className="font-medium text-gray-800 text-sm">{u.displayName}</span>
-                          </div>
-                        </td>
-                      )}
-                      {col('role') && <td className="px-4 py-2"><span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold" style={{ background: badge.bg, color: badge.color }}>{roleName(u.role)}</span></td>}
-                      {col('roleType') && (
-                        <td className="px-4 py-2">
-                          {u.agentType || u.managerType
-                            ? <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" style={u.agentType ? { background: '#FEF3C7', color: '#92400E' } : { background: '#EDE9FE', color: '#5B21B6' }}>{u.agentType ?? u.managerType}</span>
-                            : <span className="text-xs text-gray-400">N/A</span>}
-                        </td>
-                      )}
-                      {col('department') && <td className="px-4 py-2 text-xs text-gray-500">{u.department ?? 'N/A'}</td>}
-                      {col('contact') && <td className="px-4 py-2 text-xs text-gray-500">{u.email ?? u.phone ?? 'N/A'}</td>}
-                      {col('joined') && <td className="px-4 py-2 text-xs text-gray-500">{fmtDay(u.dateOfJoining?.slice(0, 10) ?? u.createdAt)}</td>}
-                      {col('salary') && <td className="px-4 py-2 text-xs font-medium" style={{ color: u.basicSalary ? '#AA7F56' : '#9CA3AF' }}>{fmtPKR(u.basicSalary)}</td>}
-                      {col('status') && (
-                        <td className="px-4 py-2">
-                          <div className="flex flex-col gap-0.5">
-                            {inactive ? (
-                              <>
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-600 w-fit">Inactive</span>
-                                {u.inactiveSince && <span className="text-xs text-gray-400">since {fmtDay(u.inactiveSince.slice(0, 10))}</span>}
-                              </>
-                            ) : <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 w-fit">Active</span>}
-                            {u.profileLocked && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700 w-fit">Locked</span>}
-                          </div>
-                        </td>
-                      )}
-                      <td className="px-4 py-2">
-                        <div className="flex items-center justify-end gap-1.5">
-                          {canManage(u) && !inactive && (
-                            <button onClick={() => { setEditUser(u); setFormErrors({}) }} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931zm0 0L19.5 7.125" /></svg>
-                            </button>
-                          )}
-                          {me?.role === Role.ADMIN && canManage(u) && !inactive && (
-                            <button onClick={() => setConfirm({ type: 'lock', user: u })} title={u.profileLocked ? 'Unlock profile' : 'Lock profile'}
-                              className={`p-1.5 rounded-lg transition-colors ${u.profileLocked ? 'text-amber-500 hover:bg-amber-50' : 'text-gray-400 hover:text-amber-500 hover:bg-amber-50'}`}>
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" /></svg>
-                            </button>
-                          )}
-                          {canManage(u) && !inactive && (
-                            <button onClick={() => { setDisableUser(u); setDisableDate('') }} className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition-colors" title="Disable user">
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M22 10.5h-6m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z" /></svg>
-                            </button>
-                          )}
-                          {canManage(u) && inactive && (
-                            <button onClick={() => setConfirm({ type: 'activate', user: u })} className="p-1.5 rounded-lg text-gray-400 hover:text-green-600 hover:bg-green-50 transition-colors" title="Re-activate user">
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" /></svg>
-                            </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
-          {data && data.lastPage > 1 && (
-            <div className="px-5 py-3 border-t border-gray-100 flex items-center justify-between">
-              <p className="text-xs text-gray-500">Showing {from} to {from + users.length - 1} of {data.total} users</p>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={data.currentPage === 1} className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors">Previous</button>
-                <span className="text-xs text-gray-500">{data.currentPage} / {data.lastPage}</span>
-                <button onClick={() => setPage(p => Math.min(data.lastPage, p + 1))} disabled={data.currentPage === data.lastPage} className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors">Next</button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+        <DataTable<User>
+          id="users"
+          rows={users}
+          loading={loading}
+          rowKey={u => u.id}
+          emptyText="No team members found."
+          rowStyle={u => (u.isActive ? undefined : { opacity: 0.65 })}
+          columns={[
+            ...ALL_COLUMNS.filter(c => col(c.key)).map((c): Column<User> => ({
+              key: c.key, label: c.label, width: COL_WIDTH[c.key] ?? 130,
+              render: u => cell(c.key, u),
+            })),
+            { key: 'actions', label: 'Actions', width: 120, align: 'right', resizable: false, render: u => actions(u) },
+          ]}
+        />
+        {data && <Pager page={data.currentPage} lastPage={data.lastPage} perPage={data.perPage} total={data.total} shown={users.length} noun="users" onPage={setPage} />}
+      </PageShell>
     </>
   )
 }

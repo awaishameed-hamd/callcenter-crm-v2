@@ -30,7 +30,7 @@ export default function PillSelect({ value, onChange, options, minWidth = 150, d
         style={{
           display: 'flex', alignItems: 'center', gap: 6, padding: '4px 12px', borderRadius: 40,
           border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600,
-          fontFamily: "'Inter', sans-serif", color: '#fff', whiteSpace: 'nowrap',
+          fontFamily: "'Aptos', sans-serif", color: '#fff', whiteSpace: 'nowrap',
           background: dimValue !== undefined && value === dimValue ? 'rgba(255,255,255,0.18)' : NAVY,
           ...triggerStyle,
         }}>
@@ -50,7 +50,7 @@ export default function PillSelect({ value, onChange, options, minWidth = 150, d
           {options.map(opt => (
             <div key={opt.value} onMouseDown={() => { onChange(opt.value); setOpen(false) }}
               style={{
-                padding: '5px 12px', fontSize: 13, fontFamily: "'Inter', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap',
+                padding: '5px 12px', fontSize: 13, fontFamily: "'Aptos', sans-serif", cursor: 'pointer', whiteSpace: 'nowrap',
                 color: opt.value === value ? TEAL : NAVY,
                 fontWeight: opt.value === value ? 700 : 400,
                 background: opt.value === value ? '#E5F3F5' : 'transparent',

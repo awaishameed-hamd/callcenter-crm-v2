@@ -97,7 +97,7 @@ export default function AttendanceApplicabilitySettings() {
           border: `1px solid ${toast.ok ? '#6EE7B7' : '#FECACA'}`,
           color: toast.ok ? '#065F46' : '#B91C1C',
           padding: '8px 16px', borderRadius: 8, fontSize: 12, fontWeight: 600,
-          fontFamily: "'Inter', sans-serif", boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
+          fontFamily: "'Aptos', sans-serif", boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
         }}>{toast.msg}</div>
       )}
 
@@ -118,15 +118,15 @@ export default function AttendanceApplicabilitySettings() {
               padding: '6px 16px', background: '#F1F5F9', borderBottom: '1px solid #E2E8F0',
             }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                <span style={{ fontSize: 12, fontWeight: 800, color: '#1E293B', fontFamily: "'Inter', sans-serif", letterSpacing: '0.04em' }}>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#1E293B', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em' }}>
                   {ROLE_LABEL[role] ?? role}
                 </span>
-                <span style={{ fontSize: 10, color: '#94A3B8', fontFamily: "'Inter', sans-serif" }}>
+                <span style={{ fontSize: 10, color: '#94A3B8', fontFamily: "'Aptos', sans-serif" }}>
                   {users.filter(u => u.attendanceApplicable).length}/{users.length}
                 </span>
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: 10, color: '#94A3B8', fontFamily: "'Inter', sans-serif" }}>
+                <span style={{ fontSize: 10, color: '#94A3B8', fontFamily: "'Aptos', sans-serif" }}>
                   {allOn ? 'All on' : anyOn ? 'Partial' : 'All off'}
                 </span>
                 <Toggle on={allOn} partial={!allOn && anyOn} disabled={busy === roleKey} onChange={() => toggleRole(role, allOn)} />
@@ -149,11 +149,11 @@ export default function AttendanceApplicabilitySettings() {
                       background: user.attendanceApplicable ? TEAL + '18' : '#F1F5F9',
                       display: 'flex', alignItems: 'center', justifyContent: 'center',
                       fontSize: 10, fontWeight: 800, color: user.attendanceApplicable ? TEAL : '#94A3B8',
-                      fontFamily: "'Inter', sans-serif", flexShrink: 0,
+                      fontFamily: "'Aptos', sans-serif", flexShrink: 0,
                     }}>
                       {user.displayName.charAt(0).toUpperCase()}
                     </div>
-                    <span style={{ fontSize: 12, fontWeight: 400, color: '#374151', fontFamily: "'Inter', sans-serif" }}>
+                    <span style={{ fontSize: 12, fontWeight: 400, color: '#374151', fontFamily: "'Aptos', sans-serif" }}>
                       {user.displayName}
                       {(user.managerType ?? user.agentType) && <span style={{ marginLeft: 6, fontSize: 10, color: '#94A3B8' }}>{user.managerType ?? user.agentType}</span>}
                     </span>

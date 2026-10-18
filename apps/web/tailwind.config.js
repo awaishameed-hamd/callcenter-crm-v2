@@ -27,7 +27,7 @@ module.exports = {
         sidebarBg: '#E8EAED',
       },
       fontFamily: {
-        sans:     ['Inter', 'system-ui', 'sans-serif'],
+        sans:     ['Aptos', 'system-ui', 'sans-serif'],
         outfit:   ['Outfit', 'sans-serif'],
         rajdhani: ['Rajdhani', 'sans-serif'],
         bebas:    ['"Bebas Neue"', 'Impact', 'sans-serif'],

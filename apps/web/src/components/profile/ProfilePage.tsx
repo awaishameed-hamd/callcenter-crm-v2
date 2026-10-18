@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { apiGet, apiPut, errMsg, errFields } from '@/lib/api'
 import { roleLabel } from '@/lib/roles'
 import type { FormField, User } from '@/types'
+import { PageTitle } from '@/components/ui/PageChrome'
 
 const CORE_KEYS = new Set(['display_name', ...STANDARD_FIELD_KEYS.user])
 const READONLY_KEYS = new Set(['date_of_joining', 'department', 'basic_salary', 'punctuality_allowance', 'travelling_allowance', 'other_allowance'])
@@ -151,7 +152,7 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="p-6 max-w-3xl mx-auto space-y-5">
+      <div className="px-6 pb-6 max-w-3xl mx-auto space-y-5">
         {[1, 2, 3].map(i => (
           <div key={i} className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="h-4 bg-gray-200 rounded animate-pulse w-1/3 mb-4" />
@@ -171,11 +172,10 @@ export default function ProfilePage() {
   return (
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <div className="p-6 max-w-3xl mx-auto space-y-5">
+      <div className="px-6 pb-6 max-w-3xl mx-auto space-y-5">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-black" style={{ color: '#132E57', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>My Profile</h1>
-            <p className="text-sm text-gray-500 mt-0.5">View and manage your account details</p>
+          <div style={{ display: 'flex', alignItems: 'center', minHeight: 52 }}>
+            <PageTitle>My Profile</PageTitle>
           </div>
           {locked ? (
             <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium">Profile Locked</div>
@@ -184,13 +184,13 @@ export default function ProfilePage() {
               <button type="button" onClick={() => { setEditing(false); load(profile); setErrors({}) }} className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
                 style={{ border: '1px solid #5C6D82', color: '#5C6D82', background: 'transparent' }}>Cancel</button>
               <button type="button" onClick={save} disabled={loading} className="px-5 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
-                style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>
+                style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em' }}>
                 {loading ? 'Saving' : 'Save Changes'}
               </button>
             </div>
           ) : (
             <button onClick={() => setEditing(true)} className="px-5 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all"
-              style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>Edit Profile</button>
+              style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em' }}>Edit Profile</button>
           )}
         </div>
 
@@ -257,7 +257,7 @@ export default function ProfilePage() {
             {pwError && <p className="text-xs text-red-500">{pwError}</p>}
             <div className="flex justify-end">
               <button type="submit" disabled={pwLoading} className="px-5 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
-                style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>
+                style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em' }}>
                 {pwLoading ? 'Updating' : 'Change Password'}
               </button>
             </div>

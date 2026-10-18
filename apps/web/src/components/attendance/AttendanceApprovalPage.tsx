@@ -30,7 +30,7 @@ const APPROVAL_BADGE: Record<string, string> = {
 function StatCard({ label, value, border, fill, textColor }: { label: string; value: number; border: string; fill: string; textColor: string }) {
   return (
     <div style={{ flex: 1, minWidth: 100, background: fill, border: `1px solid ${border}30`, borderRadius: 10, padding: '11px 14px' }}>
-      <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: textColor, fontFamily: '"Inter", sans-serif' }}>{value ?? 0}</p>
+      <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: textColor, fontFamily: '"Aptos", sans-serif' }}>{value ?? 0}</p>
       <p style={{ margin: '2px 0 0', fontSize: 10, fontWeight: 300, fontFamily: "'Ethnocentric Rg', sans-serif", color: '#64748B' }}>{label}</p>
     </div>
   )
@@ -73,7 +73,7 @@ function EditTimeCell({ rec, onSaved }: { rec: any; onSaved: (id: string, time: 
 
   return (
     <div className="flex items-center gap-2">
-      <span className="text-xs font-bold text-gray-700" style={{ fontFamily: '"Inter", sans-serif', letterSpacing: '0.04em' }}>
+      <span className="text-xs font-bold text-gray-700" style={{ fontFamily: '"Aptos", sans-serif', letterSpacing: '0.04em' }}>
         {formatTime12h(rec.loginTime) ?? 'N/A'}
       </span>
       {rec.approvalStatus === 'pending' && (
@@ -255,7 +255,7 @@ export default function AttendanceApprovalPage() {
             <button key={m.key} onClick={() => setModuleTab(m.key as 'attendance' | 'leaves')}
               style={{
                 padding: '5px 14px', borderRadius: 7, border: 'none', cursor: 'pointer',
-                fontSize: 12, fontWeight: 700, fontFamily: '"Inter", sans-serif',
+                fontSize: 12, fontWeight: 700, fontFamily: '"Aptos", sans-serif',
                 background: moduleTab === m.key ? P.navy : 'transparent',
                 color: moduleTab === m.key ? '#fff' : P.navy,
                 transition: 'all .15s',
@@ -283,7 +283,7 @@ export default function AttendanceApprovalPage() {
 
           {/* Date */}
           <input type="date" value={date} onChange={e => setDate(e.target.value)}
-            style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 30, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: '"Inter", sans-serif', background: date ? P.navy : 'rgba(255,255,255,0.18)', color: '#fff', outline: 'none', colorScheme: 'dark' }} />
+            style={{ flexShrink: 0, padding: '4px 10px', borderRadius: 30, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: '"Aptos", sans-serif', background: date ? P.navy : 'rgba(255,255,255,0.18)', color: '#fff', outline: 'none', colorScheme: 'dark' }} />
 
           {/* Separator */}
           <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.3)', flexShrink: 0, margin: '0 2px' }} />
@@ -291,7 +291,7 @@ export default function AttendanceApprovalPage() {
           {/* Status pills */}
           {STATUS_TABS.map(({ key, label }) => (
             <button key={key} type="button" onClick={() => setStatusTab(key)}
-              style={{ flexShrink: 0, padding: '4px 12px', borderRadius: 40, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: '"Inter", sans-serif', transition: 'all .15s', whiteSpace: 'nowrap', background: statusTab === key ? P.navy : 'transparent', color: statusTab === key ? '#fff' : 'rgba(255,255,255,0.85)' }}>
+              style={{ flexShrink: 0, padding: '4px 12px', borderRadius: 40, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: '"Aptos", sans-serif', transition: 'all .15s', whiteSpace: 'nowrap', background: statusTab === key ? P.navy : 'transparent', color: statusTab === key ? '#fff' : 'rgba(255,255,255,0.85)' }}>
               {label}
             </button>
           ))}
@@ -305,14 +305,14 @@ export default function AttendanceApprovalPage() {
               <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
             </svg>
             <input type="text" placeholder="Search…" value={search} onChange={e => setSearch(e.target.value)}
-              style={{ width: '100%', boxSizing: 'border-box', paddingLeft: 28, paddingRight: 8, paddingTop: 4, paddingBottom: 4, borderRadius: 30, border: '1.5px solid rgba(255,255,255,0.35)', fontSize: 12, outline: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', fontFamily: '"Inter", sans-serif' }} />
+              style={{ width: '100%', boxSizing: 'border-box', paddingLeft: 28, paddingRight: 8, paddingTop: 4, paddingBottom: 4, borderRadius: 30, border: '1.5px solid rgba(255,255,255,0.35)', fontSize: 12, outline: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', fontFamily: '"Aptos", sans-serif' }} />
           </div>
 
           {/* Bulk Approve, right corner */}
           <button
             onClick={() => pendingRecords.length > 0 && setBulkConfirm(true)}
             disabled={pendingRecords.length === 0 || loading}
-            style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 14px', borderRadius: 30, border: 'none', cursor: pendingRecords.length > 0 ? 'pointer' : 'not-allowed', fontSize: 12, fontWeight: 700, fontFamily: '"Inter", sans-serif', background: pendingRecords.length > 0 ? '#F2AC18' : 'rgba(0,0,0,0.2)', color: '#ffffff', opacity: pendingRecords.length === 0 ? 0.5 : 1 }}>
+            style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 14px', borderRadius: 30, border: 'none', cursor: pendingRecords.length > 0 ? 'pointer' : 'not-allowed', fontSize: 12, fontWeight: 700, fontFamily: '"Aptos", sans-serif', background: pendingRecords.length > 0 ? '#F2AC18' : 'rgba(0,0,0,0.2)', color: '#ffffff', opacity: pendingRecords.length === 0 ? 0.5 : 1 }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" style={{ width: 13, height: 13 }}>
               <polyline points="20 6 9 17 4 12"/>
             </svg>
@@ -365,11 +365,11 @@ export default function AttendanceApprovalPage() {
               { key: 'actions', label: 'Actions', width: 190, resizable: false, render: (rec: any) => rec.approvalStatus !== 'pending' ? null : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                   <button onClick={() => approveDirect(rec.id)}
-                    style={{ padding: '3px 10px', borderRadius: 6, background: '#16A34A', color: '#fff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Inter", sans-serif' }}>
+                    style={{ padding: '3px 10px', borderRadius: 6, background: '#16A34A', color: '#fff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Aptos", sans-serif' }}>
                     Approve
                   </button>
                   <button onClick={() => setConfirm({ id: rec.id, name: rec.userName })}
-                    style={{ padding: '3px 10px', borderRadius: 6, background: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Inter", sans-serif' }}>
+                    style={{ padding: '3px 10px', borderRadius: 6, background: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Aptos", sans-serif' }}>
                     Mark Absent
                   </button>
                 </div>
@@ -396,7 +396,7 @@ export default function AttendanceApprovalPage() {
           <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: P.teal, borderRadius: 40, padding: '5px 8px', flexWrap: 'wrap' }}>
             {STATUS_TABS.map(({ key, label }) => (
               <button key={key} type="button" onClick={() => setLeaveSTab(key)}
-                style={{ flexShrink: 0, padding: '4px 12px', borderRadius: 40, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: '"Inter", sans-serif', transition: 'all .15s', whiteSpace: 'nowrap', background: leaveSTab === key ? P.navy : 'transparent', color: leaveSTab === key ? '#fff' : 'rgba(255,255,255,0.85)' }}>
+                style={{ flexShrink: 0, padding: '4px 12px', borderRadius: 40, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 600, fontFamily: '"Aptos", sans-serif', transition: 'all .15s', whiteSpace: 'nowrap', background: leaveSTab === key ? P.navy : 'transparent', color: leaveSTab === key ? '#fff' : 'rgba(255,255,255,0.85)' }}>
                 {label}
               </button>
             ))}
@@ -406,10 +406,10 @@ export default function AttendanceApprovalPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
               </svg>
               <input type="text" placeholder="Search…" value={leaveSearch} onChange={e => setLeaveSearch(e.target.value)}
-                style={{ width: '100%', boxSizing: 'border-box', paddingLeft: 28, paddingRight: 8, paddingTop: 4, paddingBottom: 4, borderRadius: 30, border: '1.5px solid rgba(255,255,255,0.35)', fontSize: 12, outline: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', fontFamily: '"Inter", sans-serif' }} />
+                style={{ width: '100%', boxSizing: 'border-box', paddingLeft: 28, paddingRight: 8, paddingTop: 4, paddingBottom: 4, borderRadius: 30, border: '1.5px solid rgba(255,255,255,0.35)', fontSize: 12, outline: 'none', background: 'rgba(255,255,255,0.15)', color: '#fff', fontFamily: '"Aptos", sans-serif' }} />
             </div>
             <button onClick={() => fetchLeaves()} disabled={leaveLoading}
-              style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 14px', borderRadius: 30, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: '"Inter", sans-serif', background: 'rgba(255,255,255,0.2)', color: '#fff', opacity: leaveLoading ? 0.6 : 1 }}>
+              style={{ marginLeft: 'auto', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 6, padding: '4px 14px', borderRadius: 30, border: 'none', cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: '"Aptos", sans-serif', background: 'rgba(255,255,255,0.2)', color: '#fff', opacity: leaveLoading ? 0.6 : 1 }}>
               {leaveLoading ? 'Loading…' : 'Refresh'}
             </button>
           </div>
@@ -445,11 +445,11 @@ export default function AttendanceApprovalPage() {
                 { key: 'actions', label: 'Actions', width: 170, resizable: false, render: (l: any) => l.status !== 'pending' ? null : (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                     <button onClick={() => setLeaveConfirm({ id: l.id, action: 'approve', name: l.applicant?.displayName })}
-                      style={{ padding: '3px 10px', borderRadius: 6, background: '#16A34A', color: '#fff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Inter", sans-serif' }}>
+                      style={{ padding: '3px 10px', borderRadius: 6, background: '#16A34A', color: '#fff', border: 'none', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Aptos", sans-serif' }}>
                       Approve
                     </button>
                     <button onClick={() => { setLeaveConfirm({ id: l.id, action: 'reject', name: l.applicant?.displayName }); setLeaveReason('') }}
-                      style={{ padding: '3px 10px', borderRadius: 6, background: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Inter", sans-serif' }}>
+                      style={{ padding: '3px 10px', borderRadius: 6, background: '#FEE2E2', color: '#DC2626', border: '1px solid #FECACA', fontSize: 11, fontWeight: 700, cursor: 'pointer', fontFamily: '"Aptos", sans-serif' }}>
                       Reject
                     </button>
                   </div>
@@ -472,13 +472,13 @@ export default function AttendanceApprovalPage() {
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
             </div>
-            <h3 className="text-base font-bold text-gray-800 mb-2" style={{ fontFamily: '"Inter", sans-serif' }}>
+            <h3 className="text-base font-bold text-gray-800 mb-2" style={{ fontFamily: '"Aptos", sans-serif' }}>
               Approve All Pending
             </h3>
             <p className="text-sm text-gray-500 mb-1">
               You are about to approve
             </p>
-            <p className="text-2xl font-black mb-1" style={{ color: '#15803d', fontFamily: '"Inter", sans-serif' }}>
+            <p className="text-2xl font-black mb-1" style={{ color: '#15803d', fontFamily: '"Aptos", sans-serif' }}>
               {pendingRecords.length} record{pendingRecords.length !== 1 ? 's' : ''}
             </p>
             <p className="text-xs text-gray-400 mb-5">for {date}</p>
@@ -527,7 +527,7 @@ export default function AttendanceApprovalPage() {
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => !leaveActing && setLeaveConfirm(null)} />
           <div className="relative bg-white rounded-2xl shadow-2xl p-6 max-w-sm w-full border border-gray-200">
             <div className="text-3xl mb-3 text-center">{leaveConfirm.action === 'approve' ? '✅' : '🚫'}</div>
-            <h3 className="text-base font-bold text-gray-800 mb-2 text-center" style={{ fontFamily: '"Inter", sans-serif' }}>
+            <h3 className="text-base font-bold text-gray-800 mb-2 text-center" style={{ fontFamily: '"Aptos", sans-serif' }}>
               {leaveConfirm.action === 'approve' ? 'Approve Leave' : 'Reject Leave'}
             </h3>
             <p className="text-sm text-gray-500 mb-4 text-center">
@@ -544,7 +544,7 @@ export default function AttendanceApprovalPage() {
                   onChange={e => setLeaveReason(e.target.value)}
                   placeholder="Enter reason…"
                   className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm outline-none resize-none focus:border-red-400"
-                  style={{ fontFamily: '"Inter", sans-serif' }}
+                  style={{ fontFamily: '"Aptos", sans-serif' }}
                 />
               </div>
             )}

@@ -36,8 +36,9 @@ const SALE_TREE_COLORS = ['#132E57', '#1E8496', '#D7A520', '#CBB26A', '#3A6B3A',
 const CANCEL_COLORS    = ['#1E8496', '#D7A520', '#C25A1F', '#132E57', '#3A6B3A', '#7B2D8E']
 const VERTICAL_COLORS  = ['#132E57', '#1E8496', '#D7A520', '#C25A1F']
 
+const F = "'Aptos', sans-serif"
 const cardStyle: React.CSSProperties = { background: P.bgCard, borderRadius: 8, padding: '12px 14px', boxShadow: P.shadow }
-const titleStyle: React.CSSProperties = { color: P.navy, fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8 }
+const titleStyle: React.CSSProperties = { color: P.navy, fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 8, fontFamily: F }
 const tooltipProps = {
   contentStyle: { background: '#fff', border: `1px solid ${P.border}`, borderRadius: 6, fontSize: 11, color: P.navy },
   labelStyle:   { color: P.textLabel, fontWeight: 600 },
@@ -141,14 +142,14 @@ export default function DashboardPage() {
   ]
 
   return (
-    <div style={{ background: '#EDF0F3', minHeight: '100vh', padding: '14px 18px', boxSizing: 'border-box' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 12, flexWrap: 'wrap', gap: 8 }}>
-        <div style={{ fontSize: 24, fontWeight: 900, color: P.navy, letterSpacing: '0.04em', fontFamily: "'Rajdhani', sans-serif" }}>Dashboard</div>
+    <div style={{ background: P.bgMain, minHeight: '100vh', padding: '0 18px 14px', boxSizing: 'border-box', fontFamily: F }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 52, marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
+        <div style={{ fontSize: 29, color: P.teal, fontFamily: "'Faster One', cursive", textTransform: 'uppercase', display: 'inline-block', letterSpacing: '0.01em', lineHeight: 1.15 }}>Dashboard</div>
         <div style={{ display: 'flex', gap: 2, background: '#fff', border: `1px solid ${P.border}`, borderRadius: 8, padding: 3 }}>
           {PERIODS.map(p => (
             <button key={p.key}
               onClick={() => (p.key === 'custom' ? (setDraftFrom(fromDate), setDraftTo(toDate), setShowDateModal(true)) : setPeriod(p.key))}
-              style={{ background: period === p.key ? P.navy : 'transparent', color: period === p.key ? '#fff' : P.slate, border: 'none', padding: '5px 13px', borderRadius: 6, fontSize: 11, fontWeight: period === p.key ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s' }}>
+              style={{ background: period === p.key ? P.navy : 'transparent', color: period === p.key ? '#fff' : P.slate, border: 'none', padding: '5px 13px', borderRadius: 6, fontSize: 11, fontWeight: period === p.key ? 600 : 400, cursor: 'pointer', whiteSpace: 'nowrap', transition: 'all 0.15s', fontFamily: F }}>
               {p.label}
               {p.key === 'custom' && period === 'custom' && fromDate && toDate && (
                 <span style={{ marginLeft: 5, fontSize: 9, opacity: 0.85 }}>({fmtShort(fromDate)} to {fmtShort(toDate)})</span>
@@ -162,12 +163,12 @@ export default function DashboardPage() {
 
       <div className="grid grid-cols-2 xl:grid-cols-4" style={{ gap: 10, marginBottom: 10 }}>
         {statCards.map((c, i) => (
-          <div key={i} style={{ background: `linear-gradient(135deg, ${c.fill} 0%, #fff 100%)`, borderLeft: `4px solid ${c.border}`, borderRadius: 8, padding: '11px 14px', boxShadow: `0 1px 4px ${c.border}18`, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-            <div>
-              <div style={{ fontSize: 9, color: P.textMuted, letterSpacing: '0.08em', fontWeight: 600 }}>{c.label}</div>
+          <div key={i} style={{ background: `linear-gradient(135deg, ${c.fill} 0%, #fff 100%)`, border: `1px solid ${c.border}33`, borderRadius: 8, padding: 14, minHeight: 80, boxSizing: 'border-box', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', overflow: 'hidden' }}>
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 9.5, color: P.textMuted, letterSpacing: '0.03em', fontWeight: 300, textTransform: 'uppercase', fontFamily: "'Ethnocentric Rg', sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c.label}</div>
               {loading
-                ? <div style={{ width: 60, height: 28, background: P.border, borderRadius: 4, marginTop: 5 }} />
-                : <div style={{ fontSize: 26, fontWeight: 700, color: c.text, marginTop: 3, lineHeight: 1 }}>{c.value}</div>}
+                ? <div style={{ width: 55, height: 24, background: P.border, borderRadius: 4, marginTop: 9 }} />
+                : <div style={{ fontSize: 24, fontWeight: 700, color: c.text, marginTop: 9, lineHeight: 1 }}>{c.value}</div>}
               {c.hint && <div style={{ fontSize: 9, color: P.textMuted, marginTop: 2 }}>{c.hint}</div>}
             </div>
             {c.breakdown && !loading && (

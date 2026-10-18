@@ -14,6 +14,10 @@ export class CustomersController {
   @Get()
   findAll(@CurrentUser() actor: any, @Query() q: Record<string, string>) { return this.customers.findAll(actor, q) }
 
+  /** Records per status for the Approvals and My Sales pills (agents count only their own). */
+  @Get('counts')
+  counts(@CurrentUser() actor: any) { return this.customers.counts(actor) }
+
   @Roles(Role.AGENT)
   @Post()
   create(@CurrentUser() actor: any, @Body() body: Record<string, any>) { return this.customers.create(actor, body) }

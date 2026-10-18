@@ -5,6 +5,7 @@ import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import { apiGet, apiPost, errMsg } from '@/lib/api'
 import { usd } from '@/lib/format'
+import { PageTitle } from '@/components/ui/PageChrome'
 
 const P = {
   navy: '#132E57', teal: '#1E8496', tealDk: '#0E5F6E', gold: '#D7A520',
@@ -83,12 +84,12 @@ function RevenueTable({ title, rows, loading }: { title: string; rows: RevenueRo
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
       <div className="px-4 py-2.5 flex items-center justify-between flex-shrink-0" style={{ background: 'linear-gradient(135deg, #3D4A5C 0%, #4A5568 100%)', borderBottom: '1px solid #2D3748' }}>
-        <span className="text-sm font-black text-white" style={{ fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.06em' }}>{title}</span>
+        <span className="text-sm font-black text-white" style={{ fontFamily: "'Aptos', sans-serif", letterSpacing: '0.06em' }}>{title}</span>
         <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.18)', color: '#fff' }}>{loading ? '...' : `${rows.length} rows`}</span>
       </div>
       <div className="grid grid-cols-4 border-b border-gray-100" style={{ background: 'rgba(19,46,87,0.04)' }}>
         {['Name', 'Expected', 'Confirmed', 'Invoiced'].map(h => (
-          <div key={h} className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider" style={{ color: P.navy, opacity: 0.55, fontFamily: "'Rajdhani',sans-serif" }}>{h}</div>
+          <div key={h} className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider" style={{ color: P.navy, opacity: 0.55, fontFamily: "'Aptos', sans-serif" }}>{h}</div>
         ))}
       </div>
       <div className="flex-1 overflow-y-auto" style={{ maxHeight: 320 }}>
@@ -148,7 +149,7 @@ function RevenueTab() {
   return (
     <div className="space-y-4">
       <div className="rounded-xl px-5 py-2.5 shadow-sm flex flex-wrap items-center gap-3" style={BAR}>
-        <span className="text-xs font-black text-white uppercase tracking-widest flex-shrink-0" style={{ fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.1em' }}>Period</span>
+        <span className="text-xs font-black text-white uppercase tracking-widest flex-shrink-0" style={{ fontFamily: "'Aptos', sans-serif", letterSpacing: '0.1em' }}>Period</span>
         <PeriodPills period={period} setPeriod={setPeriod} from={fromDate} setFrom={setFromDate} to={toDate} setTo={setToDate} />
         {loading && (
           <div className="ml-auto flex items-center gap-2">
@@ -199,7 +200,7 @@ function CreateInvoiceModal({ pending, onClose, onCreated }: { pending: Pending;
     <ModalFrame width="max-w-lg" onClose={onClose} header={
       <div className="px-6 py-4 flex items-start justify-between" style={{ background: `linear-gradient(135deg, ${P.tealDk} 0%, ${P.teal} 100%)`, borderBottom: `1px solid ${P.tealDk}` }}>
         <div>
-          <h2 className="text-base font-bold text-white" style={{ fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.05em' }}>Create Invoice</h2>
+          <h2 className="text-base font-bold text-white" style={{ fontFamily: "'Aptos', sans-serif", letterSpacing: '0.05em' }}>Create Invoice</h2>
           <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.7)' }}>{pending.companyName} · {pending.periodStart} → {pending.periodEnd}</p>
         </div>
         <button onClick={onClose} className="w-7 h-7 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors">
@@ -224,7 +225,7 @@ function CreateInvoiceModal({ pending, onClose, onCreated }: { pending: Pending;
         </div>
         <div className="rounded-xl px-4 py-3 flex justify-between items-center" style={{ background: P.navy }}>
           <span className="text-sm font-bold text-white/70">Total Amount</span>
-          <span className="text-lg font-black" style={{ color: P.gold, fontFamily: "'Rajdhani',sans-serif" }}>{usd(total)}</span>
+          <span className="text-lg font-black" style={{ color: P.gold, fontFamily: "'Aptos', sans-serif" }}>{usd(total)}</span>
         </div>
         <div>
           <label className="block text-xs font-semibold text-gray-600 mb-1">Payment Receipt Date <span className="text-red-500">*</span></label>
@@ -266,7 +267,7 @@ function MarkReceivedModal({ invoice, onClose, onSaved }: { invoice: Invoice; on
   return (
     <ModalFrame width="max-w-sm" onClose={onClose} header={
       <div className="px-6 py-4" style={{ background: `linear-gradient(135deg, ${P.green} 0%, #4A8A4A 100%)`, borderBottom: '1px solid #2E5A2E' }}>
-        <h2 className="text-base font-bold text-white" style={{ fontFamily: "'Rajdhani',sans-serif" }}>Mark as Received</h2>
+        <h2 className="text-base font-bold text-white" style={{ fontFamily: "'Aptos', sans-serif" }}>Mark as Received</h2>
         <p className="text-xs mt-0.5 text-white/70">{invoice.invoiceNumber} · {usd(invoice.totalAmount)}</p>
       </div>
     }>
@@ -302,7 +303,7 @@ function PendingInvoicesTab({ setToast }: { setToast: (t: ToastState) => void })
   return (
     <div className="space-y-4">
       <div className="rounded-xl px-5 py-2.5 flex items-center justify-between shadow-sm" style={BAR}>
-        <span className="text-xs font-black text-white uppercase tracking-widest" style={{ fontFamily: "'Rajdhani',sans-serif" }}>Create Invoice</span>
+        <span className="text-xs font-black text-white uppercase tracking-widest" style={{ fontFamily: "'Aptos', sans-serif" }}>Create Invoice</span>
         {!loading && (
           <span className="text-xs font-bold px-2.5 py-0.5 rounded-full" style={{ background: pending.length > 0 ? P.gold : 'rgba(255,255,255,0.2)', color: '#fff' }}>{pending.length} pending</span>
         )}
@@ -325,7 +326,7 @@ function PendingInvoicesTab({ setToast }: { setToast: (t: ToastState) => void })
             <div key={`${p.clientId}|${p.periodStart}`} className="bg-white rounded-xl border shadow-sm overflow-hidden" style={{ borderColor: 'rgba(215,165,32,0.3)' }}>
               <div className="px-4 py-3 flex items-start justify-between" style={{ background: 'rgba(215,165,32,0.07)', borderBottom: '1px solid rgba(215,165,32,0.2)' }}>
                 <div className="min-w-0">
-                  <p className="font-black text-sm truncate" style={{ color: P.navy, fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.03em' }}>{p.companyName}</p>
+                  <p className="font-black text-sm truncate" style={{ color: P.navy, fontFamily: "'Aptos', sans-serif", letterSpacing: '0.03em' }}>{p.companyName}</p>
                   <p className="text-xs font-mono text-gray-400">{p.didCode}</p>
                 </div>
                 <span className="ml-2 flex-shrink-0 text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: P.teal, color: '#fff' }}>{p.salesCount} sales</span>
@@ -335,7 +336,7 @@ function PendingInvoicesTab({ setToast }: { setToast: (t: ToastState) => void })
                 <div className="flex justify-between text-xs"><span className="text-gray-400">Cycle</span><span className="font-semibold text-gray-600">{p.cycleDays} days</span></div>
                 <div className="flex justify-between items-center text-xs pt-1 border-t border-gray-100">
                   <span className="text-gray-400 font-semibold">Subtotal</span>
-                  <span className="text-base font-black" style={{ color: P.navy, fontFamily: "'Rajdhani',sans-serif" }}>{usd(p.subtotal)}</span>
+                  <span className="text-base font-black" style={{ color: P.navy, fontFamily: "'Aptos', sans-serif" }}>{usd(p.subtotal)}</span>
                 </div>
               </div>
               <div className="px-4 pb-4">
@@ -403,8 +404,8 @@ function InvoicesTab({ setToast }: { setToast: (t: ToastState) => void }) {
         <div className="overflow-x-auto">
           <table className="w-full text-sm border-separate border-spacing-0" style={{ minWidth: 820 }}>
             <thead>
-              <tr style={{ background: 'linear-gradient(90deg, #3D4A5C 0%, #4A5568 100%)' }}>
-                {cols.map(h => <th key={h} className="px-3 py-2.5 text-left text-xs font-bold uppercase whitespace-nowrap" style={{ color: '#fff', fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.06em' }}>{h}</th>)}
+              <tr style={{ background: '#F2AC18' }}>
+                {cols.map(h => <th key={h} className="px-3 py-2.5 text-left text-xs font-bold uppercase whitespace-nowrap" style={{ color: '#1a1a1a', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.06em' }}>{h}</th>)}
               </tr>
             </thead>
             <tbody>
@@ -462,15 +463,15 @@ function BalancesTab() {
   return (
     <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
       <div className="px-4 py-2.5 border-b border-gray-100 flex items-center justify-between" style={{ background: `linear-gradient(135deg, ${P.navy} 0%, ${P.teal} 100%)` }}>
-        <span className="text-sm font-black text-white" style={{ fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.06em' }}>Client Balance Tracker</span>
+        <span className="text-sm font-black text-white" style={{ fontFamily: "'Aptos', sans-serif", letterSpacing: '0.06em' }}>Client Balance Tracker</span>
         <span className="text-xs italic" style={{ color: 'rgba(255,255,255,0.6)' }}>All-time · not affected by period filters</span>
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm border-separate border-spacing-0" style={{ minWidth: 560 }}>
           <thead>
-            <tr style={{ background: 'rgba(19,46,87,0.06)' }}>
+            <tr style={{ background: '#F2AC18' }}>
               {['Client', 'DID Code', 'Total Confirmed', 'Already Invoiced', 'Balance Due'].map(h => (
-                <th key={h} className="px-4 py-2 text-left text-xs font-bold uppercase" style={{ color: P.navy, fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.06em', opacity: 0.7 }}>{h}</th>
+                <th key={h} className="px-4 py-2 text-left text-xs font-bold uppercase" style={{ color: '#1a1a1a', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.06em' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -513,17 +514,16 @@ export default function InvoicingPage() {
   return (
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <div className="p-5 space-y-4 min-h-screen" style={{ background: P.bg }}>
-        <div>
-          <h1 className="text-2xl font-black" style={{ color: P.navy, fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>Invoicing &amp; Payments</h1>
-          <p className="text-sm mt-0.5" style={{ color: P.gray }}>Billing cycles, invoice management &amp; revenue tracking</p>
+      <div className="px-5 pb-5 space-y-4 min-h-screen" style={{ background: P.bg }}>
+        <div style={{ display: 'flex', alignItems: 'center', minHeight: 52 }}>
+          <PageTitle>Invoicing &amp; Payments</PageTitle>
         </div>
         <div className="flex flex-wrap gap-1 p-1 rounded-xl" style={{ background: '#fff', border: '1px solid #E5E7EB', width: 'fit-content' }}>
           {TABS.map((t, i) => (
             <button key={t} onClick={() => setActiveTab(i)} className="px-4 py-1.5 rounded-lg text-sm font-bold transition-all"
               style={activeTab === i
-                ? { background: `linear-gradient(135deg, ${P.navy}, ${P.teal})`, color: '#fff', fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.03em' }
-                : { color: P.gray, fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.03em' }}>
+                ? { background: `linear-gradient(135deg, ${P.navy}, ${P.teal})`, color: '#fff', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.03em' }
+                : { color: P.gray, fontFamily: "'Aptos', sans-serif", letterSpacing: '0.03em' }}>
               {t}
             </button>
           ))}

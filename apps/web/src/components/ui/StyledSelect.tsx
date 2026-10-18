@@ -6,7 +6,7 @@ const TEAL = '#1E8496'
 
 const inputStyle: React.CSSProperties = {
   width: '100%', boxSizing: 'border-box', padding: '9px 12px', borderRadius: 8,
-  border: '1.5px solid #E0DDD5', fontSize: 13, fontFamily: "'Inter', sans-serif",
+  border: '1.5px solid #E0DDD5', fontSize: 13, fontFamily: "'Aptos', sans-serif",
   outline: 'none', color: NAVY, background: '#fff',
 }
 
@@ -83,11 +83,11 @@ export default function StyledSelect({ value, onChange, options, placeholder, lo
           boxShadow: '0 6px 20px rgba(0,0,0,0.12)', maxHeight: 200, overflowY: 'auto',
         }}>
           {filtered.length === 0 ? (
-            <div style={{ padding: '10px 14px', fontSize: 12, color: '#808080', fontFamily: "'Inter',sans-serif" }}>No results</div>
+            <div style={{ padding: '10px 14px', fontSize: 12, color: '#808080', fontFamily: "'Aptos',sans-serif" }}>No results</div>
           ) : filtered.map(opt => (
             <div key={opt.value} onMouseDown={() => handleSelect(opt)}
               style={{
-                padding: '5px 12px', fontSize: 13, fontFamily: "'Inter',sans-serif", cursor: 'pointer',
+                padding: '5px 12px', fontSize: 13, fontFamily: "'Aptos',sans-serif", cursor: 'pointer',
                 color: opt.value === value ? TEAL : NAVY,
                 fontWeight: opt.value === value ? 700 : 400,
                 background: opt.value === value ? '#E5F3F5' : 'transparent',

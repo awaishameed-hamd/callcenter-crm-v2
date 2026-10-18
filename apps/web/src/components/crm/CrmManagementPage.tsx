@@ -7,6 +7,7 @@ import AttendanceSettings from '@/components/settings/AttendanceSettings'
 import AttendanceApplicabilitySettings from '@/components/settings/AttendanceApplicabilitySettings'
 import { apiGet, apiPost, apiPut, apiDelete, errMsg, errFields } from '@/lib/api'
 import type { FormField, User } from '@/types'
+import { PageTitle } from '@/components/ui/PageChrome'
 
 const NAVY  = '#132E57'
 const TEAL  = '#1E8496'
@@ -117,7 +118,7 @@ function ModalShell({ title, subtitle, mono, width = 'max-w-md', onClose, childr
       <div className={`w-full ${width} rounded-2xl shadow-2xl overflow-hidden`} style={{ background: WHITE }}>
         <div className="px-6 py-4 flex items-center justify-between" style={{ background: GRAD }}>
           <div>
-            <h3 className="text-lg font-black text-white" style={{ fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>{title}</h3>
+            <h3 className="text-lg font-black text-white" style={{ fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em' }}>{title}</h3>
             {subtitle && <p className={`text-xs text-white/60 mt-0.5 ${mono ? 'font-mono' : ''}`}>{subtitle}</p>}
           </div>
           <button onClick={onClose} className="text-white/70 hover:text-white text-2xl leading-none">×</button>
@@ -249,7 +250,7 @@ const FooterButtons = ({ onClose, onSubmit, saving, label, busy }: { onClose: ()
   <>
     <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ border: '1px solid #CBD5E1', color: '#64748B' }}>Cancel</button>
     <button onClick={onSubmit} disabled={saving} className="px-5 py-2 rounded-lg text-sm font-bold text-white"
-      style={{ background: GRAD, opacity: saving ? 0.65 : 1, fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.05em' }}>{saving ? busy : label}</button>
+      style={{ background: GRAD, opacity: saving ? 0.65 : 1, fontFamily: "'Aptos', sans-serif", letterSpacing: '0.05em' }}>{saving ? busy : label}</button>
   </>
 )
 
@@ -361,7 +362,7 @@ function EditOptionsModal({ field, onSave, onClose }: { field: FormField; onSave
     <ModalShell title="Edit Options" subtitle={field.label} width="max-w-sm" onClose={onClose}
       footer={<>
         <button onClick={onClose} className="px-4 py-2 rounded-lg text-sm font-semibold" style={{ border: '1px solid #CBD5E1', color: '#64748B' }}>Cancel</button>
-        <button onClick={() => onSave(options)} className="px-5 py-2 rounded-lg text-sm font-bold text-white" style={{ background: GRAD, fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.05em' }}>Save Options</button>
+        <button onClick={() => onSave(options)} className="px-5 py-2 rounded-lg text-sm font-bold text-white" style={{ background: GRAD, fontFamily: "'Aptos', sans-serif", letterSpacing: '0.05em' }}>Save Options</button>
       </>}>
       <div className="p-5">
         <div className="space-y-1.5 mb-4 max-h-64 overflow-y-auto">
@@ -420,9 +421,9 @@ function SectionHeader({ name, hasFields, isFirst, isLast, onRename, onDelete, o
           <input type="text" value={val} autoFocus onChange={e => setVal(e.target.value)} onBlur={commit}
             onKeyDown={e => { if (e.key === 'Enter') commit(); if (e.key === 'Escape') setEditing(false) }}
             className="rounded-lg border px-2 py-0.5 text-sm font-bold focus:outline-none focus:ring-2"
-            style={{ color: NAVY, borderColor: TEAL, fontFamily: "'Rajdhani', sans-serif", minWidth: 180 }} />
+            style={{ color: NAVY, borderColor: TEAL, fontFamily: "'Aptos', sans-serif", minWidth: 180 }} />
         ) : (
-          <span className="text-sm font-bold" style={{ color: NAVY, fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.03em' }}>{name}</span>
+          <span className="text-sm font-bold" style={{ color: NAVY, fontFamily: "'Aptos', sans-serif", letterSpacing: '0.03em' }}>{name}</span>
         )}
         <button onClick={() => { setEditing(true); setVal(name) }} className="text-gray-400 hover:text-gray-600" title="Rename section"><EditIcon className="w-3.5 h-3.5" /></button>
       </div>
@@ -450,7 +451,7 @@ function FieldRow({ field, index, count, onChange, onEditOptions, onDelete, onEd
         <div className="flex-shrink-0 space-y-1.5" style={{ width: W.label }}>
           <input type="text" value={field.label} onChange={e => onChange({ label: e.target.value })} placeholder="Field label"
             className="w-full rounded-lg border px-2.5 py-1.5 text-sm focus:outline-none focus:ring-1 transition-colors"
-            style={{ borderColor: '#CBD5E1', color: NAVY, fontFamily: "'Rajdhani', sans-serif", fontWeight: 600 }} />
+            style={{ borderColor: '#CBD5E1', color: NAVY, fontFamily: "'Aptos', sans-serif", fontWeight: 600 }} />
           {!NO_PLACEHOLDER.includes(field.fieldType) && (
             <input type="text" value={field.placeholder || ''} onChange={e => onChange({ placeholder: e.target.value })} placeholder="Placeholder"
               className="w-full rounded-lg border px-2.5 py-1.5 text-xs focus:outline-none transition-colors" style={{ borderColor: '#E2E8F0', color: '#64748B' }} />
@@ -715,7 +716,7 @@ function FormManagementTab({ formType, formLabel, setToast }: { formType: string
           Reordering, label edits, width and toggle changes are saved together via Save All. New fields and deletions apply immediately.
         </p>
         <button onClick={handleSave} disabled={saving} className="px-6 py-2.5 rounded-xl font-bold text-white flex-shrink-0"
-          style={{ background: GRAD, fontFamily: "'Rajdhani', sans-serif", fontSize: '1rem', letterSpacing: '0.05em', opacity: saving ? 0.65 : 1, cursor: saving ? 'not-allowed' : 'pointer', boxShadow: '0 2px 8px rgba(30,132,150,0.25)' }}>
+          style={{ background: GRAD, fontFamily: "'Aptos', sans-serif", fontSize: '1rem', letterSpacing: '0.05em', opacity: saving ? 0.65 : 1, cursor: saving ? 'not-allowed' : 'pointer', boxShadow: '0 2px 8px rgba(30,132,150,0.25)' }}>
           {saving ? 'Saving...' : 'Save All Changes'}
         </button>
       </div>
@@ -776,9 +777,9 @@ function UserAccessTab({ setToast }: { setToast: SetToast }) {
       <div className="overflow-x-auto" style={{ minHeight: 260 }}>
         <table className="w-full text-sm">
           <thead>
-            <tr style={{ background: '#F7F9FC', borderBottom: '2px solid #E2E8F0' }}>
+            <tr style={{ background: '#F2AC18' }}>
               {['Name', 'Username', 'Role', 'Department', 'Status', 'Action'].map(h => (
-                <th key={h} className="text-left px-5 py-3 font-bold uppercase tracking-wide text-xs" style={{ color: NAVY }}>{h}</th>
+                <th key={h} className="text-left px-5 py-3 font-bold uppercase tracking-wide text-xs" style={{ color: '#1a1a1a' }}>{h}</th>
               ))}
             </tr>
           </thead>
@@ -804,7 +805,7 @@ function UserAccessTab({ setToast }: { setToast: SetToast }) {
                   <td className="px-5 py-3">
                     {dirty && (
                       <button onClick={() => save(user)} disabled={saving[user.id]} className="px-3 py-1 rounded-lg text-xs font-bold text-white"
-                        style={{ background: GRAD, opacity: saving[user.id] ? 0.6 : 1, fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.05em' }}>
+                        style={{ background: GRAD, opacity: saving[user.id] ? 0.6 : 1, fontFamily: "'Aptos', sans-serif", letterSpacing: '0.05em' }}>
                         {saving[user.id] ? 'Saving...' : 'Save'}
                       </button>
                     )}
@@ -830,10 +831,9 @@ export default function CrmManagementPage() {
   return (
     <>
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToastState(null)} />}
-      <div className="px-6 py-6 min-h-full" style={{ background: BG }}>
-        <div className="mb-5">
-          <h1 className="text-2xl font-black tracking-wide" style={{ fontFamily: "'Rajdhani', sans-serif", color: NAVY }}>CRM Management</h1>
-          <p className="text-sm mt-0.5" style={{ color: '#64748B' }}>Configure user roles, form field settings and attendance rules across the system.</p>
+      <div className="px-6 pb-6 min-h-full" style={{ background: BG }}>
+        <div className="mb-3" style={{ display: 'flex', alignItems: 'center', minHeight: 52 }}>
+          <PageTitle>CRM Management</PageTitle>
         </div>
 
         <div className="flex flex-wrap gap-1 mb-6 p-1 rounded-xl" style={{ background: WHITE, boxShadow: '0 1px 4px rgba(0,0,0,0.07)', display: 'inline-flex' }}>
@@ -841,7 +841,7 @@ export default function CrmManagementPage() {
             const active = i === activeTab
             return (
               <button key={tab} onClick={() => setActiveTab(i)} className="px-5 py-2 rounded-lg text-sm font-bold transition-all duration-150 focus:outline-none"
-                style={{ fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em', background: active ? GRAD : 'transparent', color: active ? WHITE : '#64748B', boxShadow: active ? '0 2px 8px rgba(30,132,150,0.2)' : 'none', border: 'none', cursor: 'pointer' }}>
+                style={{ fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em', background: active ? GRAD : 'transparent', color: active ? WHITE : '#64748B', boxShadow: active ? '0 2px 8px rgba(30,132,150,0.2)' : 'none', border: 'none', cursor: 'pointer' }}>
                 {tab}
               </button>
             )

@@ -320,7 +320,7 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
     }}>
       {/* Brand */}
       <div style={{ display: 'flex', alignItems: 'center', height: 52, padding: '0 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, minWidth: 256 }}>
-        <p style={{ margin: 0, fontFamily: "'Bebas Neue', cursive", fontWeight: 400, fontSize: '1.9rem', color: C.navy, letterSpacing: '0.08em', whiteSpace: 'nowrap', lineHeight: 1 }}>
+        <p style={{ margin: 0, fontFamily: "'Ethnocentric Rg', sans-serif", fontWeight: 300, fontSize: '1.15rem', marginLeft: '-6px', color: C.navy, letterSpacing: '0.01em', whiteSpace: 'nowrap', lineHeight: 1 }}>
           META-VOICE
         </p>
       </div>
@@ -380,7 +380,7 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
       {attOpen && attItems.length > 0 && (
         <div ref={panelRef} onMouseEnter={cancelClose} onMouseLeave={scheduleClose}
           style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 400, width: 220, background: '#fff', border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', maxHeight: 'calc(100vh - 16px)', overflowY: 'auto', overflowX: 'hidden' }}>
-          <div style={{ padding: '8px 14px 6px', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.gray, fontFamily: "'Inter', sans-serif" }}>Attendance</div>
+          <div style={{ padding: '8px 14px 6px', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.gray, fontFamily: "'Aptos', sans-serif" }}>Attendance</div>
           {attItems.map(item => {
             const active = exactActive(item)
             return (

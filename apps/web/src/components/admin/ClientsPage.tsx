@@ -5,6 +5,9 @@ import { CAMPAIGNS, STANDARD_FIELD_KEYS } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
+import DataTable, { type Column } from '@/components/ui/DataTable'
+import { PageShell, PageHeader, FilterBar, FilterSep, FilterPills, FilterSearch, FilterCount, PrimaryButton, SecondaryButton, PlusIcon, Pager } from '@/components/ui/PageChrome'
+import { P } from '@/lib/palette'
 import { apiGet, apiPost, apiPut, errMsg, errFields } from '@/lib/api'
 import type { Client, FormField, Page } from '@/types'
 
@@ -235,7 +238,7 @@ function DidPoolModal({ onClose, setToast }: { onClose: () => void; setToast: (t
       </form>
       <div className="rounded-lg border border-gray-200 overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-gray-50"><tr>{['DID', 'Campaign', 'Assigned To', 'Status', ''].map(h => <th key={h} className="px-3 py-2 text-left text-xs font-bold uppercase text-gray-500">{h}</th>)}</tr></thead>
+          <thead><tr style={{ background: '#F2AC18' }}>{['DID', 'Campaign', 'Assigned To', 'Status', ''].map(h => <th key={h} className="px-3 py-2 text-left text-xs font-bold uppercase text-gray-900">{h}</th>)}</tr></thead>
           <tbody className="divide-y divide-gray-100">
             {rows.map(d => (
               <tr key={d.id} className={d.isActive ? '' : 'opacity-50'}>
@@ -311,10 +314,36 @@ export default function ClientsPage() {
   }
 
   const clients = data?.data ?? []
-  const from = data ? (data.currentPage - 1) * data.perPage + 1 : 0
-  const pill = (active: boolean): React.CSSProperties => active
-    ? { background: 'linear-gradient(135deg, #132E57 0%, #1E8496 100%)', color: '#fff', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }
-    : { background: 'transparent', color: '#FFFFFF', fontFamily: "'Rajdhani', sans-serif" }
+  const na = <span style={{ fontSize: 12, color: '#9CA3AF' }}>N/A</span>
+  const tw = (cls: string, text: React.ReactNode) => <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold ${cls}`}>{text}</span>
+  const iconBtn = (title: string, onClick: () => void, hover: string, d: string) => (
+    <button onClick={e => { e.stopPropagation(); onClick() }} title={title}
+      style={{ padding: 6, borderRadius: 8, border: 0, background: 'transparent', color: '#9CA3AF', cursor: 'pointer', display: 'flex' }}
+      onMouseEnter={e => { e.currentTarget.style.color = hover; e.currentTarget.style.background = `${hover}14` }}
+      onMouseLeave={e => { e.currentTarget.style.color = '#9CA3AF'; e.currentTarget.style.background = 'transparent' }}>
+      <svg width={14} height={14} fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d={d} /></svg>
+    </button>
+  )
+
+  const columns: Column<Client>[] = [
+    { key: 'company', label: 'Company', width: 210, render: c => <span style={{ fontWeight: 600, color: P.textHeading }}>{c.companyName}</span> },
+    { key: 'campaign', label: 'Campaign', width: 130, render: c => tw(CAMPAIGN_BADGE[c.campaign ?? ''] ?? 'bg-gray-100 text-gray-600', c.campaign ?? 'N/A') },
+    { key: 'did', label: 'Assigned DID', width: 120, render: c => c.didCode ? <span style={{ fontSize: 12, fontWeight: 700, color: P.teal, letterSpacing: '0.04em' }}>{c.didCode}</span> : na },
+    { key: 'type', label: 'Type', width: 90, render: c => c.saleType ? tw(c.saleType === 'CPA' ? 'bg-violet-100 text-violet-700' : 'bg-teal-100 text-teal-700', c.saleType) : na },
+    { key: 'rateType', label: 'Rate Type', width: 100, render: c => <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${c.rateType === 'fixed' ? 'bg-slate-100 text-slate-700' : 'bg-orange-100 text-orange-700'}`}>{c.rateType === 'fixed' ? 'Fixed' : 'Variable'}</span> },
+    { key: 'rate', label: 'Rate', width: 90, render: c => c.rateType === 'fixed' && c.rateOfSaleAmount != null ? <span style={{ fontSize: 12, color: P.slate }}>${Number(c.rateOfSaleAmount).toLocaleString()}</span> : na },
+    { key: 'opening', label: 'Opening Bal.', width: 120, render: c => c.openingBalance != null && Number(c.openingBalance) > 0
+      ? <span style={{ fontSize: 12, fontWeight: 600, color: P.forest }}>${Number(c.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span> : na },
+    { key: 'cycle', label: 'Cycle', width: 80, render: c => <span style={{ fontSize: 12, color: P.slate }}>{c.cycleOfDay ? `${c.cycleOfDay}d` : 'N/A'}</span> },
+    { key: 'status', label: 'Status', width: 100, render: c => tw(c.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500', c.isActive ? 'Active' : 'Inactive') },
+    { key: 'actions', label: 'Actions', width: 100, align: 'right', resizable: false, render: c => (
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}>
+        {iconBtn('Edit', () => { setEditClient(c); setFormErrors({}) }, '#2563EB', 'm16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931zm0 0L19.5 7.125')}
+        {iconBtn(c.isActive ? 'Deactivate' : 'Activate', () => setConfirmToggle(c), c.isActive ? '#DC2626' : '#16A34A',
+          c.isActive ? 'M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636' : 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z')}
+      </div>
+    ) },
+  ]
 
   return (
     <>
@@ -338,94 +367,34 @@ export default function ClientsPage() {
         </div>
       )}
 
-      <div className="p-5 space-y-4" style={{ background: '#EDF0F3', minHeight: '100vh' }}>
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-black" style={{ color: '#132E57', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>Client Management</h1>
-            <p className="text-sm mt-0.5" style={{ color: '#5C5C5C' }}>Manage real clients and their DID assignments</p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button onClick={() => setShowPool(true)} className="px-4 py-2.5 rounded-lg text-sm font-semibold transition-all"
-              style={{ background: 'rgba(19,46,87,0.08)', color: '#132E57', border: '1px solid rgba(19,46,87,0.2)', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>DID Pool</button>
-            <button onClick={() => { setShowCreate(true); setFormErrors({}) }} className="flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-all"
-              style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.04em' }}>+ New Client</button>
-          </div>
-        </div>
+      <PageShell>
+        <PageHeader title="Client Management" actions={<>
+          <SecondaryButton onClick={() => setShowPool(true)}>DID Pool</SecondaryButton>
+          <PrimaryButton onClick={() => { setShowCreate(true); setFormErrors({}) }}><PlusIcon /> New Client</PrimaryButton>
+        </>} />
 
-        <div className="flex flex-wrap items-center gap-2 rounded-xl px-4 py-2.5 shadow-sm" style={{ background: 'linear-gradient(135deg, #0E5F6E 0%, #1E8496 100%)', border: '1px solid #1A7888' }}>
-          <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: 'rgba(0,0,0,0.15)' }}>
-            {[{ label: 'All', value: '' }, ...CAMPAIGNS.map(c => ({ label: c, value: c }))].map(({ label, value }) => (
-              <button key={value} onClick={() => { setCampaignFilter(value); setPage(1) }} className="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all" style={pill(campaignFilter === value)}>{label}</button>
-            ))}
-          </div>
-          <div className="flex items-center gap-1 rounded-xl p-1" style={{ background: 'rgba(0,0,0,0.15)' }}>
-            {[{ label: 'All', value: '' }, { label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }].map(({ label, value }) => (
-              <button key={value} onClick={() => { setStatusFilter(value); setPage(1) }} className="px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all" style={pill(statusFilter === value)}>{label}</button>
-            ))}
-          </div>
-          <form onSubmit={e => { e.preventDefault(); setPage(1); setSearch(searchInput) }} className="flex gap-2 ml-auto">
-            <input type="text" placeholder="Search company or DID" value={searchInput} onChange={e => setSearchInput(e.target.value)}
-              className="px-3 py-1.5 rounded-lg text-xs outline-none transition w-48 placeholder-white/70" style={{ background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff' }} />
-            <button type="submit" className="px-4 py-1.5 rounded-lg text-xs font-bold transition-all" style={{ background: 'linear-gradient(135deg, #132E57 0%, #1E8496 100%)', color: '#fff', fontFamily: "'Rajdhani', sans-serif" }}>Search</button>
-          </form>
-        </div>
+        <FilterBar>
+          <FilterPills value={campaignFilter} onChange={v => { setCampaignFilter(v); setPage(1) }}
+            options={[{ value: '', label: 'All Campaigns' }, ...CAMPAIGNS.map(c => ({ value: c as string, label: c as string }))]} />
+          <FilterSep />
+          <FilterPills value={statusFilter} onChange={v => { setStatusFilter(v); setPage(1) }}
+            options={[['', 'All'], ['active', 'Active'], ['inactive', 'Inactive']] as const} />
+          <FilterSep />
+          <FilterSearch value={searchInput} onChange={setSearchInput} onEnter={() => { setPage(1); setSearch(searchInput.trim()) }} placeholder="Company or DID, then Enter" width={220} />
+          {data && <FilterCount>{data.total} client{data.total !== 1 ? 's' : ''}</FilterCount>}
+        </FilterBar>
 
-        <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="text-left" style={{ background: 'linear-gradient(90deg, #4A5568 0%, #5A6880 100%)' }}>
-                  {['Company', 'Campaign', 'Assigned DID', 'Type', 'Rate Type', 'Rate', 'Opening Bal.', 'Cycle', 'Status'].map(h => (
-                    <th key={h} className="px-5 py-3 text-xs font-bold uppercase" style={{ color: '#FFFFFF', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.07em' }}>{h}</th>
-                  ))}
-                  <th className="px-5 py-3 text-xs font-bold uppercase text-right" style={{ color: '#FFFFFF', fontFamily: "'Rajdhani', sans-serif", letterSpacing: '0.07em' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {loading ? Array.from({ length: 6 }).map((_, i) => (
-                  <tr key={i}>{Array.from({ length: 10 }).map((__, j) => <td key={j} className="px-5 py-4"><div className="h-4 bg-gray-100 rounded animate-pulse w-20" /></td>)}</tr>
-                )) : clients.length === 0 ? (
-                  <tr><td colSpan={10} className="px-5 py-12 text-center text-sm text-gray-400">No clients found. Click + New Client to add one.</td></tr>
-                ) : clients.map(c => (
-                  <tr key={c.id} className={`hover:bg-gray-50 transition-colors ${!c.isActive ? 'opacity-50' : ''}`}>
-                    <td className="px-5 py-3.5 font-medium text-gray-800">{c.companyName}</td>
-                    <td className="px-5 py-3.5"><span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${CAMPAIGN_BADGE[c.campaign ?? ''] ?? 'bg-gray-100 text-gray-600'}`}>{c.campaign ?? 'N/A'}</span></td>
-                    <td className="px-5 py-3.5">{c.didCode ? <span className="font-mono font-semibold text-gray-800 bg-gray-100 px-2 py-0.5 rounded">{c.didCode}</span> : <span className="text-gray-400 text-xs">N/A</span>}</td>
-                    <td className="px-5 py-3.5">{c.saleType ? <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${c.saleType === 'CPA' ? 'bg-violet-100 text-violet-700' : 'bg-teal-100 text-teal-700'}`}>{c.saleType}</span> : <span className="text-gray-400 text-xs">N/A</span>}</td>
-                    <td className="px-5 py-3.5"><span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${c.rateType === 'fixed' ? 'bg-slate-100 text-slate-700' : 'bg-orange-100 text-orange-700'}`}>{c.rateType === 'fixed' ? 'Fixed' : 'Variable'}</span></td>
-                    <td className="px-5 py-3.5">{c.rateType === 'fixed' && c.rateOfSaleAmount != null ? <span className="text-gray-600 text-xs font-mono">${Number(c.rateOfSaleAmount).toLocaleString()}</span> : <span className="text-gray-400 text-xs">N/A</span>}</td>
-                    <td className="px-5 py-3.5">{c.openingBalance != null && Number(c.openingBalance) > 0 ? <span className="text-emerald-700 text-xs font-mono font-semibold">${Number(c.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span> : <span className="text-gray-400 text-xs">N/A</span>}</td>
-                    <td className="px-5 py-3.5 text-gray-500 text-xs">{c.cycleOfDay ? `${c.cycleOfDay}d` : 'N/A'}</td>
-                    <td className="px-5 py-3.5"><span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${c.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'}`}>{c.isActive ? 'Active' : 'Inactive'}</span></td>
-                    <td className="px-5 py-3.5">
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={() => { setEditClient(c); setFormErrors({}) }} className="p-1.5 rounded-lg text-gray-400 hover:text-blue-600 hover:bg-blue-50 transition-colors" title="Edit">
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931zm0 0L19.5 7.125" /></svg>
-                        </button>
-                        <button onClick={() => setConfirmToggle(c)} title={c.isActive ? 'Deactivate' : 'Activate'}
-                          className={`p-1.5 rounded-lg transition-colors ${c.isActive ? 'text-gray-400 hover:text-red-500 hover:bg-red-50' : 'text-gray-400 hover:text-green-600 hover:bg-green-50'}`}>
-                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" d={c.isActive ? 'M18.364 18.364A9 9 0 0 0 5.636 5.636m12.728 12.728A9 9 0 0 1 5.636 5.636m12.728 12.728L5.636 5.636' : 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z'} />
-                          </svg>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          {data && data.lastPage > 1 && (
-            <div className="px-5 py-4 border-t border-gray-100 flex items-center justify-between">
-              <p className="text-xs text-gray-500">Showing {from} to {from + clients.length - 1} of {data.total} clients</p>
-              <div className="flex items-center gap-2">
-                <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={data.currentPage === 1} className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors">Previous</button>
-                <button onClick={() => setPage(p => Math.min(data.lastPage, p + 1))} disabled={data.currentPage === data.lastPage} className="px-3 py-1.5 rounded-lg border border-gray-300 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-40 transition-colors">Next</button>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+        <DataTable<Client>
+          id="clients"
+          rows={clients}
+          loading={loading}
+          rowKey={c => c.id}
+          emptyText="No clients found. Click New Client to add one."
+          rowStyle={c => (c.isActive ? undefined : { opacity: 0.55 })}
+          columns={columns}
+        />
+        {data && <Pager page={data.currentPage} lastPage={data.lastPage} perPage={data.perPage} total={data.total} shown={clients.length} noun="clients" onPage={setPage} />}
+      </PageShell>
     </>
   )
 }

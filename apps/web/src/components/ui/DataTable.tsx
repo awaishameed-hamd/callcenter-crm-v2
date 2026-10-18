@@ -85,14 +85,14 @@ export default function DataTable<T>({
 
   const th: React.CSSProperties = {
     padding: '7px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700,
-    textTransform: 'uppercase', color: '#1a1a1a', fontFamily: "'Inter', sans-serif",
+    textTransform: 'uppercase', color: '#1a1a1a', fontFamily: "'Aptos', sans-serif",
     letterSpacing: '0.07em', whiteSpace: 'nowrap', position: 'relative',
     userSelect: 'none', overflow: 'hidden',
   }
   // Cells never wrap: a row stays one line tall and long text ends in an
   // ellipsis, so widening the column is what reveals it.
   const tdBase: React.CSSProperties = {
-    padding: '6px 12px', fontSize: 12, fontFamily: "'Inter', sans-serif",
+    padding: '6px 12px', fontSize: 12, fontFamily: "'Aptos', sans-serif",
     color: '#1a1a1a', borderBottom: `1px solid ${P.border}50`,
     whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
   }
@@ -134,7 +134,7 @@ export default function DataTable<T>({
             ))
           ) : rows.length === 0 ? (
             <tr>
-              <td colSpan={columns.length} style={{ padding: '48px 16px', textAlign: 'center', color: P.textMuted, fontFamily: "'Inter', sans-serif" }}>
+              <td colSpan={columns.length} style={{ padding: '48px 16px', textAlign: 'center', color: P.textMuted, fontFamily: "'Aptos', sans-serif" }}>
                 {emptyText}
               </td>
             </tr>

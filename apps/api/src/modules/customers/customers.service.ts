@@ -53,6 +53,18 @@ export class CustomersService {
     return toPage(rows.map(r => maskSnapshot(r, actor.role)), total, page, 20)
   }
 
+  async counts(actor: Actor) {
+    const rows = await this.prisma.customer.groupBy({
+      by: ['status'],
+      where: actor.role === Role.AGENT ? { agentId: actor.id } : {},
+      _count: { _all: true },
+    })
+    const out: Record<string, number> = Object.fromEntries(Object.values(CustomerStatus).map(s => [s, 0]))
+    for (const r of rows) out[r.status] = r._count._all
+    out.ALL = rows.reduce((s, r) => s + r._count._all, 0)
+    return out
+  }
+
   async create(actor: Actor, b: Record<string, any>) {
     if (actor.role !== Role.AGENT) throw new ForbiddenException('Only agents can submit sales.')
 

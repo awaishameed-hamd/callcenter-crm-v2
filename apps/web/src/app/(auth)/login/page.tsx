@@ -11,7 +11,7 @@ const fieldStyle: React.CSSProperties = {
 }
 const inputStyle: React.CSSProperties = {
   flex: 1, border: 0, background: 'transparent', outline: 'none', padding: '16px 12px',
-  fontFamily: "'Inter', sans-serif", fontSize: 15, color: '#4a5a63', fontWeight: 500, letterSpacing: '.01em',
+  fontFamily: "'Aptos', sans-serif", fontSize: 15, color: '#4a5a63', fontWeight: 500, letterSpacing: '.01em',
 }
 const iconStyle: React.CSSProperties = { width: 18, height: 18, color: '#8a9aa2', flexShrink: 0 }
 const BG = 'radial-gradient(1200px 700px at 20% 10%, #f3f6f8 0%, transparent 60%), radial-gradient(900px 600px at 90% 90%, #d9e0e4 0%, transparent 55%), linear-gradient(135deg, #eef1f3 0%, #dde3e7 50%, #cdd5da 100%)'
@@ -111,7 +111,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ fontFamily: "'Inter', sans-serif", background: BG, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 16px', color: '#5d6f78', position: 'relative', overflow: 'hidden' }}>
+    <div style={{ fontFamily: "'Aptos', sans-serif", background: BG, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 16px', color: '#5d6f78', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', borderRadius: '50%', filter: 'blur(40px)', opacity: .55, zIndex: 0, width: 340, height: 340, background: 'radial-gradient(circle, #ffffff 0%, rgba(255,255,255,0) 70%)', top: -80, left: -80, pointerEvents: 'none' }} />
       <div style={{ position: 'absolute', borderRadius: '50%', filter: 'blur(40px)', opacity: .55, zIndex: 0, width: 420, height: 420, background: 'radial-gradient(circle, #c2ccd2 0%, rgba(194,204,210,0) 70%)', bottom: -120, right: -100, pointerEvents: 'none' }} />
 

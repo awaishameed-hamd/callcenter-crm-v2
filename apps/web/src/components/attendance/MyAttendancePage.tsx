@@ -74,15 +74,15 @@ function CalendarView({ calendar, year, month, userName, userRole, summary }: {
       {/* Header bar, matches Attendance Report's calendar header */}
       <div style={{ background: '#64748B', padding: '10px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <h2 style={{ fontFamily: "'Inter', sans-serif", fontSize: 22, fontWeight: 800, display: 'inline-block', color: '#F1F5F9', letterSpacing: '0.04em', margin: 0 }}>
+          <h2 style={{ fontFamily: "'Aptos', sans-serif", fontSize: 22, fontWeight: 800, display: 'inline-block', color: '#F1F5F9', letterSpacing: '0.04em', margin: 0 }}>
             {userName ?? 'My Attendance'}
           </h2>
           {userRole && (
-            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700, fontFamily: '"Inter", sans-serif' }}>
+            <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700, fontFamily: '"Aptos", sans-serif' }}>
               {userRole}
             </span>
           )}
-          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 600, fontFamily: '"Inter", sans-serif' }}>
+          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 600, fontFamily: '"Aptos", sans-serif' }}>
             {MONTH_NAMES[month - 1]} {year}
           </span>
         </div>
@@ -93,7 +93,7 @@ function CalendarView({ calendar, year, month, userName, userRole, summary }: {
             { label: 'Late',    val: summary.late ?? 0,    color: '#fde68a' },
             { label: 'Leave',   val: summary.leave ?? 0,   color: '#93c5fd' },
           ].map(({ label, val, color }) => (
-            <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#F1F5F9', fontFamily: '"Inter", sans-serif', fontWeight: 700 }}>
+            <span key={label} style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#F1F5F9', fontFamily: '"Aptos", sans-serif', fontWeight: 700 }}>
               <span style={{ color }}>{val}</span> {label}
             </span>
           ))}
@@ -108,7 +108,7 @@ function CalendarView({ calendar, year, month, userName, userRole, summary }: {
           <div key={d} style={{
             textAlign: 'center', padding: '7px 0',
             fontSize: 11, fontWeight: 700, letterSpacing: '0.07em',
-            color: P.navy, fontFamily: '"Inter", sans-serif',
+            color: P.navy, fontFamily: '"Aptos", sans-serif',
             borderBottom: `2px solid ${P.gold}`,
           }}>{d}</div>
         ))}
@@ -140,7 +140,7 @@ function CalendarView({ calendar, year, month, userName, userRole, summary }: {
 
               {/* Row 1: day number left, status pill right */}
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: 13, fontWeight: 800, color: isToday ? P.teal : cs.dayColor, fontFamily: '"Inter", sans-serif', lineHeight: 1 }}>
+                <span style={{ fontSize: 13, fontWeight: 800, color: isToday ? P.teal : cs.dayColor, fontFamily: '"Aptos", sans-serif', lineHeight: 1 }}>
                   {isToday
                     ? <span style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: '50%', background: P.teal, color: '#fff', fontSize: 11, fontWeight: 900 }}>{d}</span>
                     : d}
@@ -150,7 +150,7 @@ function CalendarView({ calendar, year, month, userName, userRole, summary }: {
                     padding: '2px 7px', borderRadius: 6,
                     background: cs.pill, color: cs.pillText,
                     fontSize: 9, fontWeight: 800,
-                    fontFamily: '"Inter", sans-serif', letterSpacing: '0.04em', textTransform: 'uppercase',
+                    fontFamily: '"Aptos", sans-serif', letterSpacing: '0.04em', textTransform: 'uppercase',
                   }}>{CAL_LABEL[status]}</span>
                 )}
               </div>
@@ -158,7 +158,7 @@ function CalendarView({ calendar, year, month, userName, userRole, summary }: {
               {/* Row 2: login time, exact centre */}
               <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {row?.login_time && (
-                  <span style={{ fontSize: 16, fontWeight: 900, color: cs.dayColor, fontFamily: '"Inter", sans-serif', letterSpacing: '0.05em' }}>
+                  <span style={{ fontSize: 16, fontWeight: 900, color: cs.dayColor, fontFamily: '"Aptos", sans-serif', letterSpacing: '0.05em' }}>
                     {formatTime12h(row.login_time)}
                   </span>
                 )}
@@ -170,7 +170,7 @@ function CalendarView({ calendar, year, month, userName, userRole, summary }: {
                   <span style={{
                     padding: '1px 7px', borderRadius: 5,
                     background: '#fef3c7', color: '#b45309', border: '1px solid #fde68a',
-                    fontSize: 9, fontWeight: 800, fontFamily: '"Inter", sans-serif',
+                    fontSize: 9, fontWeight: 800, fontFamily: '"Aptos", sans-serif',
                   }}>{row.late_minutes}m</span>
                 )}
               </div>
@@ -195,7 +195,7 @@ function CalendarView({ calendar, year, month, userName, userRole, summary }: {
             <span style={{
               display: 'inline-block', padding: '2px 10px', borderRadius: 6,
               background: CAL[k].bg, color: CAL[k].dayColor,
-              fontSize: 10, fontWeight: 800, fontFamily: '"Inter", sans-serif',
+              fontSize: 10, fontWeight: 800, fontFamily: '"Aptos", sans-serif',
               textTransform: 'uppercase', letterSpacing: '0.04em',
               border: `1px solid ${CAL[k].pill}55`,
             }}>{CAL_LABEL[k]}</span>
@@ -270,7 +270,7 @@ export default function MyAttendancePage() {
 
   const tdBase: React.CSSProperties = {
     padding: '6px 12px', borderBottom: '1px solid #F1F5F9',
-    fontSize: 12, fontFamily: '"Inter", sans-serif', color: P.navy,
+    fontSize: 12, fontFamily: '"Aptos", sans-serif', color: P.navy,
   }
 
   return (
@@ -287,7 +287,7 @@ export default function MyAttendancePage() {
       <div style={{ display: 'flex', gap: 12, flexShrink: 0, marginBottom: 16 }}>
         {STAT_CARDS.map(({ label, val, border, fill }) => (
           <div key={label} style={{ flex: 1, minWidth: 80, background: fill, border: `1px solid ${border}30`, borderRadius: 10, padding: '11px 14px' }}>
-            <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: '#111827', fontFamily: '"Inter", sans-serif' }}>{val ?? 0}</p>
+            <p style={{ margin: 0, fontSize: 20, fontWeight: 900, color: '#111827', fontFamily: '"Aptos", sans-serif' }}>{val ?? 0}</p>
             <p style={{ margin: '2px 0 0', fontSize: 10, fontWeight: 300, fontFamily: "'Ethnocentric Rg', sans-serif", color: '#64748B' }}>{label}</p>
           </div>
         ))}
@@ -306,7 +306,7 @@ export default function MyAttendancePage() {
             {(['list', 'calendar'] as const).map(v => (
               <button key={v} onClick={() => setView(v)} style={{
                 padding: '3px 14px', borderRadius: 30, border: 'none', cursor: 'pointer',
-                fontSize: 12, fontWeight: 700, fontFamily: '"Inter", sans-serif',
+                fontSize: 12, fontWeight: 700, fontFamily: '"Aptos", sans-serif',
                 background: view === v ? '#fff' : 'transparent',
                 color: view === v ? P.teal : '#fff',
                 transition: 'all .15s',
@@ -316,7 +316,7 @@ export default function MyAttendancePage() {
             ))}
           </div>
           <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.3)', flexShrink: 0, margin: '0 2px' }} />
-          <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', fontFamily: '"Inter", sans-serif' }}>
+          <span style={{ fontSize: 12, fontWeight: 600, color: '#fff', fontFamily: '"Aptos", sans-serif' }}>
             {MONTH_NAMES[month - 1]} {year}
           </span>
         </div>
@@ -332,7 +332,7 @@ export default function MyAttendancePage() {
               <thead>
                 <tr style={{ background: '#F2AC18' }}>
                   {['#', 'Date', 'Day', 'Login Time', 'Status', 'Approval'].map(h => (
-                    <th key={h} style={{ padding: '7px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#1a1a1a', fontFamily: '"Inter", sans-serif', letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>{h}</th>
+                    <th key={h} style={{ padding: '7px 12px', textAlign: 'left', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#1a1a1a', fontFamily: '"Aptos", sans-serif', letterSpacing: '0.07em', whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
               </thead>

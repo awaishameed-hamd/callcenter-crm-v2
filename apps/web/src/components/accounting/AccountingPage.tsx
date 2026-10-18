@@ -405,7 +405,7 @@ const ACCOUNT_TYPE_OPTS = [
 function SectionHeader({ title, action }) {
   return (
     <div className="flex items-center justify-between mb-2">
-      <h2 style={{ color: P.navyGr, fontFamily: "'Rajdhani',sans-serif", fontSize: 13, fontWeight: 800, letterSpacing: '0.04em' }}>{title}</h2>
+      <h2 style={{ color: P.navyGr, fontFamily: "'Aptos', sans-serif", fontSize: 13, fontWeight: 800, letterSpacing: '0.04em' }}>{title}</h2>
       {action}
     </div>
   )
@@ -485,7 +485,7 @@ function Modal({ open, onClose, title, width = 'max-w-2xl', headerStyle, childre
       <div className={`w-full ${width} bg-white rounded-lg shadow-2xl mx-4 mb-8`} style={{ border: `1px solid ${P.border}` }}>
         <div className="flex items-center justify-between px-4 py-2 rounded-t-lg"
           style={headerStyle ?? { background: `linear-gradient(135deg, ${P.navyGr} 0%, ${P.tealDk} 100%)` }}>
-          <h3 className="font-black text-white" style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 13, letterSpacing: '0.05em' }}>{title}</h3>
+          <h3 className="font-black text-white" style={{ fontFamily: "'Aptos', sans-serif", fontSize: 13, letterSpacing: '0.05em' }}>{title}</h3>
           <button onClick={onClose} className="text-white/70 hover:text-white font-bold leading-none" style={{ fontSize: 18 }}>×</button>
         </div>
         <div className="p-4">{children}</div>
@@ -567,7 +567,7 @@ function TableSelect({ value, onChange, options, placeholder = 'Select' }) {
 function Th({ children, right }) {
   return (
     <th className={`whitespace-nowrap ${right ? 'text-right' : 'text-left'}`}
-      style={{ padding: '9px 8px', fontSize: 10, fontWeight: 700, color: P.white, fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.05em', textTransform: 'uppercase' }}>
+      style={{ padding: '9px 8px', fontSize: 10, fontWeight: 700, color: '#1a1a1a', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.05em', textTransform: 'uppercase' }}>
       {children}
     </th>
   )
@@ -583,7 +583,7 @@ function Td({ children, right, mono, bold, muted }) {
   )
 }
 
-const THEAD_STYLE = { background: `linear-gradient(90deg, ${P.navyGr} 0%, ${P.tealDk} 100%)` }
+const THEAD_STYLE = { background: '#F2AC18' }
 
 // ══════════════════════════════════════════════════════════════════════════════
 // MODULE 1: CHART OF ACCOUNTS
@@ -634,7 +634,7 @@ function AccountLedgerDrawer({ account, onClose }) {
         <div className="flex items-center justify-between px-5 py-3 shrink-0"
           style={{ background: `linear-gradient(135deg, ${P.tealDk} 0%, ${P.tealGr} 100%)` }}>
           <div className="flex flex-col gap-0.5">
-            <span className="font-black text-white" style={{ fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.06em', fontSize: 15 }}>
+            <span className="font-black text-white" style={{ fontFamily: "'Aptos', sans-serif", letterSpacing: '0.06em', fontSize: 15 }}>
               {account.account_code} · {account.account_name}
             </span>
             <span className="text-white/60 text-xs">
@@ -653,10 +653,10 @@ function AccountLedgerDrawer({ account, onClose }) {
             <div className="flex items-center justify-center h-full text-sm" style={{ color: P.muted }}>Loading ledger…</div>
           ) : (
             <table className="w-full text-xs border-collapse" style={{ minWidth: 750 }}>
-              <thead className="sticky top-0 z-10" style={{ background: P.navyGr }}>
+              <thead className="sticky top-0 z-10" style={{ background: '#F2AC18' }}>
                 <tr>
                   {[['Date','left'],['Voucher #','left'],['Description','left'],['Debit','right'],['Credit','right'],['Balance','right']].map(([h, align]) => (
-                    <th key={h} className="font-bold text-white px-4 py-2.5"
+                    <th key={h} className="font-bold text-gray-900 px-4 py-2.5"
                       style={{ fontSize: 11, textAlign: align, whiteSpace: 'nowrap' }}>{h}</th>
                   ))}
                 </tr>
@@ -1191,7 +1191,7 @@ function CoaTab() {
               <div className="px-4 py-2 flex items-center justify-between cursor-pointer"
                 style={{ background: COA_L1_COLORS[section] ?? 'linear-gradient(90deg, #0D9488 0%, #14B8A6 100%)' }}
                 onClick={() => toggle(section)}>
-                <span className="font-black text-xs" style={{ fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.06em', color: COA_L1_TEXT[section] ?? '#fff' }}>{section.toUpperCase()}</span>
+                <span className="font-black text-xs" style={{ fontFamily: "'Aptos', sans-serif", letterSpacing: '0.06em', color: COA_L1_TEXT[section] ?? '#fff' }}>{section.toUpperCase()}</span>
                 <span className="text-xs" style={{ color: COA_L1_TEXT[section] ?? '#fff', opacity: 0.7 }}>{collapsed[section] ? '▶' : '▼'}</span>
               </div>
 
@@ -1634,17 +1634,17 @@ function LineItemsTable({ lines, setLines, accounts, parties = [], costCentres =
             <col style={{ width: 24 }} />
           </colgroup>
           <thead>
-            <tr style={{ background: P.tealDk }}>
-              <th className="px-2 py-2 text-center font-bold text-white">#</th>
-              <th className="px-2 py-2 text-center font-bold text-white">Acc Code</th>
-              <th className="px-2 py-2 text-center font-bold text-white">Account Name</th>
-              <th className="px-2 py-2 text-center font-bold text-white">Description</th>
-              {showCostCentre && <th className="px-2 py-2 text-center font-bold text-white">Cost Centre</th>}
-              {showProject    && <th className="px-2 py-2 text-center font-bold text-white">Project</th>}
-              {showLocation   && <th className="px-2 py-2 text-center font-bold text-white">Location</th>}
-              {showPayee      && <th className="px-2 py-2 text-center font-bold text-white">Payee</th>}
-              <th className="px-2 py-2 text-center font-bold text-white">{amountLabel}</th>
-              {showBillable && <th className="px-2 py-2 text-center font-bold text-white">Billable</th>}
+            <tr style={{ background: '#F2AC18' }}>
+              <th className="px-2 py-2 text-center font-bold text-gray-900">#</th>
+              <th className="px-2 py-2 text-center font-bold text-gray-900">Acc Code</th>
+              <th className="px-2 py-2 text-center font-bold text-gray-900">Account Name</th>
+              <th className="px-2 py-2 text-center font-bold text-gray-900">Description</th>
+              {showCostCentre && <th className="px-2 py-2 text-center font-bold text-gray-900">Cost Centre</th>}
+              {showProject    && <th className="px-2 py-2 text-center font-bold text-gray-900">Project</th>}
+              {showLocation   && <th className="px-2 py-2 text-center font-bold text-gray-900">Location</th>}
+              {showPayee      && <th className="px-2 py-2 text-center font-bold text-gray-900">Payee</th>}
+              <th className="px-2 py-2 text-center font-bold text-gray-900">{amountLabel}</th>
+              {showBillable && <th className="px-2 py-2 text-center font-bold text-gray-900">Billable</th>}
               <th className="px-2 py-2"></th>
             </tr>
           </thead>
@@ -1783,16 +1783,16 @@ function JournalGrid({ lines, setLines, parties = [], costCentres = [], projects
             <col style={{ width: 24 }} />
           </colgroup>
           <thead>
-            <tr style={{ background: P.tealDk }}>
-              <th className="px-2 py-2 text-center text-white font-bold">#</th>
-              <th className="px-2 py-2 text-left text-white font-bold">Account</th>
-              <th className="px-2 py-2 text-right text-white font-bold">Debit (PKR)</th>
-              <th className="px-2 py-2 text-right text-white font-bold">Credit (PKR)</th>
-              <th className="px-2 py-2 text-left text-white font-bold">Description</th>
-              {showCostCentre && <th className="px-2 py-2 text-center text-white font-bold">Cost Centre</th>}
-              {showProject    && <th className="px-2 py-2 text-center text-white font-bold">Project</th>}
-              {showLocation   && <th className="px-2 py-2 text-center text-white font-bold">Location</th>}
-              {showPayee      && <th className="px-2 py-2 text-center text-white font-bold">Payee</th>}
+            <tr style={{ background: '#F2AC18' }}>
+              <th className="px-2 py-2 text-center text-gray-900 font-bold">#</th>
+              <th className="px-2 py-2 text-left text-gray-900 font-bold">Account</th>
+              <th className="px-2 py-2 text-right text-gray-900 font-bold">Debit (PKR)</th>
+              <th className="px-2 py-2 text-right text-gray-900 font-bold">Credit (PKR)</th>
+              <th className="px-2 py-2 text-left text-gray-900 font-bold">Description</th>
+              {showCostCentre && <th className="px-2 py-2 text-center text-gray-900 font-bold">Cost Centre</th>}
+              {showProject    && <th className="px-2 py-2 text-center text-gray-900 font-bold">Project</th>}
+              {showLocation   && <th className="px-2 py-2 text-center text-gray-900 font-bold">Location</th>}
+              {showPayee      && <th className="px-2 py-2 text-center text-gray-900 font-bold">Payee</th>}
               <th className="px-2 py-2 w-6"></th>
             </tr>
           </thead>
@@ -2048,7 +2048,7 @@ function TransactionsTab({ initialFormType = 'cash_payment', onClose }) {
       {/* ── Header: breadcrumb + compact switcher ──────────────────────────── */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-3">
-          <h2 style={{ color: P.navyGr, fontFamily: "'Rajdhani',sans-serif", fontSize: 13, fontWeight: 800, letterSpacing: '0.04em' }}>
+          <h2 style={{ color: P.navyGr, fontFamily: "'Aptos', sans-serif", fontSize: 13, fontWeight: 800, letterSpacing: '0.04em' }}>
             RECORD TRANSACTION
           </h2>
           <span className="text-xs" style={{ color: P.muted }}>›</span>
@@ -2182,7 +2182,7 @@ function TransactionsTab({ initialFormType = 'cash_payment', onClose }) {
           <div>
             {/* Header row: title + column toggles */}
             <div className="flex items-center justify-between mb-2 flex-wrap gap-2">
-              <p className="text-xs font-black" style={{ color: P.navyGr, fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.04em' }}>
+              <p className="text-xs font-black" style={{ color: P.navyGr, fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em' }}>
                 {formType === 'journal' ? 'JOURNAL ENTRY LINES' : 'LINE ITEMS'}
               </p>
 
@@ -2207,7 +2207,7 @@ function TransactionsTab({ initialFormType = 'cash_payment', onClose }) {
                       <div className="absolute right-0 top-full mt-1 z-50 bg-white rounded-xl border shadow-2xl py-2 min-w-[160px]"
                         style={{ borderColor: P.border }}>
                         <p className="px-3 py-1 text-xs font-black uppercase tracking-wider mb-1"
-                          style={{ color: P.muted, fontFamily: "'Rajdhani',sans-serif" }}>Toggle Columns</p>
+                          style={{ color: P.muted, fontFamily: "'Aptos', sans-serif" }}>Toggle Columns</p>
                         {[
                           { key: 'costCentre', label: 'Cost Centre' },
                           { key: 'project',    label: 'Project'     },
@@ -2313,7 +2313,7 @@ function BillsTab() {
       {/* Suppliers list */}
       <div className="mb-5 bg-white rounded-xl border shadow-sm overflow-hidden" style={{ borderColor: P.border }}>
         <div className="px-4 py-3" style={{ background: `linear-gradient(90deg, ${P.navyGr}, ${P.tealDk})` }}>
-          <span className="text-white font-black text-xs" style={{ fontFamily: "'Rajdhani',sans-serif" }}>SUPPLIERS ({parties.length})</span>
+          <span className="text-white font-black text-xs" style={{ fontFamily: "'Aptos', sans-serif" }}>SUPPLIERS ({parties.length})</span>
         </div>
         <div className="flex flex-wrap gap-3 p-4">
           {parties.length === 0
@@ -2698,12 +2698,12 @@ function TBTab() {
         <div className="overflow-x-auto">
           <table className="w-full text-xs" style={{ minWidth: 1100 }}>
             <thead>
-              <tr style={{ background: 'linear-gradient(90deg, #3D4A5C 0%, #4A5568 100%)' }}>
-                <th className="whitespace-nowrap text-left" style={{ padding: '10px 8px', fontSize: 10, fontWeight: 700, color: '#fff' }}>Account Code</th>
-                <th className="whitespace-nowrap text-left" style={{ padding: '10px 8px', fontSize: 10, fontWeight: 700, color: '#fff' }}>Account Name</th>
+              <tr style={{ background: '#F2AC18' }}>
+                <th className="whitespace-nowrap text-left" style={{ padding: '10px 8px', fontSize: 10, fontWeight: 700, color: '#1a1a1a' }}>Account Code</th>
+                <th className="whitespace-nowrap text-left" style={{ padding: '10px 8px', fontSize: 10, fontWeight: 700, color: '#1a1a1a' }}>Account Name</th>
                 {cols.map(c => [
-                  <th key={c+'d'} className="whitespace-nowrap text-right" style={{ padding: '10px 8px', fontSize: 10, fontWeight: 700, color: '#fff' }}>{colLabels[c]} Dr</th>,
-                  <th key={c+'c'} className="whitespace-nowrap text-right" style={{ padding: '10px 8px', fontSize: 10, fontWeight: 700, color: '#fff' }}>{colLabels[c]} Cr</th>,
+                  <th key={c+'d'} className="whitespace-nowrap text-right" style={{ padding: '10px 8px', fontSize: 10, fontWeight: 700, color: '#1a1a1a' }}>{colLabels[c]} Dr</th>,
+                  <th key={c+'c'} className="whitespace-nowrap text-right" style={{ padding: '10px 8px', fontSize: 10, fontWeight: 700, color: '#1a1a1a' }}>{colLabels[c]} Cr</th>,
                 ])}
               </tr>
             </thead>
@@ -2715,7 +2715,7 @@ function TBTab() {
                 return [
                   <tr key={l1} style={{ background: P.navyGr }}>
                     <td colSpan={8} className="px-4 py-3 font-black text-white text-xs cursor-pointer"
-                      style={{ fontFamily: "'Rajdhani',sans-serif" }}
+                      style={{ fontFamily: "'Aptos', sans-serif" }}
                       onClick={() => toggle(l1)}>
                       {collapsed[l1] ? '▶' : '▼'} {l1}
                     </td>
@@ -2807,7 +2807,7 @@ function PnLReport() {
     return (
       <div className="mb-4">
         <div className="px-4 py-3" style={{ background: P.tealDk + '18' }}>
-          <span className="text-xs font-black" style={{ color: P.tealDk, fontFamily: "'Rajdhani',sans-serif" }}>{title}</span>
+          <span className="text-xs font-black" style={{ color: P.tealDk, fontFamily: "'Aptos', sans-serif" }}>{title}</span>
         </div>
         {(items ?? []).map((r, i) => {
           const val = r.normal_balance === 'credit'
@@ -2928,7 +2928,7 @@ function PnLReport() {
       <div className="bg-white rounded-xl border shadow-sm overflow-hidden" style={{ borderColor: P.border }}>
         {/* Header */}
         <div className="px-6 py-3 flex items-center" style={{ background: P.navyGr }}>
-          <span className="flex-1 font-black text-white text-xs" style={{ fontFamily: "'Rajdhani',sans-serif" }}>ACCOUNT</span>
+          <span className="flex-1 font-black text-white text-xs" style={{ fontFamily: "'Aptos', sans-serif" }}>ACCOUNT</span>
           <span className="font-black text-white text-xs w-32 text-right">{cur?.from} → {cur?.to}</span>
           {cmp && <span className="font-black text-white text-xs w-32 text-right" style={{ opacity: 0.7 }}>{cmp.from} → {cmp.to}</span>}
         </div>
@@ -2940,7 +2940,7 @@ function PnLReport() {
 
             {/* Net Profit */}
             <div className="px-6 py-3 flex items-center" style={{ background: P.navyGr }}>
-              <span className="flex-1 font-black text-white text-sm" style={{ fontFamily: "'Rajdhani',sans-serif" }}>NET PROFIT / (LOSS)</span>
+              <span className="flex-1 font-black text-white text-sm" style={{ fontFamily: "'Aptos', sans-serif" }}>NET PROFIT / (LOSS)</span>
               <span className={`font-black text-sm w-32 text-right ${cur.net_profit >= 0 ? 'text-green-300' : 'text-red-300'}`}>
                 {pkr(cur.net_profit)}
               </span>
@@ -2979,7 +2979,7 @@ function BalanceSheetReport() {
     return (
       <div className="mb-4">
         <div className="px-4 py-3" style={{ background: color }}>
-          <span className="font-black text-white text-xs" style={{ fontFamily: "'Rajdhani',sans-serif" }}>{title}</span>
+          <span className="font-black text-white text-xs" style={{ fontFamily: "'Aptos', sans-serif" }}>{title}</span>
         </div>
         {Object.entries(grouped).map(([l2, rows]) => (
           <div key={l2}>
@@ -3097,7 +3097,7 @@ function BalanceSheetReport() {
             <Section title="Liabilities" items={data.liabilities} color={P.red} />
             <Section title="Equity" items={data.equity} color={P.navyGr} />
             <div className="flex items-center px-4 py-3" style={{ background: P.navyGr }}>
-              <span className="flex-1 font-black text-white" style={{ fontFamily: "'Rajdhani',sans-serif" }}>TOTAL LIABILITIES & EQUITY</span>
+              <span className="flex-1 font-black text-white" style={{ fontFamily: "'Aptos', sans-serif" }}>TOTAL LIABILITIES & EQUITY</span>
               <span className="font-black text-white text-sm">{pkr(data.total_liabilities + data.total_equity)}</span>
             </div>
           </>
@@ -3288,7 +3288,7 @@ function CashFlowReport() {
         {loading ? <EmptyState msg="Loading…" /> : op && (
           <>
             <div className="px-4 py-2.5" style={{ background: P.navyGr }}>
-              <span className="font-black text-white text-xs" style={{ fontFamily: "'Rajdhani',sans-serif" }}>A. CASH FROM OPERATING ACTIVITIES</span>
+              <span className="font-black text-white text-xs" style={{ fontFamily: "'Aptos', sans-serif" }}>A. CASH FROM OPERATING ACTIVITIES</span>
             </div>
             {[
               ['Net Profit / (Loss)', op.net_profit, op.net_profit >= 0 ? P.tealGr : P.red],
@@ -3302,7 +3302,7 @@ function CashFlowReport() {
               </div>
             ))}
             <div className="flex items-center px-4 py-3" style={{ background: P.navyGr }}>
-              <span className="flex-1 font-black text-white text-sm" style={{ fontFamily: "'Rajdhani',sans-serif" }}>NET CASH FROM OPERATING ACTIVITIES</span>
+              <span className="flex-1 font-black text-white text-sm" style={{ fontFamily: "'Aptos', sans-serif" }}>NET CASH FROM OPERATING ACTIVITIES</span>
               <span className={`font-black text-sm ${op.total >= 0 ? 'text-green-300' : 'text-red-300'}`}>{pkr(op.total)}</span>
             </div>
           </>
@@ -3589,7 +3589,7 @@ function ClassificationsTab() {
                 {/* Column header */}
                 <div className="flex items-center justify-between px-3 py-2.5 shrink-0"
                   style={{ background: `linear-gradient(135deg, ${P.tealDk} 0%, ${P.tealGr} 100%)` }}>
-                  <span className="font-black text-white text-xs" style={{ fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.06em' }}>
+                  <span className="font-black text-white text-xs" style={{ fontFamily: "'Aptos', sans-serif", letterSpacing: '0.06em' }}>
                     {title.toUpperCase()}
                   </span>
                   <button
@@ -3717,7 +3717,7 @@ function ClassificationsTab() {
             {/* Header */}
             <div className="px-4 py-3 flex items-center justify-between"
               style={{ background: `linear-gradient(135deg, ${P.tealDk} 0%, ${P.tealGr} 100%)` }}>
-              <span className="font-black text-white text-xs" style={{ fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.06em' }}>
+              <span className="font-black text-white text-xs" style={{ fontFamily: "'Aptos', sans-serif", letterSpacing: '0.06em' }}>
                 EDIT CLASSIFICATION
               </span>
               <button onClick={() => setEditItem(null)} className="text-white/70 hover:text-white font-bold text-lg leading-none">×</button>
@@ -3778,14 +3778,14 @@ function DimTable({ cols, rows, onEdit, onToggle, onDelete, emptyMsg }) {
     <div className="overflow-x-auto rounded-lg border" style={{ borderColor: P.border }}>
       <table className="w-full text-xs">
         <thead>
-          <tr style={{ background: P.navyGr + '0D', borderBottom: `1px solid ${P.border}` }}>
+          <tr style={{ background: '#F2AC18' }}>
             {cols.map(c => (
               <th key={c.key} className={`px-4 py-2.5 font-black text-left`}
-                style={{ color: P.navyGr, whiteSpace: 'nowrap', ...(c.right ? { textAlign: 'right' } : {}) }}>
+                style={{ color: '#1a1a1a', whiteSpace: 'nowrap', ...(c.right ? { textAlign: 'right' } : {}) }}>
                 {c.label}
               </th>
             ))}
-            <th className="px-4 py-2.5 font-black text-right" style={{ color: P.navyGr }}>Actions</th>
+            <th className="px-4 py-2.5 font-black text-right" style={{ color: '#1a1a1a' }}>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -4155,8 +4155,8 @@ function DimensionsTab() {
             <button key={t.key} onClick={() => setDim(t.key)}
               className="px-5 py-2.5 text-xs font-black transition-all border-b-2 whitespace-nowrap"
               style={dim === t.key
-                ? { color: P.tealGr, borderBottomColor: P.tealGr, fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.04em' }
-                : { color: P.muted, borderBottomColor: 'transparent', fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.04em' }}>
+                ? { color: P.tealGr, borderBottomColor: P.tealGr, fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em' }
+                : { color: P.muted, borderBottomColor: 'transparent', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em' }}>
               {t.label}
             </button>
           ))}
@@ -4311,8 +4311,8 @@ function HomeTab({ onNavigate }) {
 
       {/* ── Welcome heading — centred ──────────────────────────────────────── */}
       <div className="text-center mb-7">
-        <h1 className="font-black mb-1"
-          style={{ fontFamily: "'Rajdhani',sans-serif", fontSize: 28, letterSpacing: '0.02em', color: P.navyGr }}>
+        <h1 className="mb-1"
+          style={{ fontFamily: "'Faster One', cursive", fontSize: 29, fontWeight: 400, textTransform: 'uppercase', color: '#1E8496', lineHeight: 1.15 }}>
           Welcome, {firstName}!
         </h1>
         <p className="text-xs" style={{ color: P.muted }}>

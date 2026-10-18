@@ -37,7 +37,7 @@ function Toast({ msg, ok, onDone }: { msg: string; ok: boolean; onDone: () => vo
 
   return (
     <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-5 py-3 rounded-xl shadow-xl text-sm font-semibold"
-      style={{ background: ok ? '#15803d' : '#dc2626', color: '#fff', fontFamily: '"Inter", sans-serif' }}>
+      style={{ background: ok ? '#15803d' : '#dc2626', color: '#fff', fontFamily: '"Aptos", sans-serif' }}>
       <span>{ok ? '✓' : '✕'}</span>
       {msg}
     </div>
@@ -87,7 +87,7 @@ function TimeCard({
           {icon}
         </div>
         <div>
-          <h2 className="font-bold text-sm" style={{ fontFamily: '"Inter", sans-serif', color: NAVY, letterSpacing: '0.04em' }}>
+          <h2 className="font-bold text-sm" style={{ fontFamily: '"Aptos", sans-serif', color: NAVY, letterSpacing: '0.04em' }}>
             {title}
           </h2>
           <p className="text-xs" style={{ color: '#64748B' }}>{subtitle}</p>
@@ -103,7 +103,7 @@ function TimeCard({
             <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
           </svg>
           <span className="text-sm" style={{ color: NAVY }}>
-            Current: <strong style={{ fontFamily: '"Inter", sans-serif', fontSize: '1rem' }}>{to12hr(initVal) || ''}</strong>
+            Current: <strong style={{ fontFamily: '"Aptos", sans-serif', fontSize: '1rem' }}>{to12hr(initVal) || ''}</strong>
           </span>
         </div>
 
@@ -144,7 +144,7 @@ function TimeCard({
                       style={{
                         background: active ? `linear-gradient(135deg, ${NAVY}, ${TEAL})` : '#fff',
                         color: active ? '#fff' : '#94A3B8',
-                        fontFamily: '"Inter", sans-serif', letterSpacing: '0.05em',
+                        fontFamily: '"Aptos", sans-serif', letterSpacing: '0.05em',
                         border: 'none', cursor: 'pointer', minWidth: 52,
                       }}>
                       {ap}
@@ -161,7 +161,7 @@ function TimeCard({
                 className="px-6 py-2.5 rounded-lg text-sm font-bold transition-all"
                 style={{
                   background: `linear-gradient(90deg, ${NAVY}, ${TEAL})`, color: '#fff',
-                  fontFamily: '"Inter", sans-serif', letterSpacing: '0.05em',
+                  fontFamily: '"Aptos", sans-serif', letterSpacing: '0.05em',
                   border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1,
                 }}>
                 {saving ? 'Saving…' : 'Save'}
@@ -208,7 +208,7 @@ function GraceCard({
           </svg>
         </div>
         <div>
-          <h2 className="font-bold text-sm" style={{ fontFamily: '"Inter", sans-serif', color: NAVY, letterSpacing: '0.04em' }}>
+          <h2 className="font-bold text-sm" style={{ fontFamily: '"Aptos", sans-serif', color: NAVY, letterSpacing: '0.04em' }}>
             GRACE PERIOD (LATE MARGIN)
           </h2>
           <p className="text-xs" style={{ color: '#64748B' }}>
@@ -228,7 +228,7 @@ function GraceCard({
               <input type="number" min={1} max={120} value={minutes}
                 onChange={e => setMinutes(e.target.value)}
                 className="text-center font-bold outline-none"
-                style={{ width: 52, border: 'none', color: NAVY, fontFamily: '"Inter", sans-serif', fontSize: '1.1rem', padding: '10px 0' }} />
+                style={{ width: 52, border: 'none', color: NAVY, fontFamily: '"Aptos", sans-serif', fontSize: '1.1rem', padding: '10px 0' }} />
               <button type="button" onClick={inc}
                 className="px-3 py-2.5 font-bold text-lg transition-colors"
                 style={{ background: '#F8FAFC', color: NAVY, border: 'none', cursor: 'pointer', lineHeight: 1 }}>+</button>
@@ -240,7 +240,7 @@ function GraceCard({
               className="px-6 py-2.5 rounded-lg text-sm font-bold transition-all"
               style={{
                 background: `linear-gradient(90deg, ${NAVY}, ${TEAL})`, color: '#fff',
-                fontFamily: '"Inter", sans-serif', letterSpacing: '0.05em',
+                fontFamily: '"Aptos", sans-serif', letterSpacing: '0.05em',
                 border: 'none', cursor: saving ? 'not-allowed' : 'pointer', opacity: saving ? 0.7 : 1,
               }}>
               {saving ? 'Saving…' : 'Save'}
@@ -301,7 +301,7 @@ export default function AttendanceSettings() {
   const SectionLabel = ({ children }: { children: string }) => (
     <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 16 }}>
       <div style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
-      <span style={{ fontFamily: '"Inter", sans-serif', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: '#94A3B8', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
+      <span style={{ fontFamily: '"Aptos", sans-serif', fontSize: 11, fontWeight: 700, letterSpacing: '0.1em', color: '#94A3B8', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>
         {children}
       </span>
       <div style={{ flex: 1, height: 1, background: '#E2E8F0' }} />
@@ -358,7 +358,7 @@ export default function AttendanceSettings() {
                 <button key={day} onClick={() => setWeekendDay(day)}
                   style={{
                     padding: '7px 20px', borderRadius: 8, border: 'none', cursor: 'pointer',
-                    fontFamily: '"Inter", sans-serif', fontSize: 13, fontWeight: 700, letterSpacing: '0.04em',
+                    fontFamily: '"Aptos", sans-serif', fontSize: 13, fontWeight: 700, letterSpacing: '0.04em',
                     textTransform: 'capitalize',
                     background: active ? `linear-gradient(135deg, ${NAVY}, ${TEAL})` : '#fff',
                     color: active ? '#fff' : '#64748B',
@@ -375,7 +375,7 @@ export default function AttendanceSettings() {
           <div className="rounded-2xl overflow-hidden mb-4" style={{ background: '#fff', boxShadow: '0 1px 6px rgba(0,0,0,0.08)' }}>
             <div style={{ padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }}>
               <div>
-                <div style={{ fontFamily: '"Inter", sans-serif', fontWeight: 700, fontSize: 13, color: NAVY, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
+                <div style={{ fontFamily: '"Aptos", sans-serif', fontWeight: 700, fontSize: 13, color: NAVY, letterSpacing: '0.04em', textTransform: 'uppercase' }}>
                   {dayLabel} Attendance
                 </div>
                 <div style={{ fontSize: 12, color: '#64748B', marginTop: 2 }}>
