@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect, useLayoutEffect } from 'react'
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { Role } from '@crm/shared'
 import { useAuth } from '@/contexts/AuthContext'
 import api from '@/lib/api'
@@ -152,6 +152,7 @@ interface SidebarProps { collapsed: boolean; onToggle: () => void; compact?: boo
 export default function Sidebar({ collapsed, onToggle, compact = false }: SidebarProps) {
   const { user, logout } = useAuth()
   const pathname = usePathname()
+  const router   = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
 
   const avatarKey = `${AVATAR_KEY_PREFIX}${user?.id ?? ''}`
@@ -352,21 +353,22 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
       {/* New Sale quick button: agents are the only role that submits sales */}
       {user?.role === Role.AGENT && (
         <div style={{ padding: '8px 12px 4px', minWidth: 256, flexShrink: 0 }}>
-          <Link href="/agent/new-sale" onClick={() => { if (compact && !collapsed) onToggle() }}
-            style={{
-              display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
-              width: '100%', padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
-              background: '#7EC8D0', color: C.navy, fontFamily: "'Ethnocentric Rg', sans-serif", fontSize: 14, fontWeight: 300,
-              letterSpacing: '0.06em', textDecoration: 'none', boxSizing: 'border-box', transition: 'opacity .15s',
-              outline: isActive('/agent/new-sale') ? `2px solid ${C.teal}` : 'none', outlineOffset: -2,
-            }}
+          <button onClick={() => { router.push('/agent/new-sale'); if (compact && !collapsed) onToggle() }} style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 7,
+            width: '100%', padding: '8px 14px', borderRadius: 10, border: 'none', cursor: 'pointer',
+            background: '#7EC8D0',
+            color: '#132E57', fontFamily: "'Ethnocentric Rg', sans-serif", fontSize: 14, fontWeight: 300,
+            letterSpacing: '0.06em', boxShadow: 'none',
+            transition: 'opacity .15s',
+          }}
             onMouseEnter={e => (e.currentTarget.style.opacity = '0.88')}
-            onMouseLeave={e => (e.currentTarget.style.opacity = '1')}>
+            onMouseLeave={e => (e.currentTarget.style.opacity = '1')}
+          >
             <svg width={15} height={15} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
             New Sale
-          </Link>
+          </button>
         </div>
       )}
 
