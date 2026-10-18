@@ -1,7 +1,7 @@
 'use client'
 
-// New Sale on one screen: vertical pills on top (Approvals style), then the DID tiles and the
-// form sections as cards (gold table-style headings) two per row, and a sticky summary on the right.
+// New Sale on one screen: vertical pills on top (Approvals style), a horizontal summary bar with
+// the Record Sale button, then the DID tiles and form sections as cards with gold table-style headings.
 // Same fields, rules and API payload as before. The original design is kept in
 // NewSalePageClassic.tsx; point app/(dashboard)/agent/new-sale/page.tsx at it to switch back.
 
@@ -83,11 +83,11 @@ function SectionCard({ title, icon, done, total, complete, style, children }: {
   )
 }
 
-function GenericField({ field, value, onChange, error }: { field: FormField; value: string; onChange: (e: React.ChangeEvent<any>) => void; error?: string }) {
+function GenericField({ field, value, onChange, error, rows }: { field: FormField; value: string; onChange: (e: React.ChangeEvent<any>) => void; error?: string; rows?: number }) {
   const cls = `${inputCls} ${error ? 'border-red-400' : ''}`
   switch (field.fieldType) {
     case 'textarea':
-      return <textarea name={field.fieldKey} value={value} onChange={onChange} rows={Math.min(field.textareaRows || 2, 2)} placeholder={field.placeholder || ''} required={field.isRequired} className={`${cls} resize-none`} />
+      return <textarea name={field.fieldKey} value={value} onChange={onChange} rows={rows ?? Math.min(field.textareaRows || 2, 2)} placeholder={field.placeholder || ''} required={field.isRequired} className={`${cls} resize-none`} />
     case 'date':
       return <DateInput name={field.fieldKey} value={value} onChange={onChange} required={field.isRequired} className={`${cls} text-gray-800`} />
     case 'number':
@@ -151,11 +151,12 @@ function VerticalPills({ options, value, onPick, error }: { options: string[]; v
   )
 }
 
-function SummaryRow({ label, children }: { label: string; children: React.ReactNode }) {
+/** One block of the horizontal summary bar: small label above the value. */
+function SummaryItem({ label, grow, children }: { label: string; grow?: boolean; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 10, padding: '7px 0', borderBottom: `1px dashed ${P.border}` }}>
+    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, padding: '10px 18px', minWidth: 0, flex: grow ? '1 1 200px' : '0 0 auto' }}>
       <span style={{ fontFamily: RAJDHANI, fontSize: 12.5, fontWeight: 700, color: P.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
-      <span style={{ fontSize: 13, fontWeight: 600, color: P.navy, textAlign: 'right', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{children}</span>
+      <span style={{ fontSize: 13, fontWeight: 600, color: P.navy, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{children}</span>
     </div>
   )
 }
@@ -299,7 +300,7 @@ export default function NewSalePage() {
 
   // ── DID card ────────────────────────────────────────────────────────────────
   const didCard = (
-    <SectionCard title={form.vertical_type === 'Other' ? 'Other Vertical' : didField?.label ?? 'Select DID'} icon={ICONS.phone}
+    <SectionCard style={{ flex: 1, minWidth: 0 }} title={form.vertical_type === 'Other' ? 'Other Vertical' : didField?.label ?? 'Select DID'} icon={ICONS.phone}
       done={form.client_id || (form.vertical_type === 'Other') ? 1 : 0} total={form.vertical_type ? 1 : 0}
       complete={form.vertical_type === 'Other' ? true : filled(form.client_id)}>
       {!form.vertical_type ? (
@@ -355,52 +356,87 @@ export default function NewSalePage() {
     </SectionCard>
   )
 
-  // ── Summary panel ───────────────────────────────────────────────────────────
+  // ── Summary bar (horizontal, under the pills) ──────────────────────────────
+  const divider = <div style={{ width: 1, alignSelf: 'stretch', background: P.border, margin: '10px 0' }} />
   const summary = (
-    <div style={{ background: '#fff', borderRadius: 14, overflow: 'hidden', position: compact ? 'static' : 'sticky', top: 12, boxShadow: '0 1px 3px rgba(19,46,87,0.08), 0 10px 26px -14px rgba(19,46,87,0.35)' }}>
-      <div style={{ padding: '14px 18px 16px', background: `linear-gradient(135deg, ${vColor} 0%, ${P.navy} 100%)`, color: '#fff', transition: 'background .3s' }}>
-        <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 12, letterSpacing: '0.04em', opacity: 0.9 }}>SALE SUMMARY</p>
-        <div style={{ marginTop: 10, minWidth: 0 }}>
-          <p style={{ margin: 0, fontFamily: BEBAS, fontSize: 24, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{customer || 'New Customer'}</p>
-          <p style={{ margin: '2px 0 0', fontSize: 12, opacity: 0.85 }}>{form.phone || 'No phone yet'}</p>
-        </div>
+    <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: compact ? 'wrap' : 'nowrap', background: '#fff', borderRadius: 14, overflow: 'hidden', marginBottom: 12, boxShadow: '0 1px 3px rgba(19,46,87,0.08), 0 10px 26px -16px rgba(19,46,87,0.35)' }}>
+      <div style={{ padding: '10px 18px', minWidth: 210, flexShrink: 0, background: `linear-gradient(135deg, ${vColor} 0%, ${P.navy} 100%)`, color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center', transition: 'background .3s' }}>
+        <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 11, letterSpacing: '0.04em', opacity: 0.9 }}>SALE SUMMARY</p>
+        <p style={{ margin: '4px 0 0', fontFamily: BEBAS, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 240 }}>{customer || 'New Customer'}</p>
+        <p style={{ margin: '1px 0 0', fontSize: 12, opacity: 0.85 }}>{form.phone || 'No phone yet'}</p>
       </div>
 
-      <div style={{ padding: '6px 18px 16px' }}>
-        <SummaryRow label="Vertical">
-          {form.vertical_type
-            ? <span style={{ padding: '2px 10px', borderRadius: 99, fontSize: 12, color: '#fff', background: vColor }}>{form.vertical_type === 'Other' && filled(form.vertical_other) ? form.vertical_other : form.vertical_type}</span>
-            : <NotSet />}
-        </SummaryRow>
-        {form.vertical_type !== 'Other' && (
-          <SummaryRow label="DID">
-            {selectedDid ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: RAJDHANI, fontSize: 15, fontWeight: 700 }}>{selectedDid.didCode}{selectedDid.saleType && <SaleTypeBadge type={selectedDid.saleType} />}</span> : <NotSet />}
-          </SummaryRow>
-        )}
-        {filled(form.age) && <SummaryRow label="Age">{form.age}</SummaryRow>}
-        <SummaryRow label="Address">{address || <NotSet />}</SummaryRow>
-
-        <div style={{ marginTop: 14 }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 6 }}>
-            <span style={{ fontFamily: RAJDHANI, fontSize: 12.5, fontWeight: 700, color: P.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Required fields</span>
-            <span style={{ fontFamily: BEBAS, fontSize: 20, letterSpacing: '0.04em', color: pct === 100 ? P.teal : P.navy }}>{doneCount}/{requiredKeys.length}</span>
-          </div>
-          <div style={{ height: 7, borderRadius: 99, background: P.gridLine, overflow: 'hidden' }}>
+      <SummaryItem label="Vertical">
+        {form.vertical_type
+          ? <span style={{ padding: '2px 10px', borderRadius: 99, fontSize: 12, color: '#fff', background: vColor }}>{form.vertical_type === 'Other' && filled(form.vertical_other) ? form.vertical_other : form.vertical_type}</span>
+          : <NotSet />}
+      </SummaryItem>
+      {divider}
+      {form.vertical_type !== 'Other' && (
+        <>
+          <SummaryItem label="DID">
+            {selectedDid ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: RAJDHANI, fontSize: 16, fontWeight: 700 }}>{selectedDid.didCode}{selectedDid.saleType && <SaleTypeBadge type={selectedDid.saleType} />}</span> : <NotSet />}
+          </SummaryItem>
+          {divider}
+        </>
+      )}
+      <SummaryItem label="Address" grow>{address || <NotSet />}</SummaryItem>
+      {divider}
+      <SummaryItem label="Required fields">
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div style={{ width: 110, height: 7, borderRadius: 99, background: P.gridLine, overflow: 'hidden' }}>
             <div style={{ width: `${pct}%`, height: '100%', borderRadius: 99, background: `linear-gradient(90deg, ${P.gold}, ${P.teal})`, transition: 'width .3s' }} />
           </div>
+          <span style={{ fontFamily: BEBAS, fontSize: 20, letterSpacing: '0.04em', lineHeight: 1, color: pct === 100 ? P.teal : P.navy }}>{doneCount}/{requiredKeys.length}</span>
         </div>
+      </SummaryItem>
 
-        <button type="submit" form="new-sale-form" disabled={loading}
-          style={{ width: '100%', marginTop: 16, padding: '11px 16px', borderRadius: 10, border: 0, background: `linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`, color: '#fff', fontFamily: BEBAS, fontSize: 20, letterSpacing: '0.12em', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.65 : 1, boxShadow: '0 10px 22px -12px rgba(30,132,150,0.9)' }}>
-          {loading ? 'Submitting...' : 'Record Sale'}
-        </button>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginLeft: 'auto', flexShrink: 0 }}>
         <button type="button" onClick={resetForm}
-          style={{ width: '100%', marginTop: 8, padding: '8px 16px', borderRadius: 10, border: `1px solid ${P.border}`, background: '#fff', color: P.textMuted, fontFamily: RAJDHANI, fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer' }}>
-          Reset Form
+          style={{ padding: '9px 14px', borderRadius: 10, border: `1px solid ${P.border}`, background: '#fff', color: P.textMuted, fontFamily: RAJDHANI, fontSize: 13, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          Reset
+        </button>
+        <button type="submit" form="new-sale-form" disabled={loading}
+          style={{ padding: '9px 26px', borderRadius: 10, border: 0, background: `linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`, color: '#fff', fontFamily: BEBAS, fontSize: 20, letterSpacing: '0.12em', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.65 : 1, boxShadow: '0 10px 22px -12px rgba(30,132,150,0.9)', whiteSpace: 'nowrap' }}>
+          {loading ? 'Submitting...' : 'Record Sale'}
         </button>
       </div>
     </div>
   )
+
+  /** A section's fields. Sections with a long text box show it in a left column, the rest stacked on the right. */
+  const sectionBody = (list: FormField[]) => {
+    const field = (f: FormField, rows?: number) => (
+      <Field key={f.fieldKey} label={f.label} required={f.isRequired} error={err(f.fieldKey)}>
+        <GenericField field={f} value={form[f.fieldKey] ?? ''} onChange={set} error={err(f.fieldKey)} rows={rows} />
+      </Field>
+    )
+    const textareas = list.filter(f => f.fieldType === 'textarea')
+    const others = list.filter(f => f.fieldType !== 'textarea')
+    if (!compact && textareas.length && others.length) {
+      return (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>{textareas.map(f => field(f, Math.max(4, others.length * 2)))}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>{others.map(f => field(f))}</div>
+        </div>
+      )
+    }
+    return (
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.6rem 0.75rem' }}>
+        {list.map(f => (
+          <div key={f.fieldKey} style={{ gridColumn: `span ${compact ? 6 : COL_SPAN[f.colSpan] ?? 2}` }}>{field(f)}</div>
+        ))}
+      </div>
+    )
+  }
+
+  // Grid of six columns: DID takes 2 and the first section 4, then the remaining sections two per row
+  const rest = sections.order.length - 1
+  const spanFor = (i: number) => {
+    if (compact) return '1 / -1'
+    if (i === 0) return 'span 4'
+    return rest % 2 === 1 && i === sections.order.length - 1 ? '1 / -1' : 'span 3'
+  }
 
   return (
     <>
@@ -409,35 +445,22 @@ export default function NewSalePage() {
         <div style={{ height: 12 }} />
         <VerticalPills options={verticalOptions} value={form.vertical_type} onPick={v => set(asEvent('vertical_type', v))} error={err('vertical_type')} />
 
-        <div style={{ display: 'grid', gridTemplateColumns: compact ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) 290px', gap: 14, alignItems: 'start' }}>
-          <form id="new-sale-form" onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: compact ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: 12, minWidth: 0 }}>
-            {didCard}
+        {summary}
 
-            {sections.order.map((name, i) => {
-              const list = sections.map[name]
-              const s = stats(list)
-              // DID card plus sections fill the grid two per row; an odd last card takes the full row
-              const fullRow = !compact && (sections.order.length + 1) % 2 === 1 && i === sections.order.length - 1
-              return (
-                <SectionCard key={name} title={name} icon={sectionIcon(name)}
-                  done={s.done} total={s.total} complete={s.complete} style={fullRow ? { gridColumn: '1 / -1' } : undefined}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.6rem 0.75rem' }}>
-                    {list.map(field => (
-                      // Cards are half the page wide, so dropdowns get at least half a card to stay readable
-                      <div key={field.fieldKey} style={{ gridColumn: `span ${compact ? 6 : Math.max(COL_SPAN[field.colSpan] ?? 2, field.fieldType === 'select' ? 3 : 0)}` }}>
-                        <Field label={field.label} required={field.isRequired} error={err(field.fieldKey)}>
-                          <GenericField field={field} value={form[field.fieldKey] ?? ''} onChange={set} error={err(field.fieldKey)} />
-                        </Field>
-                      </div>
-                    ))}
-                  </div>
-                </SectionCard>
-              )
-            })}
-          </form>
+        <form id="new-sale-form" onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: compact ? 'minmax(0, 1fr)' : 'repeat(6, minmax(0, 1fr))', gap: 12 }}>
+          <div style={{ gridColumn: compact ? '1 / -1' : 'span 2', display: 'flex', minWidth: 0 }}>{didCard}</div>
 
-          {summary}
-        </div>
+          {sections.order.map((name, i) => {
+            const list = sections.map[name]
+            const s = stats(list)
+            return (
+              <SectionCard key={name} title={name} icon={sectionIcon(name)} done={s.done} total={s.total} complete={s.complete}
+                style={{ gridColumn: spanFor(i), minWidth: 0 }}>
+                {sectionBody(list)}
+              </SectionCard>
+            )
+          })}
+        </form>
       </div>
     </>
   )
