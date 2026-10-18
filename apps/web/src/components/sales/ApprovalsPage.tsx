@@ -113,9 +113,9 @@ export default function ApprovalsPage() {
   const TABS = isFinalApprover
     ? [
         // Decided records (approved or rejected) are reviewed in the Sales Report, so only open queues show here.
-        { key: CustomerStatus.PENDING,  label: 'Awaiting Manager Approval' },
-        { key: CustomerStatus.APPROVED, label: 'Awaiting Final Approval' },
-        { key: AWAITING,                label: 'Awaiting All' },
+        { key: CustomerStatus.PENDING,  label: 'Manager Approval' },
+        { key: CustomerStatus.APPROVED, label: 'Final Approval' },
+        { key: AWAITING,                label: 'All' },
       ]
     : [
         { key: CustomerStatus.PENDING,     label: 'Pending' },
