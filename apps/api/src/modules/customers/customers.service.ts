@@ -47,7 +47,7 @@ export class CustomersService {
     else if (status === 'AWAITING') where.status = { in: [CustomerStatus.PENDING, CustomerStatus.APPROVED] }
     if (q.search) {
       const s = { contains: q.search, mode: 'insensitive' as const }
-      where.OR = [{ customerCode: s }, { firstName: s }, { lastName: s }]
+      where.OR = [{ firstName: s }, { lastName: s }, { phone: s }]
     }
     const { skip, take, page } = pageArgs(q.page, 20)
     const [rows, total] = await Promise.all([

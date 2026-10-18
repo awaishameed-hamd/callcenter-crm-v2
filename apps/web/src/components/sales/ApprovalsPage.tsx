@@ -9,15 +9,14 @@ import { PageTitle } from '@/components/ui/PageChrome'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLayout } from '@/components/layout/AppLayout'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
-import { useVerticals } from '@/lib/verticals'
+import { useVerticals, colorOf } from '@/lib/verticals'
+import { FONT, BEBAS, RAJDHANI, ETHNO, inputCls, withAlpha, ICONS, Field, SectionCard, SaleTypeBadge, SummaryItem, NotSet } from './saleUi'
 import { apiGet, apiPost, apiPut, apiDelete, errMsg } from '@/lib/api'
 import { StatusBadge, fmtWithPKT, fullName } from '@/lib/format'
 import { isFinalApprover as finalRole, isSaleReviewer } from '@/lib/roles'
 import { P } from '@/lib/palette'
 import type { Customer, Page } from '@/types'
 
-const FONT = "'Aptos', sans-serif"
-const inputCls  = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
 
 // Pending plus manager-approved: everything still waiting on someone
 const AWAITING = 'AWAITING'
@@ -32,27 +31,24 @@ const STATUS_COLOR: Record<string, string> = {
 type EditForm = Record<string, string>
 type DidOption = { id: string; didCode: string; saleType: string | null }
 
-function SectionTitle({ children }: { children: React.ReactNode }) {
+// Read-only value in a card: Rajdhani label over the value, as the New Sale fields look
+function Info({ label, span = 1, children }: { label: string; span?: number; children?: React.ReactNode }) {
+  const empty = children === null || children === undefined || children === '' || children === false
   return (
-    <div className="-mx-5 px-5 py-1.5 mt-3" style={{ background: '#F1F5F9', borderTop: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0' }}>
-      <span style={{ fontSize: 12, fontWeight: 700, color: P.navy, fontFamily: FONT, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{children}</span>
+    <div style={{ gridColumn: `span ${span}`, minWidth: 0 }}>
+      <div style={{ fontFamily: RAJDHANI, fontSize: 12.5, fontWeight: 700, color: '#5C6D82', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{label}</div>
+      <div style={{ fontSize: 13.5, fontWeight: 600, color: P.navy, wordBreak: 'break-word' }}>{empty ? <NotSet /> : children}</div>
     </div>
   )
 }
+const INFO_GRID: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px 14px' }
 
-function FieldLabel({ children }: { children: React.ReactNode }) {
-  return <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">{children}</label>
-}
-
-function DetailRow({ label, value }: { label: string; value: React.ReactNode }) {
-  if (value === null || value === undefined || value === '') return null
-  return (
-    <div className="grid grid-cols-5 gap-2 py-1.5 border-b border-gray-50 last:border-0">
-      <dt className="col-span-2 text-xs font-semibold text-gray-400 uppercase tracking-wide">{label}</dt>
-      <dd className="col-span-3 text-sm text-gray-800 break-words">{value}</dd>
-    </div>
-  )
-}
+const GREEN = 'linear-gradient(135deg, #16A34A 0%, #15803D 100%)'
+const RED   = 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)'
+const actionBtn = (bg: string, color = '#fff', border?: string): React.CSSProperties => ({
+  padding: '8px 18px', borderRadius: 10, border: border ? `1px solid ${border}` : 0, background: bg, color, cursor: 'pointer', whiteSpace: 'nowrap',
+  fontFamily: RAJDHANI, fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+})
 
 function Modal({ children, dark }: { children: React.ReactNode; dark?: boolean }) {
   return (
@@ -73,7 +69,7 @@ const toEditForm = (c: Customer): EditForm => ({
 
 export default function ApprovalsPage() {
   const { user } = useAuth()
-  const { sidebarCollapsed, setSidebarCollapsed } = useLayout()
+  const { sidebarCollapsed } = useLayout()
   const isFinalApprover = finalRole(user)   // final stage: Director and Admin
   const isReviewer      = isSaleReviewer(user) // first stage: QA and Floor managers
   const { verticals }   = useVerticals()
@@ -132,14 +128,12 @@ export default function ApprovalsPage() {
   }, [page, statusFilter, search])
 
   useEffect(() => { load() }, [load])
-  useAutoRefresh(() => Promise.all([load(true), loadCounts()]))
-  useEffect(() => () => setSidebarCollapsed(false), [setSidebarCollapsed])
+  useAutoRefresh(() => Promise.all([load(true), loadCounts()]), { sales: true })
 
-  const handleTab = (key: string) => { setStatusFilter(key); setPage(1); setSelected(null); setSidebarCollapsed(false) }
+  const handleTab = (key: string) => { setStatusFilter(key); setPage(1); setSelected(null) }
 
   const selectCustomer = (c: Customer) => {
     setSelected(c)
-    setSidebarCollapsed(true)
     setEditing(false)
     setEditDids([])
     setEditForm(toEditForm(c))
@@ -293,7 +287,7 @@ export default function ApprovalsPage() {
                 <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke={P.iconMuted} strokeWidth={2} style={{ flexShrink: 0 }}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
                 </svg>
-                <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search name or code, then Enter"
+                <input value={searchInput} onChange={e => setSearchInput(e.target.value)} placeholder="Search name or phone, then Enter"
                   onKeyDown={e => { if (e.key === 'Enter') { setSearch(searchInput.trim()); setPage(1); setSelected(null) } }}
                   style={{ border: 'none', outline: 'none', flex: 1, fontSize: 12, fontFamily: FONT, background: 'transparent', color: P.navy }} />
                 {search && (
@@ -356,217 +350,217 @@ export default function ApprovalsPage() {
             </div>
           )}
 
-          {selected && (
-            <div className="p-6 space-y-5 max-w-2xl mx-auto">
-              <div className="flex items-start justify-between">
-                <div>
-                  <h2 className="text-lg font-bold text-gray-800">{fullName(selected)}</h2>
-                  <p className="text-xs font-mono font-bold text-gray-700 mt-0.5">{selected.customerCode}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <StatusBadge status={selected.status} />
-                  <button onClick={() => { setSelected(null); setSidebarCollapsed(false) }} title="Close panel and expand sidebar"
-                    className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                  </button>
-                </div>
-              </div>
-
-              {selected.status === CustomerStatus.APPROVED && (
-                <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm">
-                  <p className="font-semibold text-amber-900">{isFinalApprover ? 'Awaiting your final approval' : 'Awaiting final approval'}</p>
-                  <p className="text-amber-700 text-xs mt-0.5">
-                    {isFinalApprover ? 'This record was approved by the manager. Final approve or reject below.' : 'Approved by the manager. The director gives the final approval.'}
-                  </p>
-                </div>
-              )}
-              {selected.status === CustomerStatus.PENDING && (
-                <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm">
-                  <p className="font-semibold text-blue-900">{isReviewer ? 'Awaiting your approval' : 'Awaiting manager approval'}</p>
-                  <p className="text-blue-700 text-xs mt-0.5">
-                    {isReviewer ? 'After you approve, it will go to the director for final approval.' : 'A QA Manager or Floor Manager approves or rejects it first.'}
-                  </p>
-                </div>
-              )}
-
-              <div className="flex flex-wrap gap-2">
-                {isReviewer && selected.status === CustomerStatus.PENDING && (
-                  <>
-                    <button onClick={() => setNoteModal('approve')} disabled={actionLoading} className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-60">Approve</button>
-                    <button onClick={() => setNoteModal('reject')} disabled={actionLoading} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-60">Reject</button>
-                  </>
-                )}
-                {isFinalApprover && selected.status === CustomerStatus.APPROVED && (
-                  <>
-                    <button disabled={actionLoading} className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-60"
-                      onClick={() => (selected.client?.rateType === 'variable' ? (setRateInput(''), setRateModal(true)) : doAction('final-approve'))}>
-                      Final Approve
+          {selected && (() => {
+            const vColor   = colorOf(verticals, selected.verticalType)
+            const qColor   = tabColor(selected.status)
+            const other    = isOtherVertical(selected.verticalType)
+            const pending  = selected.status === CustomerStatus.PENDING
+            const approved = selected.status === CustomerStatus.APPROVED
+            const stage    = pending ? 'MANAGER APPROVAL' : approved ? 'FINAL APPROVAL' : 'SALE RECORD'
+            const notice   = pending
+              ? (isReviewer ? ['Awaiting your approval', 'After you approve, it goes to the director for final approval.'] : ['Awaiting manager approval', 'A QA Manager or Floor Manager approves or rejects it first.'])
+              : approved
+                ? (isFinalApprover ? ['Awaiting your final approval', 'Approved by the manager. Final approve or reject it here.'] : ['Awaiting final approval', 'Approved by the manager. The director gives the final approval.'])
+                : ['Decided', 'This sale has left the approval queues; see it in the Sales Report.']
+            const times = ([
+              ['Sale Time (PKT)', selected.submittedAtPak], ['Sale Time (EST)', selected.submittedAtEst],
+              ['Approved At', fmtWithPKT(selected.approvedAt)], ['Disapproved At', fmtWithPKT(selected.disapprovedAt)],
+              ['Final Approved At', fmtWithPKT(selected.finalApprovedAt)], ['Final Rejected At', fmtWithPKT(selected.finalDisapprovedAt)],
+            ] as [string, string | null | undefined][]).filter(([, v]) => v)
+            return (
+              <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {/* Summary bar: the customer shaded in the vertical's colour, as on New Sale */}
+                <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: 'wrap', background: '#fff', borderRadius: 14, overflow: 'hidden', marginTop: 12, border: `1px solid ${P.border}`, boxShadow: '0 8px 22px -18px rgba(19,46,87,0.6)' }}>
+                  <div style={{ padding: '10px 110px 10px 20px', minWidth: 250, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff',
+                    background: `linear-gradient(90deg, ${vColor} 0%, ${vColor} 42%, ${withAlpha(vColor, 0.88)} 54%, ${withAlpha(vColor, 0.62)} 66%, ${withAlpha(vColor, 0.36)} 77%, ${withAlpha(vColor, 0.16)} 87%, ${withAlpha(vColor, 0.05)} 94%, ${withAlpha(vColor, 0)} 100%)` }}>
+                    <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 10, letterSpacing: '0.05em', opacity: 0.9 }}>{stage}</p>
+                    <p style={{ margin: '3px 0 0', fontFamily: BEBAS, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 260 }}>{fullName(selected)}</p>
+                    <p style={{ margin: '1px 0 0', fontSize: 12, opacity: 0.85 }}>{selected.phone || 'No phone'}</p>
+                  </div>
+                  <SummaryItem icon={ICONS.tag} color={vColor} label="Vertical">
+                    {selected.verticalType
+                      ? <span style={{ padding: '1px 10px', borderRadius: 99, fontSize: 12, color: '#fff', background: vColor }}>{other && selected.verticalOther ? selected.verticalOther : selected.verticalType}</span>
+                      : <NotSet />}
+                  </SummaryItem>
+                  {!other && (
+                    <SummaryItem icon={ICONS.phone} color={vColor} label="DID">
+                      {selected.client?.didCode
+                        ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: BEBAS, fontSize: 17, letterSpacing: '0.05em' }}>{selected.client.didCode}{selected.client.saleType && <SaleTypeBadge type={selected.client.saleType} small />}</span>
+                        : <NotSet />}
+                    </SummaryItem>
+                  )}
+                  <SummaryItem icon={ICONS.person} color={vColor} label="Agent" grow>{selected.agent?.displayName ?? selected.agent?.userCode ?? <NotSet />}</SummaryItem>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginLeft: 'auto', flexShrink: 0 }}>
+                    <StatusBadge status={selected.status} />
+                    <button onClick={() => setSelected(null)} title="Close"
+                      className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
-                    <button onClick={() => setConfirmModal(true)} disabled={actionLoading} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-60">Final Reject</button>
-                  </>
-                )}
-                {!editing && <button onClick={() => setEditing(true)} className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-600 hover:bg-white transition-colors">Edit</button>}
-                {isFinalApprover && !editing && (
-                  <button onClick={() => setDeleteModal(true)} disabled={actionLoading} className="ml-auto px-4 py-2 rounded-lg border border-red-200 text-sm font-semibold text-red-500 hover:bg-red-50 transition-colors disabled:opacity-60">Delete Record</button>
-                )}
-                {editing && (
-                  <>
-                    <button onClick={saveEdit} disabled={actionLoading} className="px-4 py-2 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-60">{actionLoading ? 'Saving' : 'Save Changes'}</button>
-                    <button onClick={() => { setEditing(false); setEditForm(toEditForm(selected)) }} className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-semibold text-gray-600 hover:bg-white transition-colors">Cancel</button>
-                  </>
-                )}
-              </div>
-
-              <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 space-y-1">
-                <SectionTitle>Personal Information</SectionTitle>
-                {editing ? (
-                  <div className="space-y-3 pt-2">
-                    <div className="grid grid-cols-3 gap-3">
-                      <div><FieldLabel>First Name</FieldLabel>{inp('firstName', { placeholder: 'First name' })}</div>
-                      <div><FieldLabel>Middle Name</FieldLabel>{inp('midName', { placeholder: 'Middle name' })}</div>
-                      <div><FieldLabel>Last Name</FieldLabel>{inp('lastName', { placeholder: 'Last name' })}</div>
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div><FieldLabel>Date of Birth</FieldLabel><DateInput name="dateOfBirth" value={editForm.dateOfBirth ?? ''} onChange={handleEditChange} className={inputCls} /></div>
-                      <div><FieldLabel>Phone</FieldLabel>{inp('phone', { type: 'tel', placeholder: 'Phone' })}</div>
-                    </div>
                   </div>
-                ) : (
-                  <dl className="space-y-1">
-                    <DetailRow label="Full Name" value={fullName(selected)} />
-                    <DetailRow label="Age" value={selected.age} />
-                    <DetailRow label="Date of Birth" value={selected.dateOfBirth?.slice(0, 10)} />
-                    <DetailRow label="Phone" value={selected.phone} />
-                  </dl>
-                )}
+                </div>
 
-                <SectionTitle>Address</SectionTitle>
-                {editing ? (
-                  <div className="space-y-3 pt-2">
-                    <div><FieldLabel>Street Address</FieldLabel>{inp('address', { placeholder: 'Street address' })}</div>
-                    <div className="grid grid-cols-3 gap-3">
-                      <div><FieldLabel>City</FieldLabel>{inp('city', { placeholder: 'City' })}</div>
-                      <div><FieldLabel>State</FieldLabel>{inp('state', { placeholder: 'State' })}</div>
-                      <div><FieldLabel>ZIP</FieldLabel>{inp('postalCode', { placeholder: 'ZIP' })}</div>
-                    </div>
+                {/* Where the sale stands, and what this user can do with it */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: `1px solid ${P.border}`, borderLeft: `4px solid ${qColor}`, borderRadius: 12, padding: '10px 14px' }}>
+                  <div style={{ flex: '1 1 220px', minWidth: 0 }}>
+                    <p style={{ margin: 0, fontFamily: RAJDHANI, fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: qColor }}>{notice[0]}</p>
+                    <p style={{ margin: '1px 0 0', fontSize: 12, color: P.textMuted }}>{notice[1]}</p>
                   </div>
-                ) : (
-                  <dl className="space-y-1">
-                    <DetailRow label="Address" value={selected.address} />
-                    <DetailRow label="City" value={selected.city} />
-                    <DetailRow label="State" value={selected.state} />
-                    <DetailRow label="ZIP" value={selected.postalCode} />
-                  </dl>
-                )}
+                  {!editing && isReviewer && pending && (
+                    <>
+                      <button onClick={() => setNoteModal('approve')} disabled={actionLoading} style={actionBtn(GREEN)}>Approve</button>
+                      <button onClick={() => setNoteModal('reject')} disabled={actionLoading} style={actionBtn(RED)}>Reject</button>
+                    </>
+                  )}
+                  {!editing && isFinalApprover && approved && (
+                    <>
+                      <button disabled={actionLoading} style={actionBtn(GREEN)}
+                        onClick={() => (selected.client?.rateType === 'variable' ? (setRateInput(''), setRateModal(true)) : doAction('final-approve'))}>
+                        Final Approve
+                      </button>
+                      <button onClick={() => setConfirmModal(true)} disabled={actionLoading} style={actionBtn(RED)}>Final Reject</button>
+                    </>
+                  )}
+                  {!editing && <button onClick={() => setEditing(true)} style={actionBtn('#fff', P.navy, P.border)}>Edit</button>}
+                  {!editing && isFinalApprover && (
+                    <button onClick={() => setDeleteModal(true)} disabled={actionLoading} style={actionBtn(withAlpha('#DC2626', 0.08), '#DC2626', withAlpha('#DC2626', 0.3))}>Delete</button>
+                  )}
+                  {editing && (
+                    <>
+                      <button onClick={saveEdit} disabled={actionLoading} style={actionBtn(`linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`)}>{actionLoading ? 'Saving' : 'Save Changes'}</button>
+                      <button onClick={() => { setEditing(false); setEditForm(toEditForm(selected)) }} style={actionBtn('#fff', P.navy, P.border)}>Cancel</button>
+                    </>
+                  )}
+                </div>
 
-                <SectionTitle>Business Information</SectionTitle>
-                {editing ? (
-                  <div className="space-y-3 pt-2">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <FieldLabel>Vertical Type</FieldLabel>
-                        <StyledSelect value={editForm.verticalType} onChange={v => setEdit('verticalType', v)} placeholder="Select"
-                          options={verticals.filter(v => v.isActive || v.name === selected.verticalType).map(v => ({ value: v.name, label: v.name }))} />
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 12, alignItems: 'start' }}>
+                  <SectionCard title="Personal Information" icon={ICONS.person} done={0} total={0} complete={false}>
+                    {editing ? (
+                      <div style={INFO_GRID}>
+                        <Field label="First Name">{inp('firstName', { placeholder: 'First name' })}</Field>
+                        <Field label="Middle Name">{inp('midName', { placeholder: 'Middle name' })}</Field>
+                        <Field label="Last Name">{inp('lastName', { placeholder: 'Last name' })}</Field>
+                        <Field label="Date of Birth"><DateInput name="dateOfBirth" value={editForm.dateOfBirth ?? ''} onChange={handleEditChange} className={inputCls} /></Field>
+                        <div style={{ gridColumn: 'span 2' }}><Field label="Phone">{inp('phone', { type: 'tel', placeholder: 'Phone' })}</Field></div>
                       </div>
-                      {isOtherVertical(editForm.verticalType) && <div><FieldLabel>Specify Other</FieldLabel>{inp('verticalOther', { placeholder: 'Specify' })}</div>}
-                    </div>
-                    {editForm.verticalType && !isOtherVertical(editForm.verticalType) && (
-                      <div>
-                        <FieldLabel>DID</FieldLabel>
-                        <StyledSelect value={editForm.clientId} onChange={v => setEdit('clientId', v)} loading={editDidsLoading} placeholder="Select DID"
-                          options={editDids.map(d => ({ value: d.id, label: `${d.didCode}${d.saleType ? ` (${d.saleType})` : ''}` }))} />
+                    ) : (
+                      <div style={INFO_GRID}>
+                        <Info label="First Name">{selected.firstName}</Info>
+                        <Info label="Middle Name">{selected.midName}</Info>
+                        <Info label="Last Name">{selected.lastName}</Info>
+                        <Info label="Age">{selected.age}</Info>
+                        <Info label="Date of Birth">{selected.dateOfBirth?.slice(0, 10)}</Info>
+                        <Info label="Phone">{selected.phone}</Info>
                       </div>
                     )}
-                  </div>
-                ) : (
-                  <dl className="space-y-1">
-                    <DetailRow label="Vertical Type" value={selected.verticalType} />
-                    {isOtherVertical(selected.verticalType) && <DetailRow label="Vertical Other" value={selected.verticalOther} />}
-                    <DetailRow label="DID Code" value={selected.client?.didCode} />
-                    {selected.client?.saleType && (
-                      <DetailRow label="Sale Type" value={
-                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-bold ${selected.client.saleType === 'CPA' ? 'bg-violet-100 text-violet-700' : 'bg-teal-100 text-teal-700'}`}>{selected.client.saleType}</span>
-                      } />
+                  </SectionCard>
+
+                  <SectionCard title="Address" icon={ICONS.address} done={0} total={0} complete={false}>
+                    {editing ? (
+                      <div style={INFO_GRID}>
+                        <Field label="City">{inp('city', { placeholder: 'City' })}</Field>
+                        <Field label="State">{inp('state', { placeholder: 'State' })}</Field>
+                        <Field label="ZIP">{inp('postalCode', { placeholder: 'ZIP' })}</Field>
+                        <div style={{ gridColumn: '1 / -1' }}><Field label="Street Address">{inp('address', { placeholder: 'Street address' })}</Field></div>
+                      </div>
+                    ) : (
+                      <div style={INFO_GRID}>
+                        <Info label="City">{selected.city}</Info>
+                        <Info label="State">{selected.state}</Info>
+                        <Info label="ZIP">{selected.postalCode}</Info>
+                        <Info label="Address" span={3}>{selected.address}</Info>
+                      </div>
                     )}
-                    {isFinalApprover && selected.client?.companyName && <DetailRow label="Client" value={selected.client.companyName} />}
-                    {isFinalApprover && selected.client?.rateType && (
-                      <DetailRow label="Rate Type" value={
-                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${selected.client.rateType === 'fixed' ? 'bg-slate-100 text-slate-700' : 'bg-orange-100 text-orange-700'}`}>{selected.client.rateType === 'fixed' ? 'Fixed' : 'Variable'}</span>
-                      } />
+                  </SectionCard>
+
+                  <SectionCard title="Sale Details" icon={ICONS.tag} done={0} total={0} complete={false}>
+                    {editing ? (
+                      <div style={INFO_GRID}>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <Field label="Vertical Type">
+                            <StyledSelect value={editForm.verticalType} onChange={v => setEdit('verticalType', v)} placeholder="Select"
+                              options={verticals.filter(v => v.isActive || v.name === selected.verticalType).map(v => ({ value: v.name, label: v.name }))} />
+                          </Field>
+                        </div>
+                        {isOtherVertical(editForm.verticalType) && <Field label="Specify Other">{inp('verticalOther', { placeholder: 'Specify' })}</Field>}
+                        {editForm.verticalType && !isOtherVertical(editForm.verticalType) && (
+                          <Field label="DID">
+                            <StyledSelect value={editForm.clientId} onChange={v => setEdit('clientId', v)} loading={editDidsLoading} placeholder="Select DID"
+                              options={editDids.map(d => ({ value: d.id, label: `${d.didCode}${d.saleType ? ` (${d.saleType})` : ''}` }))} />
+                          </Field>
+                        )}
+                      </div>
+                    ) : (
+                      <div style={INFO_GRID}>
+                        <Info label="Vertical">{selected.verticalType}</Info>
+                        {other ? <Info label="Vertical Other">{selected.verticalOther}</Info> : <Info label="DID">{selected.client?.didCode}</Info>}
+                        <Info label="Sale Type">{selected.client?.saleType && <SaleTypeBadge type={selected.client.saleType} />}</Info>
+                        {isFinalApprover && <Info label="Client">{selected.client?.companyName}</Info>}
+                        {isFinalApprover && <Info label="Rate Type">{selected.client?.rateType && (selected.client.rateType === 'fixed' ? 'Fixed' : 'Variable')}</Info>}
+                        {isFinalApprover && (
+                          <Info label="Rate">
+                            {selected.client?.rateType === 'variable'
+                              ? <span style={{ color: P.brick, fontStyle: 'italic', fontWeight: 500 }}>Entered at approval</span>
+                              : selected.client?.rateOfSaleAmount != null && `$${Number(selected.client.rateOfSaleAmount).toLocaleString()}`}
+                          </Info>
+                        )}
+                      </div>
                     )}
-                    {isFinalApprover && selected.client?.rateType === 'fixed' && selected.client?.rateOfSaleAmount != null && (
-                      <DetailRow label="Rate" value={<span className="font-semibold">${Number(selected.client.rateOfSaleAmount).toLocaleString()}</span>} />
+                  </SectionCard>
+
+                  <SectionCard title="Additional Information" icon={ICONS.notes} done={0} total={0} complete={false}>
+                    {editing ? (
+                      <div style={INFO_GRID}>
+                        <Field label="Transferred From">{inp('transferredFrom', { placeholder: 'Transferred from' })}</Field>
+                        <div style={{ gridColumn: 'span 2' }}>
+                          <Field label="Reason of Cancellation">
+                            <StyledSelect value={editForm.reason} onChange={v => setEdit('reason', v)} placeholder="Select reason"
+                              options={[{ value: '', label: 'Select reason' }, ...CANCEL_REASONS.map(r => ({ value: r, label: r }))]} />
+                          </Field>
+                        </div>
+                        <div style={{ gridColumn: '1 / -1' }}>
+                          <Field label="Comments">
+                            <textarea name="didComments" value={editForm.didComments} onChange={handleEditChange} rows={3} placeholder="Comments" className={`${inputCls} resize-none`} />
+                          </Field>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={INFO_GRID}>
+                        <Info label="Transferred From">{selected.transferredFrom}</Info>
+                        <Info label="Reason of Cancellation" span={2}>{selected.reason}</Info>
+                        <Info label="Comments" span={3}>{selected.didComments}</Info>
+                        {extras.map(([k, v]) => <Info key={k} label={k.replace(/_/g, ' ')}>{String(v)}</Info>)}
+                      </div>
                     )}
-                    {isFinalApprover && selected.client?.rateType === 'variable' && (
-                      <DetailRow label="Rate" value={<span className="text-xs text-orange-600 italic">Entered at approval</span>} />
-                    )}
-                    <DetailRow label="Agent" value={selected.agent?.displayName ?? selected.agent?.userCode} />
-                  </dl>
-                )}
+                  </SectionCard>
 
-                <SectionTitle>Additional Information</SectionTitle>
-                {editing ? (
-                  <div className="space-y-3 pt-2">
-                    <div>
-                      <FieldLabel>Comments</FieldLabel>
-                      <textarea name="didComments" value={editForm.didComments} onChange={handleEditChange} rows={3} placeholder="Comments" className={`${inputCls} resize-none`} />
-                    </div>
-                    <div><FieldLabel>Transferred From</FieldLabel>{inp('transferredFrom', { placeholder: 'Transferred from' })}</div>
-                    <div>
-                      <FieldLabel>Reason</FieldLabel>
-                      <StyledSelect value={editForm.reason} onChange={v => setEdit('reason', v)} placeholder="Select reason"
-                        options={[{ value: '', label: 'Select reason' }, ...CANCEL_REASONS.map(r => ({ value: r, label: r }))]} />
-                    </div>
-                  </div>
-                ) : (
-                  <dl className="space-y-1">
-                    <DetailRow label="Comments" value={selected.didComments} />
-                    <DetailRow label="Transferred From" value={selected.transferredFrom} />
-                    <DetailRow label="Reason" value={selected.reason} />
-                    {extras.map(([k, v]) => <DetailRow key={k} label={k.replace(/_/g, ' ')} value={String(v)} />)}
-                  </dl>
-                )}
+                  {(selected.qaComments || selected.managerNote || selected.finalNote) && (
+                    <SectionCard title="QA Comments and Notes" icon={ICONS.notes} done={0} total={0} complete={false}>
+                      <div style={INFO_GRID}>
+                        {selected.qaComments && <Info label="QA Comments" span={3}><span style={{ whiteSpace: 'pre-wrap' }}>{selected.qaComments}</span></Info>}
+                        {selected.managerNote && <Info label="Manager Note" span={3}>{selected.managerNote}</Info>}
+                        {selected.finalNote && <Info label="Final Note" span={3}>{selected.finalNote}</Info>}
+                      </div>
+                    </SectionCard>
+                  )}
 
-                {selected.qaComments && (
-                  <>
-                    <SectionTitle>QA Comments</SectionTitle>
-                    <div className="rounded-lg bg-blue-50 border border-blue-100 px-4 py-3 mt-2 text-sm text-blue-900 whitespace-pre-wrap">{selected.qaComments}</div>
-                  </>
-                )}
-
-                {(selected.managerNote || selected.finalNote) && (
-                  <>
-                    <SectionTitle>Notes</SectionTitle>
-                    <dl className="space-y-1">
-                      <DetailRow label="Manager Note" value={selected.managerNote} />
-                      <DetailRow label="Final Note" value={selected.finalNote} />
-                    </dl>
-                  </>
-                )}
-
-                {isFinalApprover && selected.saleRateAmount != null && (
-                  <>
-                    <SectionTitle>Sale Snapshot</SectionTitle>
-                    <dl className="space-y-1">
-                      <DetailRow label="DID at Close" value={selected.saleDidCode} />
-                      <DetailRow label="Client at Close" value={selected.saleCompanyName} />
-                      <DetailRow label="Rate at Close" value={`$${Number(selected.saleRateAmount).toFixed(2)} (${selected.saleRateType ?? ''})`} />
-                    </dl>
-                  </>
-                )}
-
-                <SectionTitle>Timestamps</SectionTitle>
-                <dl className="space-y-1">
-                  <DetailRow label="Sale Time (PKT)" value={selected.submittedAtPak && <span className="font-mono">{selected.submittedAtPak}</span>} />
-                  <DetailRow label="Sale Time (EST)" value={selected.submittedAtEst && <span className="font-mono">{selected.submittedAtEst}</span>} />
-                  <DetailRow label="Approved At" value={fmtWithPKT(selected.approvedAt)} />
-                  <DetailRow label="Disapproved At" value={fmtWithPKT(selected.disapprovedAt)} />
-                  <DetailRow label="Final Approved At" value={fmtWithPKT(selected.finalApprovedAt)} />
-                  <DetailRow label="Final Rejected At" value={fmtWithPKT(selected.finalDisapprovedAt)} />
-                </dl>
+                  {(times.length > 0 || (isFinalApprover && selected.saleRateAmount != null)) && (
+                    <SectionCard title="Timeline" icon={ICONS.notes} done={0} total={0} complete={false}>
+                      <div style={INFO_GRID}>
+                        {times.map(([label, v]) => <Info key={label} label={label}>{v}</Info>)}
+                        {isFinalApprover && selected.saleRateAmount != null && (
+                          <>
+                            <Info label="DID at Close">{selected.saleDidCode}</Info>
+                            <Info label="Client at Close">{selected.saleCompanyName}</Info>
+                            <Info label="Rate at Close">{`$${Number(selected.saleRateAmount).toFixed(2)} (${selected.saleRateType ?? ''})`}</Info>
+                          </>
+                        )}
+                      </div>
+                    </SectionCard>
+                  )}
+                </div>
               </div>
-            </div>
-          )}
+            )
+          })()}
           </div>
         </div>
       </div>
@@ -591,7 +585,6 @@ export default function ApprovalsPage() {
             <h3 className="text-base font-bold text-gray-800">Permanently Delete Record</h3>
             <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 space-y-1">
               <p className="text-sm font-semibold text-red-800">{selected.firstName} {selected.lastName}</p>
-              <p className="text-xs font-mono font-bold text-red-600">{selected.customerCode}</p>
             </div>
             <p className="text-sm text-gray-600">This record will be <span className="font-semibold text-red-600">permanently deleted</span> and cannot be recovered. Are you absolutely sure?</p>
             <div className="flex justify-end gap-3 pt-1">

@@ -42,7 +42,6 @@ function rejectionReason(c: Customer) {
 
 function buildCols(canSeeAgent: boolean, canSeeCompany: boolean): Col[] {
   const cols: Col[] = [
-    { key: 'code', label: 'Code', w: 105, show: true },
     { key: 'name', label: 'Name', w: 165, show: true },
     { key: 'status', label: 'Status', w: 158, show: true },
     { key: 'vertical', label: 'Vertical', w: 115, show: true },
@@ -70,7 +69,6 @@ function RateTypePill({ v }: { v?: string | null }) {
 
 function cell(col: Col, c: Customer) {
   switch (col.key) {
-    case 'code':     return <span style={{ fontSize: 12, fontWeight: 700, color: P.teal, letterSpacing: '0.04em' }}>{c.customerCode}</span>
     case 'name':     return <span style={{ fontWeight: 600, color: P.textHeading }}>{c.firstName} {c.lastName}</span>
     case 'status':   return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_BADGE[c.status] ?? 'bg-gray-100 text-gray-600'}`}>{STATUS_LABEL[c.status] ?? c.status}</span>
     case 'vertical': return <span className="truncate block text-xs text-gray-600">{c.verticalType ?? 'N/A'}</span>
@@ -119,7 +117,6 @@ function SaleDetailModal({ c, onClose, canSeeCompany }: { c: Customer; onClose: 
         <div className="flex items-start justify-between px-6 py-4 flex-shrink-0" style={{ background: 'linear-gradient(135deg, #0E5F6E 0%, #1E8496 100%)', borderBottom: '1px solid #1A7888' }}>
           <div>
             <h2 className="text-base font-bold" style={{ color: '#FFFFFF', letterSpacing: '0.06em' }}>{c.firstName} {c.midName ? c.midName + ' ' : ''}{c.lastName}</h2>
-            <p className="text-xs font-mono font-bold mt-0.5" style={{ color: 'rgba(255,255,255,0.65)' }}>{c.customerCode}</p>
           </div>
           <div className="flex items-center gap-2 mt-0.5">
             <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${STATUS_BADGE[c.status] ?? 'bg-gray-100 text-gray-600'}`}>{STATUS_LABEL[c.status] ?? c.status}</span>
@@ -222,7 +219,7 @@ export default function ReportsPage() {
   }, [filters, page])
 
   useEffect(() => { fetchData() }, [fetchData])
-  useAutoRefresh(() => fetchData(true))
+  useAutoRefresh(() => fetchData(true), { sales: true })
 
   // Every filter applies as soon as it changes, the way argroup's filter bars work.
   const setF = (name: keyof Filters, value: string) => { setFilters(p => ({ ...p, [name]: value })); setPage(1) }

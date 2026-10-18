@@ -67,7 +67,7 @@ export class ReportsService {
     })
 
     const header = [
-      'Code', 'Agent', 'First Name', 'Mid Name', 'Last Name',
+      'Agent', 'First Name', 'Mid Name', 'Last Name',
       'Age', 'CX DOB', 'Phone', 'Address', 'City', 'State', 'ZIP',
       'Vertical', 'Vertical Other', 'Comments', 'Transferred From', 'QA Comments',
       'Reason', 'Rejection Reason', 'DID Code', 'Sale Type',
@@ -86,7 +86,7 @@ export class ReportsService {
         c.status === CustomerStatus.FINAL_DISAPPROVED ? c.finalNote :
         c.status === CustomerStatus.AGENT_REJECTED    ? c.reason : ''
       lines.push(csvRow([
-        c.customerCode, c.agent?.displayName, c.firstName, c.midName, c.lastName,
+        c.agent?.displayName, c.firstName, c.midName, c.lastName,
         c.age, fmtDateOnly(c.dateOfBirth), c.phone, c.address, c.city, c.state, c.postalCode,
         c.verticalType, c.verticalOther, c.didComments, c.transferredFrom, c.qaComments,
         c.reason, rejection, did, c.client?.saleType,

@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import api from '@/lib/api'
 import { getSocket } from '@/lib/socket'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
-import { isHrManager, isAccountant, roleLabel } from '@/lib/roles'
+import { isHrManager, isAccountant, isFinalApprover, isSaleReviewer, roleLabel } from '@/lib/roles'
 
 const C = {
   bg:        '#E8EAED',
@@ -230,9 +230,18 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
   }
 
   // ── Badges ──
-  const [counts, setCounts] = useState({ attApproval: 0, messages: 0 })
+  const [counts, setCounts] = useState({ attApproval: 0, messages: 0, approvals: 0 })
   const fetchCounts = useCallback(() => {
     if (!user) return
+    // Approvals badge: the queue this user acts on (Manager Approval for QA/Floor managers,
+    // Final Approval for directors and admins)
+    const queue = isFinalApprover(user) ? 'APPROVED' : isSaleReviewer(user) ? 'PENDING' : null
+    if (queue) {
+      api.get('/customers/counts').then(r => {
+        const d = r.data?.data ?? r.data
+        setCounts(c => ({ ...c, approvals: d?.[queue] ?? 0 }))
+      }).catch(() => {})
+    }
     if (user.role !== Role.AGENT && !isAccountant(user)) {
       api.get('/attendance/pending-count').then(r => {
         const d = r.data?.data ?? r.data
@@ -245,7 +254,7 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
     }).catch(() => {})
   }, [user])
   useEffect(() => { fetchCounts() }, [fetchCounts, pathname])
-  useAutoRefresh(fetchCounts, { page: false })
+  useAutoRefresh(fetchCounts, { page: false, sales: true })
 
   const navItems = user ? navFor(user).filter(i => i.key !== 'myAtt' || user.attendanceApplicable !== false) : []
   const attItems = navItems.filter(i => ATTENDANCE_KEYS.includes(i.key))
@@ -266,7 +275,7 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
   const exactActive = (item: NavItem) =>
     item.key === 'myAtt' ? pathname === item.href : isActive(item.href)
   const attActive = attItems.some(exactActive)
-  const itemBadge = (key: string) => key === 'attApproval' ? counts.attApproval : key === 'messages' ? counts.messages : 0
+  const itemBadge = (key: string) => key === 'attApproval' ? counts.attApproval : key === 'messages' ? counts.messages : key === 'approvals' ? counts.approvals : 0
 
   useLayoutEffect(() => {
     if (!attOpen) return

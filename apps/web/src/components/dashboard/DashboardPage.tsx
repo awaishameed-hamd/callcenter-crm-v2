@@ -125,7 +125,7 @@ export default function DashboardPage() {
   }, [period, fromDate, toDate])
 
   useEffect(() => { fetchData() }, [fetchData])
-  useAutoRefresh(() => fetchData(true))
+  useAutoRefresh(() => fetchData(true), { sales: true })
 
   const stats = d?.stats ?? EMPTY_STATS
   const rate  = d?.approvalRate ?? { rate: 0, approved: 0, pending: 0, rejected: 0, total: 0 }

@@ -48,7 +48,6 @@ function DetailModal({ customer, onClose }: { customer: Customer | null; onClose
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
           <div>
             <h2 className="text-base font-bold text-gray-800">{fullName(customer)}</h2>
-            <p className="text-xs font-mono font-bold text-gray-700 mt-0.5">{customer.customerCode}</p>
           </div>
           <div className="flex items-center gap-3">
             <StatusBadge status={customer.status} />
@@ -133,7 +132,7 @@ export default function MySalesPage() {
   }, [tab, page, search])
 
   useEffect(() => { load() }, [load])
-  useAutoRefresh(() => load(true))
+  useAutoRefresh(() => load(true), { sales: true })
 
   const rows = data?.data ?? []
   const from = data ? (data.currentPage - 1) * data.perPage + 1 : 0
@@ -141,7 +140,6 @@ export default function MySalesPage() {
 
   const columns: Column<Customer>[] = [
     { key: 'idx', label: '#', width: 50, resizable: false, render: (_, i) => <span style={{ fontSize: 11, color: P.textMuted }}>{from + i}</span> },
-    { key: 'code', label: 'Code', width: 110, render: c => <span style={{ fontSize: 12, fontWeight: 700, color: P.teal, letterSpacing: '0.04em' }}>{c.customerCode}</span> },
     { key: 'name', label: 'Name', width: 165, render: c => <span style={{ fontWeight: 600, color: P.textHeading }}>{c.firstName} {c.lastName}</span> },
     { key: 'phone', label: 'Phone', width: 130, render: c => muted(c.phone ?? 'N/A') },
     { key: 'zip', label: 'ZIP', width: 90, render: c => muted(c.postalCode ?? 'N/A') },
@@ -161,7 +159,7 @@ export default function MySalesPage() {
       <FilterBar>
         <FilterPills value={tab} onChange={v => { setTab(v); setPage(1) }} options={TABS.map(t => ({ value: t.key, label: t.label }))} />
         <FilterSep />
-        <FilterSearch value={searchInput} onChange={setSearchInput} onEnter={() => { setSearch(searchInput.trim()); setPage(1) }} placeholder="Name or code, then Enter" width={230} />
+        <FilterSearch value={searchInput} onChange={setSearchInput} onEnter={() => { setSearch(searchInput.trim()); setPage(1) }} placeholder="Name or phone, then Enter" width={230} />
         {data && <FilterCount>{data.total} record{data.total !== 1 ? 's' : ''}</FilterCount>}
       </FilterBar>
 

@@ -80,6 +80,7 @@ Every route is under `/api` and needs a Bearer token, except `POST /api/auth/log
   - `components/ui/`: shared building blocks: `PageChrome` (page title, teal filter bar, buttons, pager), `DataTable` (gold-header table), `StyledSelect`, `PillSelect`, `Toast`
 - `lib/`: `api.ts` (axios with token refresh), `roles.ts`, `format.tsx`, `palette.ts` (all colours), `socket.ts`
 - `hooks/useAutoRefresh.ts`: refetches a page every 10 s, on notifications, on tab focus and when the refresh button is pressed; a hidden tab does not poll and catches up when shown. On screens without it (settings and forms) the refresh button reloads the page
+- `lib/live.ts` + API `modules/live`: server-sent events. Any write to a sale sends a tick on `/api/live/sales`, and screens using `useAutoRefresh(..., { sales: true })` (dashboard, reports, approvals, my sales, sidebar counts) refetch at once
 - `hooks/useIdleLogout.ts`: signs a tab out after 10 minutes without mouse, keyboard, scroll or touch activity
 
 ### UI conventions
