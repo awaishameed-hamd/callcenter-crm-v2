@@ -27,7 +27,10 @@ const STATUS_COLOR: Record<string, string> = {
   [CustomerStatus.FINAL_DISAPPROVED]: '#7B2D8E',
   [CustomerStatus.AGENT_REJECTED]:    '#B45309',
   '':                                 '#C25A1F',
+  AWAITING:                           '#C25A1F',
 }
+// Pending plus manager-approved: everything still waiting on someone
+const AWAITING = 'AWAITING'
 
 type EditForm = Record<string, string>
 type DidOption = { id: string; didCode: string; saleType: string | null }
@@ -110,9 +113,9 @@ export default function ApprovalsPage() {
   const TABS = isFinalApprover
     ? [
         // Decided records (approved or rejected) are reviewed in the Sales Report, so only open queues show here.
-        { key: CustomerStatus.PENDING,  label: 'Awaiting Manager' },
-        { key: CustomerStatus.APPROVED, label: 'Awaiting Final' },
-        { key: '',                      label: 'All' },
+        { key: CustomerStatus.PENDING,  label: 'Awaiting Manager Approval' },
+        { key: CustomerStatus.APPROVED, label: 'Awaiting Final Approval' },
+        { key: AWAITING,                label: 'Awaiting All' },
       ]
     : [
         { key: CustomerStatus.PENDING,     label: 'Pending' },
@@ -242,7 +245,9 @@ export default function ApprovalsPage() {
         <div style={{ display: 'flex', gap: 2, background: '#fff', border: `1px solid ${P.border}`, borderRadius: 8, padding: 3 }}>
           {TABS.map(tab => {
             const active = statusFilter === tab.key
-            const cnt = counts[tab.key || 'ALL'] ?? 0
+            const cnt = tab.key === AWAITING
+              ? (counts[CustomerStatus.PENDING] ?? 0) + (counts[CustomerStatus.APPROVED] ?? 0)
+              : counts[tab.key || 'ALL'] ?? 0
             const color = tabColor(tab.key)
             return (
               <button key={tab.key || 'all'} onClick={() => handleTab(tab.key)}

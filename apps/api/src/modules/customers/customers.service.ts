@@ -41,6 +41,8 @@ export class CustomersService {
     const where: Prisma.CustomerWhereInput = actor.role === Role.AGENT ? { agentId: actor.id } : {}
     const status = q.status?.toUpperCase()
     if (status && status in CustomerStatus) where.status = status as CustomerStatus
+    // Both open queues at once: waiting on a manager or waiting on final approval
+    else if (status === 'AWAITING') where.status = { in: [CustomerStatus.PENDING, CustomerStatus.APPROVED] }
     if (q.search) {
       const s = { contains: q.search, mode: 'insensitive' as const }
       where.OR = [{ customerCode: s }, { firstName: s }, { lastName: s }]
