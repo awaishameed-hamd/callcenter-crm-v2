@@ -1,22 +1,21 @@
 'use client'
 
 import { useState, useEffect, useMemo, useCallback } from 'react'
-import { CAMPAIGNS, STANDARD_FIELD_KEYS } from '@crm/shared'
+import { STANDARD_FIELD_KEYS } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
 import DataTable, { type Column } from '@/components/ui/DataTable'
 import { PageShell, PageHeader, FilterBar, FilterSep, FilterPills, FilterSearch, FilterCount, PrimaryButton, SecondaryButton, PlusIcon, Pager } from '@/components/ui/PageChrome'
 import { P } from '@/lib/palette'
+import { useVerticals, campaignsOf, colorOf, verticalBadgeStyle } from '@/lib/verticals'
+import VerticalsManager from './VerticalsManager'
 import { apiGet, apiPost, apiPut, errMsg, errFields } from '@/lib/api'
 import type { Client, FormField, Page } from '@/types'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 
 const CORE_KEYS = new Set(STANDARD_FIELD_KEYS.client)
 const COL_SPAN: Record<string, number> = { full: 6, two_thirds: 4, half: 3, third: 2 }
-const CAMPAIGN_BADGE: Record<string, string> = {
-  Medicare: 'bg-blue-100 text-blue-700', 'Final Expense': 'bg-purple-100 text-purple-700', ACA: 'bg-emerald-100 text-emerald-700',
-}
 const inputCls  = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-50 disabled:text-gray-400'
 
 type Form = {
@@ -82,6 +81,8 @@ function ExtraField({ field, value, onChange }: { field: FormField; value: strin
 
 function ClientForm({ initial, onSubmit, loading, errors }: { initial?: Client; onSubmit: (p: Record<string, unknown>) => void; loading: boolean; errors: Record<string, string[]> }) {
   const isEdit = !!initial
+  const { verticals } = useVerticals()
+  const campaignOptions = [...campaignsOf(verticals).map(v => v.name), ...(initial?.campaign && !campaignsOf(verticals).some(v => v.name === initial.campaign) ? [initial.campaign] : [])]
   const [form, setForm] = useState<Form>(initial ? {
     companyName: initial.companyName, campaign: str(initial.campaign), didCode: str(initial.didCode), saleType: str(initial.saleType),
     rateType: initial.rateType, rateOfSaleAmount: str(initial.rateOfSaleAmount), openingBalance: str(initial.openingBalance),
@@ -126,7 +127,7 @@ function ClientForm({ initial, onSubmit, loading, errors }: { initial?: Client; 
       {vis('campaign') && (
         <Field label={label('campaign', 'Campaign')} required>
           <StyledSelect value={form.campaign} onChange={v => setForm(p => ({ ...p, campaign: v, didCode: '' }))} required placeholder="Select campaign"
-            options={CAMPAIGNS.map(c => ({ value: c, label: c }))} />
+            options={campaignOptions.map(c => ({ value: c, label: c }))} />
         </Field>
       )}
       {vis('did_code') && (
@@ -207,7 +208,9 @@ function ClientForm({ initial, onSubmit, loading, errors }: { initial?: Client; 
 function DidPoolModal({ onClose, setToast }: { onClose: () => void; setToast: (t: { message: string; type: 'success' | 'error' }) => void }) {
   const [rows, setRows] = useState<{ id: string; didCode: string; campaign: string; isActive: boolean; assignedTo: string | null }[]>([])
   const [code, setCode] = useState('')
-  const [campaign, setCampaign] = useState<string>(CAMPAIGNS[0])
+  const { verticals } = useVerticals()
+  const [campaign, setCampaign] = useState<string>('')
+  useEffect(() => { if (!campaign && campaignsOf(verticals)[0]) setCampaign(campaignsOf(verticals)[0].name) }, [verticals, campaign])
   const [busy, setBusy] = useState(false)
   const load = useCallback(() => { apiGet('/dids').then(setRows).catch(() => setRows([])) }, [])
   useEffect(() => { load() }, [load])
@@ -232,7 +235,7 @@ function DidPoolModal({ onClose, setToast }: { onClose: () => void; setToast: (t
       <form onSubmit={add} className="flex items-end gap-3 mb-4">
         <div className="flex-1"><Field label="DID Code" required><input value={code} onChange={e => setCode(e.target.value)} required maxLength={10} placeholder="e.g. MD21" className={inputCls} /></Field></div>
         <div className="w-48"><Field label="Campaign" required>
-          <StyledSelect value={campaign} onChange={setCampaign} options={CAMPAIGNS.map(c => ({ value: c, label: c }))} />
+          <StyledSelect value={campaign} onChange={setCampaign} options={campaignsOf(verticals).map(c => ({ value: c.name, label: c.name }))} />
         </Field></div>
         <button type="submit" disabled={busy} className="px-4 py-2.5 rounded-lg bg-blue-600 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60">Add</button>
       </form>
@@ -243,7 +246,7 @@ function DidPoolModal({ onClose, setToast }: { onClose: () => void; setToast: (t
             {rows.map(d => (
               <tr key={d.id} className={d.isActive ? '' : 'opacity-50'}>
                 <td className="px-3 py-2 font-mono font-semibold">{d.didCode}</td>
-                <td className="px-3 py-2 text-xs">{d.campaign}</td>
+                <td className="px-3 py-2 text-xs"><span style={verticalBadgeStyle(colorOf(verticals, d.campaign))}>{d.campaign}</span></td>
                 <td className="px-3 py-2 text-xs text-gray-600">{d.assignedTo ?? 'Available'}</td>
                 <td className="px-3 py-2 text-xs">{d.isActive ? 'Active' : 'Inactive'}</td>
                 <td className="px-3 py-2 text-right">
@@ -271,6 +274,8 @@ export default function ClientsPage() {
   const [editClient, setEditClient] = useState<Client | null>(null)
   const [confirmToggle, setConfirmToggle] = useState<Client | null>(null)
   const [showPool, setShowPool] = useState(false)
+  const [showVerticals, setShowVerticals] = useState(false)
+  const { verticals, reload: reloadVerticals } = useVerticals()
   const [busy, setBusy]         = useState(false)
   const [formErrors, setFormErrors] = useState<Record<string, string[]>>({})
   const [toast, setToast]       = useState<{ message: string; type: 'success' | 'error' } | null>(null)
@@ -328,7 +333,7 @@ export default function ClientsPage() {
 
   const columns: Column<Client>[] = [
     { key: 'company', label: 'Company', width: 210, render: c => <span style={{ fontWeight: 600, color: P.textHeading }}>{c.companyName}</span> },
-    { key: 'campaign', label: 'Campaign', width: 130, render: c => tw(CAMPAIGN_BADGE[c.campaign ?? ''] ?? 'bg-gray-100 text-gray-600', c.campaign ?? 'N/A') },
+    { key: 'campaign', label: 'Campaign', width: 130, render: c => c.campaign ? <span style={verticalBadgeStyle(colorOf(verticals, c.campaign))}>{c.campaign}</span> : na },
     { key: 'did', label: 'Assigned DID', width: 120, render: c => c.didCode ? <span style={{ fontSize: 12, fontWeight: 700, color: P.teal, letterSpacing: '0.04em' }}>{c.didCode}</span> : na },
     { key: 'type', label: 'Type', width: 90, render: c => c.saleType ? tw(c.saleType === 'CPA' ? 'bg-violet-100 text-violet-700' : 'bg-teal-100 text-teal-700', c.saleType) : na },
     { key: 'rateType', label: 'Rate Type', width: 100, render: c => <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${c.rateType === 'fixed' ? 'bg-slate-100 text-slate-700' : 'bg-orange-100 text-orange-700'}`}>{c.rateType === 'fixed' ? 'Fixed' : 'Variable'}</span> },
@@ -352,6 +357,11 @@ export default function ClientsPage() {
       {showCreate && <Modal title="New Client" onClose={() => { setShowCreate(false); setFormErrors({}) }}><ClientForm onSubmit={save} loading={busy} errors={formErrors} /></Modal>}
       {editClient && <Modal title={`Edit Client: ${editClient.companyName}`} onClose={() => { setEditClient(null); setFormErrors({}) }}><ClientForm initial={editClient} onSubmit={save} loading={busy} errors={formErrors} /></Modal>}
       {showPool && <DidPoolModal onClose={() => setShowPool(false)} setToast={setToast} />}
+      {showVerticals && (
+        <Modal title="Verticals" wide onClose={() => { setShowVerticals(false); reloadVerticals(); fetchClients() }}>
+          <VerticalsManager />
+        </Modal>
+      )}
       {confirmToggle && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setConfirmToggle(null)} />
@@ -370,13 +380,14 @@ export default function ClientsPage() {
 
       <PageShell>
         <PageHeader title="Client Management" actions={<>
+          <SecondaryButton onClick={() => setShowVerticals(true)}>Verticals</SecondaryButton>
           <SecondaryButton onClick={() => setShowPool(true)}>DID Pool</SecondaryButton>
           <PrimaryButton onClick={() => { setShowCreate(true); setFormErrors({}) }}><PlusIcon /> New Client</PrimaryButton>
         </>} />
 
         <FilterBar>
           <FilterPills value={campaignFilter} onChange={v => { setCampaignFilter(v); setPage(1) }}
-            options={[{ value: '', label: 'All Campaigns' }, ...CAMPAIGNS.map(c => ({ value: c as string, label: c as string }))]} />
+            options={[{ value: '', label: 'All Campaigns' }, ...verticals.filter(v => !v.isOther).map(v => ({ value: v.name, label: v.name }))]} />
           <FilterSep />
           <FilterPills value={statusFilter} onChange={v => { setStatusFilter(v); setPage(1) }}
             options={[['', 'All'], ['active', 'Active'], ['inactive', 'Inactive']] as const} />

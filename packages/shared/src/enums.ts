@@ -53,8 +53,8 @@ export enum CustomerStatus {
   AGENT_REJECTED    = 'AGENT_REJECTED',
 }
 
-export const VERTICALS   = ['Medicare', 'Final Expense', 'ACA', 'Other']
-export const CAMPAIGNS   = ['Medicare', 'Final Expense', 'ACA']
+// Verticals (and client/DID campaigns) are not fixed here: they live in the verticals table,
+// managed under Verticals by Admin and Director (see apps/api/src/modules/verticals).
 export const SALE_TYPES  = ['CPA', 'CPL']
 export const RATE_TYPES  = ['fixed', 'variable']
 export const CANCEL_REASONS = ['XFER', 'No LA', 'Ringing', 'Over Age', 'Out of State', 'Hangup', 'No medicare card']

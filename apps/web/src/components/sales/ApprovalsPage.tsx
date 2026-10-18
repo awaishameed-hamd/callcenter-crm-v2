@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { CustomerStatus, VERTICALS, CANCEL_REASONS } from '@crm/shared'
+import { CustomerStatus, CANCEL_REASONS } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
@@ -9,6 +9,7 @@ import { PageTitle } from '@/components/ui/PageChrome'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLayout } from '@/components/layout/AppLayout'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
+import { useVerticals } from '@/lib/verticals'
 import { apiGet, apiPost, apiPut, apiDelete, errMsg } from '@/lib/api'
 import { StatusBadge, fmtWithPKT, fullName } from '@/lib/format'
 import { isFinalApprover as finalRole, isSaleReviewer } from '@/lib/roles'
@@ -17,7 +18,6 @@ import type { Customer, Page } from '@/types'
 
 const FONT = "'Aptos', sans-serif"
 const inputCls  = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
-const VERTICAL_TO_CAMPAIGN: Record<string, string> = { Medicare: 'Medicare', 'Final Expense': 'Final Expense', ACA: 'ACA' }
 
 // Pending plus manager-approved: everything still waiting on someone
 const AWAITING = 'AWAITING'
@@ -76,6 +76,8 @@ export default function ApprovalsPage() {
   const { sidebarCollapsed, setSidebarCollapsed } = useLayout()
   const isFinalApprover = finalRole(user)   // final stage: Director and Admin
   const isReviewer      = isSaleReviewer(user) // first stage: QA and Floor managers
+  const { verticals }   = useVerticals()
+  const isOtherVertical = (name?: string | null) => !!verticals.find(v => v.name === name)?.isOther
 
   const [customers, setCustomers]       = useState<Customer[]>([])
   const [meta, setMeta]                 = useState<Page<Customer> | null>(null)
@@ -146,14 +148,15 @@ export default function ApprovalsPage() {
 
   useEffect(() => {
     if (!editing) return
-    const campaign = VERTICAL_TO_CAMPAIGN[editForm.verticalType]
+    // A vertical's DIDs are the ones whose campaign is that vertical; "Other" has none
+    const campaign = editForm.verticalType && !isOtherVertical(editForm.verticalType) ? editForm.verticalType : ''
     if (!campaign) { setEditDids([]); return }
     setEditDidsLoading(true)
     apiGet<DidOption[]>('/clients/dropdown', { campaign })
       .then(setEditDids)
       .catch(() => setEditDids([]))
       .finally(() => setEditDidsLoading(false))
-  }, [editing, editForm.verticalType])
+  }, [editing, editForm.verticalType, verticals]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const setEdit = (name: string, value: string) => {
     if (name === 'verticalType') { setEditForm(p => ({ ...p, verticalType: value, clientId: '' })); return }
@@ -464,11 +467,11 @@ export default function ApprovalsPage() {
                       <div>
                         <FieldLabel>Vertical Type</FieldLabel>
                         <StyledSelect value={editForm.verticalType} onChange={v => setEdit('verticalType', v)} placeholder="Select"
-                          options={VERTICALS.map(v => ({ value: v, label: v }))} />
+                          options={verticals.filter(v => v.isActive || v.name === selected.verticalType).map(v => ({ value: v.name, label: v.name }))} />
                       </div>
-                      {editForm.verticalType === 'Other' && <div><FieldLabel>Specify Other</FieldLabel>{inp('verticalOther', { placeholder: 'Specify' })}</div>}
+                      {isOtherVertical(editForm.verticalType) && <div><FieldLabel>Specify Other</FieldLabel>{inp('verticalOther', { placeholder: 'Specify' })}</div>}
                     </div>
-                    {editForm.verticalType && editForm.verticalType !== 'Other' && (
+                    {editForm.verticalType && !isOtherVertical(editForm.verticalType) && (
                       <div>
                         <FieldLabel>DID</FieldLabel>
                         <StyledSelect value={editForm.clientId} onChange={v => setEdit('clientId', v)} loading={editDidsLoading} placeholder="Select DID"
@@ -479,7 +482,7 @@ export default function ApprovalsPage() {
                 ) : (
                   <dl className="space-y-1">
                     <DetailRow label="Vertical Type" value={selected.verticalType} />
-                    {selected.verticalType === 'Other' && <DetailRow label="Vertical Other" value={selected.verticalOther} />}
+                    {isOtherVertical(selected.verticalType) && <DetailRow label="Vertical Other" value={selected.verticalOther} />}
                     <DetailRow label="DID Code" value={selected.client?.didCode} />
                     {selected.client?.saleType && (
                       <DetailRow label="Sale Type" value={

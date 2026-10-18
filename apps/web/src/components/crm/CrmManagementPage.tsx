@@ -12,6 +12,7 @@ import { useLayout } from '@/components/layout/AppLayout'
 import { NAVY, TEAL, BG, SetToast } from './shared'
 import { FormManagementTab } from './FormManagementTab'
 import { UserAccessTab } from './UserAccessTab'
+import VerticalsManager from '@/components/admin/VerticalsManager'
 // ════════════════════════════════════════════════════════════════════════════
 // MAIN PAGE: second vertical menu on the left, the same pattern as argroup's Settings page
 // ════════════════════════════════════════════════════════════════════════════
@@ -26,6 +27,7 @@ const NAV = [
   { key: 'sale',    label: 'Sale Form',         icon: icon('M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25M8.25 8.25H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z') },
   { key: 'client',  label: 'Client Form',       icon: icon('M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z') },
   { key: 'profile', label: 'Profile Form',      icon: icon('M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z') },
+  { key: 'verticals', label: 'Verticals',       icon: icon('M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3ZM6 6h.008v.008H6V6Z') },
 ] as const
 const ATT_SUB = [
   { key: 'att-time',  label: 'Attendance Time', color: TEAL },
@@ -131,6 +133,7 @@ export default function CrmManagementPage() {
           </div>
 
           {active === 'access'    && <UserAccessTab setToast={setToast} />}
+          {active === 'verticals' && <VerticalsManager />}
           {active === 'sale'      && <FormManagementTab key="sale" formType="sale" formLabel="Sale Form" setToast={setToast} />}
           {active === 'client'    && <FormManagementTab key="client" formType="client" formLabel="Client Form" setToast={setToast} />}
           {active === 'profile'   && <FormManagementTab key="user" formType="user" formLabel="Profile Form" setToast={setToast} />}

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { CustomerStatus, Role, VERTICALS } from '@crm/shared'
+import { CustomerStatus, Role } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import PillSelect from '@/components/ui/PillSelect'
 import DataTable, { type Column } from '@/components/ui/DataTable'
@@ -13,6 +13,7 @@ import { STATUS_BADGE, STATUS_LABEL, periodDates, stampTime, fmtDay, BUSINESS_TZ
 import { isFinalApprover } from '@/lib/roles'
 import type { Customer, Page, Client } from '@/types'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
+import { useVerticals } from '@/lib/verticals'
 
 const STATUS_OPTIONS = Object.keys(STATUS_LABEL) as CustomerStatus[]
 const PERIODS: { key: PeriodKey; label: string }[] = [
@@ -168,6 +169,7 @@ export default function ReportsPage() {
   const { user } = useAuth()
   const canSeeAgent   = !!user && user.role !== Role.AGENT
   const canSeeCompany = isFinalApprover(user)
+  const { verticals } = useVerticals()
   const LS_KEY = `reports_cols_v5_${user?.role ?? ''}`
 
   const base: Filters = { status: '', agentId: '', clientId: '', companyName: '', verticalType: '', ...periodDates('today')! }
@@ -268,7 +270,7 @@ export default function ReportsPage() {
           <PillSelect value={filters.status} onChange={v => setF('status', v)} dimValue="" minWidth={160}
             options={[{ value: '', label: 'All Statuses' }, ...STATUS_OPTIONS.map(s => ({ value: s, label: STATUS_LABEL[s] }))]} />
           <PillSelect value={filters.verticalType} onChange={v => setF('verticalType', v)} dimValue="" minWidth={130}
-            options={[{ value: '', label: 'All Verticals' }, ...VERTICALS.map(v => ({ value: v, label: v }))]} />
+            options={[{ value: '', label: 'All Verticals' }, ...verticals.map(v => ({ value: v.name, label: v.name }))]} />
           {canSeeAgent && (
             <PillSelect value={filters.agentId} onChange={v => setF('agentId', v)} dimValue="" minWidth={140}
               options={[{ value: '', label: 'All Agents' }, ...agents.map(a => ({ value: a.id, label: a.displayName }))]} />

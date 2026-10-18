@@ -7,6 +7,7 @@ import { PrismaModule }        from './modules/prisma/prisma.module'
 import { AuthModule }          from './modules/auth/auth.module'
 import { UsersModule }         from './modules/users/users.module'
 import { ClientsModule }       from './modules/clients/clients.module'
+import { VerticalsModule }     from './modules/verticals/verticals.module'
 import { CustomersModule }     from './modules/customers/customers.module'
 import { DashboardModule }     from './modules/dashboard/dashboard.module'
 import { ReportsModule }       from './modules/reports/reports.module'
@@ -27,6 +28,7 @@ import { FilesModule }         from './modules/files/files.module'
     PrismaModule,
     AuthModule,
     UsersModule,
+    VerticalsModule,
     ClientsModule,
     CustomersModule,
     DashboardModule,

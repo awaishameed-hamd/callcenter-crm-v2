@@ -54,9 +54,9 @@ function OptionsEditor({ options, setOptions, error }: { options: string[]; setO
 }
 
 // Body shared by Add Field and Edit Field: section, label, type, width, placeholder, options, toggles.
-function FieldFormBody({ form, setF, sections, errors, keyInput }: {
+function FieldFormBody({ form, setF, sections, errors, keyInput, optionsFromVerticals }: {
   form: FieldDraft; setF: <K extends keyof FieldDraft>(k: K, v: FieldDraft[K]) => void; sections: string[]
-  errors: Record<string, string | undefined>; keyInput?: React.ReactNode
+  errors: Record<string, string | undefined>; keyInput?: React.ReactNode; optionsFromVerticals?: boolean
 }) {
   const onType = (val: string) => {
     setF('fieldType', val)
@@ -109,7 +109,9 @@ function FieldFormBody({ form, setF, sections, errors, keyInput }: {
             className="w-full rounded-lg border px-3 py-2 text-sm focus:outline-none" style={{ borderColor: '#CBD5E1', color: NAVY }} />
         </div>
       )}
-      {form.fieldType === 'select' && <OptionsEditor options={form.options} setOptions={o => setF('options', o)} error={errors.options} />}
+      {form.fieldType === 'select' && (optionsFromVerticals
+        ? <p className='text-xs rounded-lg px-3 py-2' style={{ background: 'rgba(30,132,150,0.06)', color: NAVY }}>The options of this field are the vertical list. Add, rename or reorder them under Verticals.</p>
+        : <OptionsEditor options={form.options} setOptions={o => setF('options', o)} error={errors.options} />)}
       <div className="flex gap-6 pt-1">
         <label className="flex items-center gap-2 cursor-pointer">
           <Toggle checked={form.isVisible} onChange={v => { setF('isVisible', v); if (!v) setF('isRequired', false) }} />
@@ -235,7 +237,7 @@ export function EditFieldModal({ field, sections, onSave, onClose }: {
 
   return (
     <ModalShell title="Edit Field" subtitle={field.fieldKey} mono onClose={onClose} footer={<FooterButtons onClose={onClose} onSubmit={submit} saving={saving} label="Save Changes" busy="Saving..." />}>
-      <FieldFormBody form={form} setF={setF} sections={sections} errors={errors} />
+      <FieldFormBody form={form} setF={setF} sections={sections} errors={errors} optionsFromVerticals={field.optionsFromVerticals} />
     </ModalShell>
   )
 }

@@ -11,6 +11,7 @@ import { apiGet } from '@/lib/api'
 import { P, CHART_COLORS } from '@/lib/palette'
 import { businessToday } from '@/lib/format'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
+import { useVerticals, colorOf } from '@/lib/verticals'
 
 type Slice = { name: string; value: number }
 interface Stats {
@@ -35,7 +36,6 @@ const PERIODS = [
 const AGENT_BAR_COLORS = ['#132E57', '#1E8496', '#D7A520', '#CBB26A', '#C25A1F']
 const SALE_TREE_COLORS = ['#132E57', '#1E8496', '#D7A520', '#CBB26A', '#3A6B3A', '#808080']
 const CANCEL_COLORS    = ['#1E8496', '#D7A520', '#C25A1F', '#132E57', '#3A6B3A', '#7B2D8E']
-const VERTICAL_COLORS  = ['#132E57', '#1E8496', '#D7A520', '#C25A1F']
 
 const F = "'Aptos', sans-serif"
 const cardStyle: React.CSSProperties = { background: P.bgCard, borderRadius: 8, padding: '12px 14px', boxShadow: P.shadow }
@@ -101,6 +101,7 @@ function SaleTypeTreemap({ data }: { data: Slice[] }) {
 
 export default function DashboardPage() {
   const { user } = useAuth()
+  const { verticals } = useVerticals()
   const [period, setPeriod]       = useState('daily')
   const [fromDate, setFromDate]   = useState('')
   const [toDate, setToDate]       = useState('')
@@ -272,9 +273,9 @@ export default function DashboardPage() {
           <div style={titleStyle}>Sales by Vertical</div>
           {(d?.verticalPie ?? []).length === 0 ? <Empty /> : (
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'center' }}>
-              <PieBox data={d!.verticalPie} colors={VERTICAL_COLORS} inner={46}
+              <PieBox data={d!.verticalPie} colors={d!.verticalPie.map(s => colorOf(verticals, s.name))} inner={46}
                 center={<><div style={{ fontSize: 22, fontWeight: 700, color: P.navy, lineHeight: 1 }}>{d!.verticalPie.reduce((s, x) => s + x.value, 0)}</div><div style={{ fontSize: 7.5, color: P.textMuted, letterSpacing: '0.08em', marginTop: 2 }}>TOTAL</div></>} />
-              <Legendary data={d!.verticalPie} colors={VERTICAL_COLORS} max={120} />
+              <Legendary data={d!.verticalPie} colors={d!.verticalPie.map(s => colorOf(verticals, s.name))} max={120} />
             </div>
           )}
         </div>

@@ -87,7 +87,9 @@ function FieldRow({ field, index, count, onChange, onEditOptions, onDelete, onEd
         </div>
         <div className="flex-shrink-0" style={{ width: W.type }}><TypeBadge type={field.fieldType} /></div>
         <div className="flex-shrink-0" style={{ width: W.options }}>
-          {field.fieldType === 'select' ? (
+          {field.optionsFromVerticals ? (
+            <span title='Options are the vertical list. Change them under Verticals.' className='inline-flex items-center px-2 py-1 rounded-lg text-xs font-semibold' style={{ color: TEAL, background: 'rgba(30,132,150,0.06)', border: '1px dashed rgba(30,132,150,0.35)' }}>Verticals</span>
+          ) : field.fieldType === 'select' ? (
             <button onClick={onEditOptions} className="flex items-center gap-1 px-2 py-1 rounded-lg text-xs font-semibold border transition-colors hover:border-teal-400"
               style={{ color: TEAL, borderColor: 'rgba(30,132,150,0.35)', background: 'rgba(30,132,150,0.06)' }}>
               <EditIcon className="w-3 h-3" />{field.options?.length ?? 0} opts

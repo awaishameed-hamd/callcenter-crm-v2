@@ -5,6 +5,7 @@ import { PrismaService } from '../prisma/prisma.service'
 import { V, fail, defined, pageArgs, toPage, FieldErrors } from '../../common/utils/validate'
 import { dateOnly, fmtStamp, PKT_TZ, US_TZ } from '../../common/utils/time'
 import { assertSaleReviewer } from '../../common/utils/staff-policy'
+import { VerticalsService } from '../verticals/verticals.service'
 
 type Actor = { id: string; role: Role; managerType?: string | null }
 
@@ -32,7 +33,7 @@ function maskSnapshot<T extends Record<string, unknown>>(row: T, role: Role): T 
 
 @Injectable()
 export class CustomersService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private verticals: VerticalsService) {}
 
   private include(role: Role) {
     return { client: clientSelect(role), agent: AGENT_SELECT } satisfies Prisma.CustomerInclude
@@ -96,7 +97,10 @@ export class CustomersService {
       transferredFrom: E.run('transferred_from', () => V.str(b.transferredFrom, label('transferred_from', 'Transferred from'), { required: req('transferred_from'), max: 255 })),
       reason:          E.run('reason',           () => V.str(b.reason, label('reason', 'Reason'), { required: req('reason'), max: 50 })),
     }
-    const clientId = E.run('client_id', () => V.str(b.clientId, label('client_id', 'DID'), { required: verticalType !== 'Other' }))
+    // The vertical must be one of the active verticals; only the "Other" vertical goes without a DID
+    const vertical = verticalType ? await this.verticals.find(verticalType) : null
+    if (verticalType && (!vertical || !vertical.isActive)) E.add('vertical_type', 'Please choose one of the listed verticals.')
+    const clientId = E.run('client_id', () => V.str(b.clientId, label('client_id', 'DID'), { required: !vertical?.isOther }))
     if (clientId) {
       const client = await this.prisma.client.findUnique({ where: { id: clientId }, select: { isActive: true } })
       if (!client?.isActive) E.add('client_id', 'The selected DID is invalid.')
@@ -147,6 +151,9 @@ export class CustomersService {
     const clientId = V.str(b.clientId, 'DID')
     if (clientId && !(await this.prisma.client.findUnique({ where: { id: clientId }, select: { id: true } }))) fail('The selected DID is invalid.')
     const dob = V.date(b.dateOfBirth, 'Date of birth')
+    // An edited sale may keep a vertical that has since been turned off, but it must exist
+    const verticalType = V.str(b.verticalType, 'Vertical type', { max: 50 })
+    if (verticalType && !(await this.verticals.find(verticalType))) fail('Please choose one of the listed verticals.')
     const data = defined({
       firstName:       V.str(b.firstName, 'First name', { max: 100 }) ?? undefined,
       midName:         V.str(b.midName, 'Middle name', { max: 100 }),
@@ -157,7 +164,7 @@ export class CustomersService {
       city:            V.str(b.city, 'City', { max: 100 }),
       state:           V.str(b.state, 'State', { max: 100 }),
       postalCode:      V.str(b.postalCode, 'Postal code', { max: 20 }),
-      verticalType:    V.str(b.verticalType, 'Vertical type', { max: 50 }),
+      verticalType:    verticalType,
       verticalOther:   V.str(b.verticalOther, 'Vertical other', { max: 255 }),
       clientId,
       didComments:     V.str(b.didComments, 'Comments'),

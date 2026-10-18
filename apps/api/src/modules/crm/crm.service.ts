@@ -2,6 +2,7 @@ import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/commo
 import { Prisma } from '@prisma/client'
 import { FORM_TYPES, FIELD_TYPES, COL_SPANS, FormType } from '@crm/shared'
 import { PrismaService } from '../prisma/prisma.service'
+import { VerticalsService } from '../verticals/verticals.service'
 import { V, fail } from '../../common/utils/validate'
 
 const PUBLIC_SELECT = {
@@ -9,25 +10,38 @@ const PUBLIC_SELECT = {
   options: true, isCore: true, section: true, colSpan: true, textareaRows: true, sortOrder: true,
 } satisfies Prisma.FormFieldSettingSelect
 
+/** Form fields whose dropdown options are the vertical list (managed under Verticals, not here). */
+const VERTICAL_FIELDS: Record<string, 'vertical_type' | 'campaign'> = { 'sale:vertical_type': 'vertical_type', 'client:campaign': 'campaign' }
+
 @Injectable()
 export class CrmService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private verticals: VerticalsService) {}
+
+  /** Replaces the stored options of the vertical fields with the live vertical list. */
+  private async withVerticalOptions<T extends { fieldKey: string; options: unknown }>(type: FormType, rows: T[]) {
+    const out: (T & { optionsFromVerticals?: boolean })[] = []
+    for (const r of rows) {
+      const which = VERTICAL_FIELDS[`${type}:${r.fieldKey}`]
+      out.push(which ? { ...r, options: await this.verticals.optionsFor(which), optionsFromVerticals: true } : r)
+    }
+    return out
+  }
 
   formType(v?: string): FormType {
     if (v === 'profile') return 'user'
     return (FORM_TYPES as readonly string[]).includes(v ?? '') ? (v as FormType) : 'sale'
   }
 
-  publicFields(formType?: string) {
-    return this.prisma.formFieldSetting.findMany({
-      where: { formType: this.formType(formType), isVisible: true },
-      orderBy: { sortOrder: 'asc' },
-      select: PUBLIC_SELECT,
-    })
+  async publicFields(formType?: string) {
+    const type = this.formType(formType)
+    const rows = await this.prisma.formFieldSetting.findMany({ where: { formType: type, isVisible: true }, orderBy: { sortOrder: 'asc' }, select: PUBLIC_SELECT })
+    return this.withVerticalOptions(type, rows)
   }
 
-  fields(formType?: string) {
-    return this.prisma.formFieldSetting.findMany({ where: { formType: this.formType(formType) }, orderBy: { sortOrder: 'asc' } })
+  async fields(formType?: string) {
+    const type = this.formType(formType)
+    const rows = await this.prisma.formFieldSetting.findMany({ where: { formType: type }, orderBy: { sortOrder: 'asc' } })
+    return this.withVerticalOptions(type, rows)
   }
 
   private options(v: unknown): string[] | null {
@@ -53,7 +67,8 @@ export class CrmService {
           textareaRows: Math.max(1, Math.min(20, parseInt(f.textareaRows, 10) || 3)),
         }
         if (FIELD_TYPES.includes(f.fieldType)) data.fieldType = f.fieldType
-        if ('options' in f) data.options = this.options(f.options) ?? Prisma.DbNull
+        // Vertical fields take their options from the vertical list, so stored options are left alone
+        if ('options' in f && !VERTICAL_FIELDS[`${type}:${f.fieldKey}`]) data.options = this.options(f.options) ?? Prisma.DbNull
         return this.prisma.formFieldSetting.updateMany({ where: { formType: type, fieldKey: String(f.fieldKey) }, data })
       }),
     )

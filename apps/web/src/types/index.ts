@@ -131,6 +131,8 @@ export interface FormField {
   section:      string | null
   colSpan:      string
   textareaRows: number
+  /** Vertical Type (sale) and Campaign (client): the options are the vertical list. */
+  optionsFromVerticals?: boolean
 }
 
 export interface Message {

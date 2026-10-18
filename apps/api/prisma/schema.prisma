@@ -328,6 +328,23 @@ model LeaveApplication {
 // CRM — DID pool, Clients (company + assigned DID + billing), Customers (sales)
 // ─────────────────────────────────────────────────────────────────────────────
 
+/// The lines of business a sale can belong to (Medicare, Final Expense, ...). One list for the
+/// whole CRM, managed by Admin and Director: the New Sale pills, client campaigns, DID campaigns,
+/// report filters and dashboard colours all read from here. Clients, DIDs and sales store the
+/// vertical's name (campaign / verticalType), so a rename is cascaded to them.
+model Vertical {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  color     String // hex, e.g. #1E8496
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  isOther   Boolean  @default(false) // the free-text "Other" choice: no DIDs or clients, cannot be removed
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("verticals")
+}
+
 model Did {
   id        String   @id @default(cuid())
   didCode   String   @unique // MD1, FD1, AD1 …

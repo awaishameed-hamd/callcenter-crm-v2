@@ -9,7 +9,8 @@
 //   - labels, placeholders, required flags, widths, dropdown options and visibility come from there
 //   - Textarea fields are drawn as large boxes filling the bottom of their card; "Rows" is their
 //     minimum height. Every other field sits above them, sized by its "Width".
-//   - the Vertical Type options are the pills; verticals added there get their own colour.
+//   - the pills are the active verticals from Verticals settings (name, colour, order); a vertical's
+//     DIDs are the DIDs whose campaign is that vertical, and the "Other" vertical needs none.
 
 import { useState, useEffect, useMemo } from 'react'
 import { STANDARD_FIELD_KEYS, snakeToCamel } from '@crm/shared'
@@ -17,6 +18,7 @@ import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
 import { useCompact } from '@/hooks/useMediaQuery'
+import { useVerticals, FALLBACK_COLOR, type Vertical } from '@/lib/verticals'
 import { apiGet, apiPost, errMsg, errFields } from '@/lib/api'
 import { P } from '@/lib/palette'
 import type { FormField } from '@/types'
@@ -30,18 +32,8 @@ const inputCls  = 'w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py
 const asEvent = (name: string, value: string) => ({ target: { name, value } }) as React.ChangeEvent<any>
 const COL_SPAN: Record<string, number> = { full: 6, two_thirds: 4, half: 3, third: 2 }
 const STANDARD = new Set(STANDARD_FIELD_KEYS.sale)
-const VERTICAL_TO_CAMPAIGN: Record<string, string> = { Medicare: 'Medicare', 'Final Expense': 'Final Expense', ACA: 'ACA' }
 const FALLBACK_KEYS = ['vertical_type', 'client_id', 'first_name', 'mid_name', 'last_name', 'age', 'date_of_birth', 'phone', 'address', 'city', 'state', 'postal_code', 'transferred_from', 'did_comments', 'reason']
 
-const VERTICAL_COLOR: Record<string, string> = { Medicare: P.teal, 'Final Expense': '#1565C0', ACA: P.forest, Other: P.brick }
-const EXTRA_COLORS = [P.purple, '#B7791F', P.navy, '#0F766E', '#9D174D']
-/** Teal until a vertical is picked; verticals without a fixed colour take one from EXTRA_COLORS by position. */
-const verticalColor = (v: string | undefined, options: string[]) => {
-  if (!v) return P.teal
-  if (VERTICAL_COLOR[v]) return VERTICAL_COLOR[v]
-  const extra = options.filter(o => !VERTICAL_COLOR[o])
-  return EXTRA_COLORS[Math.max(0, extra.indexOf(v)) % EXTRA_COLORS.length]
-}
 /** '#1E8496' + 0.5 -> 'rgba(30,132,150,0.5)', for fading a colour out. */
 const withAlpha = (hex: string, a: number) => {
   const n = parseInt(hex.slice(1), 16)
@@ -148,16 +140,16 @@ function SaleTypeBadge({ type, light, small }: { type: string; light?: boolean; 
 }
 
 /** The vertical choice: an exact copy of the status pills and colour bars on the Approvals page. */
-function VerticalPills({ options, value, onPick, error }: { options: string[]; value?: string; onPick: (v: string) => void; error?: string }) {
+function VerticalPills({ options, value, onPick, error }: { options: Pick<Vertical, 'name' | 'color'>[]; value?: string; onPick: (v: string) => void; error?: string }) {
   return (
     <div style={{ flexShrink: 0 }}>
       <div style={{ display: 'flex', justifyContent: 'center', padding: '14px 24px 8px', overflowX: 'auto' }}>
         <div style={{ display: 'flex', gap: 2, background: '#fff', border: `1px solid ${error ? '#F87171' : P.border}`, borderRadius: 8, padding: 3 }}>
-          {options.map(v => {
+          {options.map(({ name: v, color }) => {
             const active = value === v
             return (
               <button key={v} type="button" onClick={() => onPick(v)}
-                style={{ flexShrink: 0, padding: '5px 14px', borderRadius: 6, cursor: 'pointer', fontFamily: FONT, fontSize: 12, fontWeight: active ? 700 : 500, transition: 'all .15s', border: 'none', background: active ? verticalColor(v, options) : 'transparent', color: active ? '#fff' : '#5C5C5C', whiteSpace: 'nowrap' }}>
+                style={{ flexShrink: 0, padding: '5px 14px', borderRadius: 6, cursor: 'pointer', fontFamily: FONT, fontSize: 12, fontWeight: active ? 700 : 500, transition: 'all .15s', border: 'none', background: active ? color : 'transparent', color: active ? '#fff' : '#5C5C5C', whiteSpace: 'nowrap' }}>
                 {v}
               </button>
             )
@@ -165,8 +157,8 @@ function VerticalPills({ options, value, onPick, error }: { options: string[]; v
         </div>
       </div>
       <div style={{ display: 'flex', gap: 3, padding: '0 20px', height: 3 }}>
-        {options.map(v => (
-          <div key={v} style={{ flex: 1, background: verticalColor(v, options), borderRadius: 2, opacity: value === v ? 1 : 0.35, transition: 'opacity .2s' }} />
+        {options.map(({ name: v, color }) => (
+          <div key={v} style={{ flex: 1, background: color, borderRadius: 2, opacity: value === v ? 1 : 0.35, transition: 'opacity .2s' }} />
         ))}
       </div>
       {error && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#EF4444', textAlign: 'center' }}>{error}</p>}
@@ -213,6 +205,7 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
 
 export default function NewSalePage() {
   const compact = useCompact()
+  const { verticals } = useVerticals()
   const [config, setConfig]           = useState<FormField[] | null>(null)
   const [form, setForm]               = useState<Form>({})
   const [dids, setDids]               = useState<DidOption[]>([])
@@ -233,8 +226,11 @@ export default function NewSalePage() {
       .catch(() => { setConfig([]); setForm(emptyForm([])) })
   }, [])
 
+  // A vertical's DIDs are the ones whose campaign is that vertical; "Other" has none
+  const selectedVertical = verticals.find(v => v.name === form.vertical_type)
+  const isOther = !!selectedVertical?.isOther
   useEffect(() => {
-    const campaign = VERTICAL_TO_CAMPAIGN[form.vertical_type ?? '']
+    const campaign = form.vertical_type && !verticals.find(v => v.name === form.vertical_type)?.isOther ? form.vertical_type : ''
     setForm(p => ({ ...p, client_id: '' }))
     setDids([])
     if (!campaign) return
@@ -243,7 +239,7 @@ export default function NewSalePage() {
       .then(setDids)
       .catch(() => setDids([]))
       .finally(() => setDidsLoading(false))
-  }, [form.vertical_type])
+  }, [form.vertical_type, verticals])
 
   const set = (e: React.ChangeEvent<any>) => {
     const { name, value } = e.target
@@ -273,7 +269,7 @@ export default function NewSalePage() {
   const verticalField = config?.find(f => f.fieldKey === 'vertical_type')
   const didField      = config?.find(f => f.fieldKey === 'client_id') ?? (config?.length ? undefined : { fieldKey: 'client_id', label: 'Select DID', isRequired: true } as FormField)
   const verticalRequired = verticalField?.isRequired ?? true
-  const needsDid = !!form.vertical_type && form.vertical_type !== 'Other' && !!didField
+  const needsDid = !!form.vertical_type && !isOther && !!didField
 
   // Progress across every required field, including vertical and DID
   const requiredKeys = useMemo(() => {
@@ -293,7 +289,7 @@ export default function NewSalePage() {
       setToast({ message: 'Please select a vertical before submitting.', type: 'error' })
       return
     }
-    if (form.vertical_type && form.vertical_type !== 'Other' && !form.client_id) {
+    if (form.vertical_type && !isOther && !form.client_id) {
       setErrors({ client_id: ['DID selection is required.'] })
       setToast({ message: 'Please select a DID before submitting.', type: 'error' })
       return
@@ -333,8 +329,9 @@ export default function NewSalePage() {
     )
   }
 
-  const vColor = verticalColor(form.vertical_type, verticalField?.options ?? ['Medicare', 'Final Expense', 'ACA', 'Other'])
-  const verticalOptions = verticalField?.options ?? ['Medicare', 'Final Expense', 'ACA', 'Other']
+  // Teal until a vertical is picked
+  const vColor = selectedVertical?.color ?? FALLBACK_COLOR
+  const verticalOptions = verticals.filter(v => v.isActive)
   const selectedDid = dids.find(d => d.id === form.client_id)
   const customer = [form.first_name, form.last_name].filter(filled).join(' ')
   const address = [form.address, form.city, [form.state, form.postal_code].filter(filled).join(' ')].filter(filled).join(', ')
@@ -346,15 +343,15 @@ export default function NewSalePage() {
 
   // ── DID card ────────────────────────────────────────────────────────────────
   const didCard = (
-    <SectionCard style={{ flex: 1 }} title={form.vertical_type === 'Other' ? 'Other Vertical' : didField?.label ?? 'Select DID'} icon={ICONS.phone}
-      done={form.client_id || (form.vertical_type === 'Other') ? 1 : 0} total={form.vertical_type ? 1 : 0}
-      complete={form.vertical_type === 'Other' ? true : filled(form.client_id)}>
+    <SectionCard style={{ flex: 1 }} title={isOther ? `${form.vertical_type} Vertical` : didField?.label ?? 'Select DID'} icon={ICONS.phone}
+      done={form.client_id || isOther ? 1 : 0} total={form.vertical_type ? 1 : 0}
+      complete={isOther ? true : filled(form.client_id)}>
       {!form.vertical_type ? (
         <div style={{ flex: 1, minHeight: 90, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, border: `2px dashed ${P.border}`, borderRadius: 12, color: P.textMuted }}>
           <span style={{ fontSize: 20, lineHeight: 1 }}>↑</span>
           <span style={{ fontFamily: RAJDHANI, fontSize: 15, fontWeight: 700, letterSpacing: '0.04em', textAlign: 'center' }}>Pick a vertical above to see its DIDs</span>
         </div>
-      ) : form.vertical_type === 'Other' ? (
+      ) : isOther ? (
         <Field label="Specify Other" error={err('vertical_other')}>
           <input name="vertical_other" type="text" value={form.vertical_other ?? ''} onChange={set} placeholder="Specify vertical type"
             className={`${inputCls} ${err('vertical_other') ? 'border-red-400' : ''}`} />
@@ -416,10 +413,10 @@ export default function NewSalePage() {
       </div>
       <SummaryItem icon={ICONS.tag} color={vColor} label="Vertical">
         {form.vertical_type
-          ? <span style={{ padding: '1px 10px', borderRadius: 99, fontSize: 12, color: '#fff', background: vColor }}>{form.vertical_type === 'Other' && filled(form.vertical_other) ? form.vertical_other : form.vertical_type}</span>
+          ? <span style={{ padding: '1px 10px', borderRadius: 99, fontSize: 12, color: '#fff', background: vColor }}>{isOther && filled(form.vertical_other) ? form.vertical_other : form.vertical_type}</span>
           : <NotSet />}
       </SummaryItem>
-      {form.vertical_type !== 'Other' && (
+      {!isOther && (
         <SummaryItem icon={ICONS.phone} color={vColor} label="DID">
           {selectedDid ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: BEBAS, fontSize: 17, letterSpacing: '0.05em' }}>{selectedDid.didCode}{selectedDid.saleType && <SaleTypeBadge type={selectedDid.saleType} small />}</span> : <NotSet />}
         </SummaryItem>

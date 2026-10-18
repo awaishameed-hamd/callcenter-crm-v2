@@ -1,14 +1,15 @@
 import { Injectable, NotFoundException, ConflictException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
-import { CAMPAIGNS, SALE_TYPES, RATE_TYPES } from '@crm/shared'
+import { SALE_TYPES, RATE_TYPES } from '@crm/shared'
 import { PrismaService } from '../prisma/prisma.service'
+import { VerticalsService } from '../verticals/verticals.service'
 import { V, fail, defined, pageArgs, toPage } from '../../common/utils/validate'
 
 const didNumber = (code: string | null) => parseInt((code ?? '').slice(2), 10) || 0
 
 @Injectable()
 export class ClientsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(private prisma: PrismaService, private verticals: VerticalsService) {}
 
   /** NewSale dropdown: active clients with a DID. Never exposes the company name. */
   async dropdown(campaign?: string) {
@@ -58,7 +59,7 @@ export class ClientsService {
     const extra = V.obj(b.extraFields, 'Extra fields')
     return defined({
       companyName:           V.str(b.companyName, 'Company name', { required: creating, max: 255 }) ?? undefined,
-      campaign:              V.oneOf(b.campaign, 'Campaign', CAMPAIGNS, { required: creating }) ?? undefined,
+      campaign:              V.str(b.campaign, 'Campaign', { required: creating, max: 50 }) ?? undefined, // checked against the verticals in create/update
       didCode:               V.str(b.didCode, 'DID', { max: 10 }),
       saleType:              V.oneOf(b.saleType, 'Sale type', SALE_TYPES, { required: creating }),
       rateType:              rateType ?? undefined,
@@ -82,6 +83,7 @@ export class ClientsService {
 
   async create(b: Record<string, any>) {
     const data = this.read(b, true)
+    await this.verticals.assertCampaign(data.campaign as string | undefined)
     await this.assertDidFree(data.didCode as string | null | undefined)
     const client = await this.prisma.client.create({
       data: { ...(data as Prisma.ClientCreateInput), displayName: data.companyName as string },
@@ -93,6 +95,7 @@ export class ClientsService {
     const client = await this.prisma.client.findUnique({ where: { id } })
     if (!client) throw new NotFoundException('Client not found.')
     const data = this.read(b, false)
+    if (data.campaign !== undefined && data.campaign !== client.campaign) await this.verticals.assertCampaign(data.campaign as string)
     if (data.didCode !== undefined && data.didCode !== client.didCode) await this.assertDidFree(data.didCode as string | null, id)
     const updated = await this.prisma.client.update({ where: { id }, data: data as Prisma.ClientUpdateInput })
     return { client: updated }
@@ -121,7 +124,8 @@ export class ClientsService {
 
   async createDid(b: Record<string, any>) {
     const didCode  = V.str(b.didCode, 'DID code', { required: true, max: 10 })!.toUpperCase()
-    const campaign = V.oneOf(b.campaign, 'Campaign', CAMPAIGNS, { required: true })!
+    const campaign = V.str(b.campaign, 'Campaign', { required: true, max: 50 })!
+    await this.verticals.assertCampaign(campaign)
     if (await this.prisma.did.findUnique({ where: { didCode } })) throw new ConflictException('DID code already exists.')
     return this.prisma.did.create({ data: { didCode, campaign } })
   }
