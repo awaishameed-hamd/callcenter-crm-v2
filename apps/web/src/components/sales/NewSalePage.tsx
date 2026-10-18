@@ -29,7 +29,8 @@ const VERTICAL_TO_CAMPAIGN: Record<string, string> = { Medicare: 'Medicare', 'Fi
 const FALLBACK_KEYS = ['vertical_type', 'client_id', 'first_name', 'mid_name', 'last_name', 'age', 'date_of_birth', 'phone', 'address', 'city', 'state', 'postal_code', 'transferred_from', 'did_comments', 'reason']
 
 const VERTICAL_COLOR: Record<string, string> = { Medicare: '#1565C0', 'Final Expense': P.teal, ACA: P.forest, Other: P.brick }
-const verticalColor = (v?: string) => VERTICAL_COLOR[v ?? ''] ?? P.navy
+// Teal until a vertical is picked
+const verticalColor = (v?: string) => VERTICAL_COLOR[v ?? ''] ?? P.teal
 /** '#1E8496' + 0.5 -> 'rgba(30,132,150,0.5)', for fading a colour out. */
 const withAlpha = (hex: string, a: number) => {
   const n = parseInt(hex.slice(1), 16)
