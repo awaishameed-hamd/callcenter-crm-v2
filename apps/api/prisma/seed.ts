@@ -11,7 +11,7 @@ type Field = {
 const CANCEL_REASONS = ['XFER', 'No LA', 'Ringing', 'Over Age', 'Out of State', 'Hangup', 'No medicare card']
 
 const SALE_FIELDS: Field[] = [
-  { fieldKey: 'vertical_type',    label: 'Vertical Type',          section: 'Vertical & DID',         fieldType: 'select',   colSpan: 'half',  isRequired: true,  isCore: true, options: ['Medicare', 'Final Expense', 'ACA', 'Other'], sortOrder: 1 },
+  { fieldKey: 'vertical_type',    label: 'Vertical Type',          section: 'Vertical & DID',         fieldType: 'select',   colSpan: 'half',  isRequired: true,  isCore: true, options: ['Medicare', 'Final Expense', 'Auto', 'Other'], sortOrder: 1 },
   { fieldKey: 'client_id',        label: 'Select DID',             section: 'Vertical & DID',         fieldType: 'select',   colSpan: 'half',  isRequired: true,  isCore: true, sortOrder: 2 },
   { fieldKey: 'first_name',       label: 'First Name',             section: 'Personal Information',   fieldType: 'text',     placeholder: 'First name',  isRequired: true, isCore: true, sortOrder: 3 },
   { fieldKey: 'mid_name',         label: 'Middle Name',            section: 'Personal Information',   fieldType: 'text',     placeholder: 'Middle name', sortOrder: 4 },
@@ -30,7 +30,7 @@ const SALE_FIELDS: Field[] = [
 
 const CLIENT_FIELDS: Field[] = [
   { fieldKey: 'company_name',             label: 'Company Name',                section: 'Company Details', fieldType: 'text',       placeholder: 'e.g. Acme Insurance Co.', colSpan: 'half', isRequired: true, isCore: true, sortOrder: 1 },
-  { fieldKey: 'campaign',                 label: 'Campaign',                    section: 'Company Details', fieldType: 'select',     colSpan: 'half', isRequired: true, isCore: true, options: ['Medicare', 'Final Expense', 'ACA'], sortOrder: 2 },
+  { fieldKey: 'campaign',                 label: 'Campaign',                    section: 'Company Details', fieldType: 'select',     colSpan: 'half', isRequired: true, isCore: true, options: ['Medicare', 'Final Expense', 'Auto'], sortOrder: 2 },
   { fieldKey: 'did_code',                 label: 'Assign DID',                  section: 'DID & Sale Type', fieldType: 'select',     colSpan: 'half', isCore: true, sortOrder: 10 },
   { fieldKey: 'sale_type',                label: 'Sale Type',                   section: 'DID & Sale Type', fieldType: 'select',     colSpan: 'half', isRequired: true, isCore: true, options: ['CPA', 'CPL'], sortOrder: 11 },
   { fieldKey: 'rate_type',                label: 'Rate Type',                   section: 'Rate',            fieldType: 'select',     colSpan: 'half', isRequired: true, isCore: true, options: ['fixed', 'variable'], sortOrder: 20 },
@@ -49,7 +49,7 @@ const USER_FIELDS: Field[] = [
   { fieldKey: 'phone',                 label: 'Phone',                 section: 'Personal Information', fieldType: 'text',       placeholder: '+92 300 0000000', colSpan: 'half', sortOrder: 5 },
   { fieldKey: 'date_of_birth',         label: 'Date of Birth',         section: 'Personal Information', fieldType: 'date',       colSpan: 'third', sortOrder: 6 },
   { fieldKey: 'date_of_joining',       label: 'Date of Joining',       section: 'Personal Information', fieldType: 'date',       colSpan: 'third', isRequired: true, isCore: true, sortOrder: 7 },
-  { fieldKey: 'department',            label: 'Department',            section: 'Personal Information', fieldType: 'select',     colSpan: 'third', options: ['Medicare', 'Final Expense', 'ACA', 'Management'], sortOrder: 8 },
+  { fieldKey: 'department',            label: 'Department',            section: 'Personal Information', fieldType: 'select',     colSpan: 'third', options: ['Medicare', 'Final Expense', 'Auto', 'Management'], sortOrder: 8 },
   { fieldKey: 'experience',            label: 'Experience',            section: 'Personal Information', fieldType: 'text',       placeholder: 'e.g. 3 years in sales', colSpan: 'full', sortOrder: 9 },
   { fieldKey: 'cnic',                  label: 'CNIC Number',           section: 'CNIC & Address',       fieldType: 'text',       placeholder: '00000-0000000-0', colSpan: 'half', sortOrder: 10 },
   { fieldKey: 'permanent_address',     label: 'Permanent Address',     section: 'CNIC & Address',       fieldType: 'textarea',   placeholder: 'Address on CNIC', colSpan: 'full', textareaRows: 2, sortOrder: 11 },
@@ -179,8 +179,9 @@ async function main() {
   })
   console.log('admin user: ensured (ADMIN)')
 
-  const dids = (['Medicare', 'Final Expense', 'ACA'] as const).flatMap((campaign, i) =>
-    Array.from({ length: 20 }, (_, n) => ({ didCode: `${['MD', 'FD', 'AD'][i]}${n + 1}`, campaign, isActive: true })))
+  // Ten DIDs per starting vertical (the verticals themselves come from the migrations)
+  const dids = (['Medicare', 'Final Expense', 'Auto'] as const).flatMap((campaign, i) =>
+    Array.from({ length: 10 }, (_, n) => ({ didCode: `${['MD', 'FD', 'AD'][i]}${n + 1}`, campaign, isActive: true })))
   const { count } = await prisma.did.createMany({ data: dids, skipDuplicates: true })
   console.log(`dids: ${count} created`)
 

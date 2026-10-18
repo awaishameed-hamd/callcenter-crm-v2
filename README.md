@@ -55,7 +55,7 @@ When a sale is decided, its DID, client and rate are frozen onto the record (`sa
 
 ## Verticals
 
-Medicare, Final Expense, ACA, Other and any vertical added later live in the `verticals` table, managed by Admin (CRM Management > Verticals) and Director (Clients > Verticals). Up to 10, "Other" included. That one list feeds the New Sale pills and colours, client and DID campaigns, the Sales Report filter, the Approvals edit form, the dashboard chart, and the Vertical Type / Campaign options of the Sale and Client forms. Sales, clients and DIDs store the vertical's name, so a rename is carried over to them; a vertical in use can only be turned off, not deleted. Code: `apps/api/src/modules/verticals`, `apps/web/src/lib/verticals.ts`, `components/admin/VerticalsManager.tsx`.
+Medicare, Final Expense, Auto, Other and any vertical added later live in the `verticals` table, managed by Admin (CRM Management > Verticals) and Director (Clients > Verticals). Up to 10, "Other" included. That one list feeds the New Sale pills and colours, client and DID campaigns, the Sales Report filter, the Approvals edit form, the dashboard chart, and the Vertical Type / Campaign options of the Sale and Client forms. Sales, clients and DIDs store the vertical's name, so a rename is carried over to them; a vertical in use can only be turned off, not deleted. Code: `apps/api/src/modules/verticals`, `apps/web/src/lib/verticals.ts`, `components/admin/VerticalsManager.tsx`.
 
 ## Where things live
 

@@ -14,7 +14,7 @@ export enum ManagerType {
 
 export const MANAGER_TYPES: string[] = [ManagerType.FLOOR, ManagerType.QA, ManagerType.HR, ManagerType.ACCOUNTANT]
 export const AGENT_TYPES = ['Closer', 'Verifier', 'Self Closer', 'Fronter']
-export const DEPARTMENTS = ['Medicare', 'Final Expense', 'ACA', 'Management']
+export const DEPARTMENTS = ['Medicare', 'Final Expense', 'Auto', 'Management']
 
 export enum MessageType {
   TEXT  = 'TEXT',

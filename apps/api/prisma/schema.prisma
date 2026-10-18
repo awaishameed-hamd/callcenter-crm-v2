@@ -81,7 +81,7 @@ model User {
   permanentAddress String?   @db.Text
   currentAddress   String?   @db.Text
   experience       String?
-  department       String? // Medicare | Final Expense | ACA | Management
+  department       String? // Medicare | Final Expense | Auto | Management
   agentType        String? // Closer | Verifier | Self Closer | Fronter
   managerType      String? // Floor Manager/Team Lead | QA Manager | HR Manager | Accountant
 
@@ -348,7 +348,7 @@ model Vertical {
 model Did {
   id        String   @id @default(cuid())
   didCode   String   @unique // MD1, FD1, AD1 …
-  campaign  String // Medicare | Final Expense | ACA
+  campaign  String // Medicare | Final Expense | Auto
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -361,7 +361,7 @@ model Client {
   id                    String   @id @default(cuid())
   didCode               String? // assigned DID; reusable once the client is deactivated
   saleType              String? // CPA | CPL
-  campaign              String? // Medicare | Final Expense | ACA
+  campaign              String? // Medicare | Final Expense | Auto
   companyName           String
   displayName           String?
   rateOfSaleAmount      Decimal? @db.Decimal(10, 2)
@@ -399,7 +399,7 @@ model Customer {
   city            String?
   state           String?
   postalCode      String?
-  verticalType    String? // Medicare | Final Expense | ACA | Other
+  verticalType    String? // Medicare | Final Expense | Auto | Other
   verticalOther   String?
   didComments     String?   @db.Text
   transferredFrom String?

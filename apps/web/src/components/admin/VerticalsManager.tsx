@@ -156,7 +156,7 @@ export default function VerticalsManager({ onChanged }: { onChanged?: () => void
         <form onSubmit={add} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', borderTop: `1px dashed ${P.border}` }}>
           <ColorPicker value={newColor} onPick={setNewColor} />
           <input value={newName} onChange={e => setNewName(e.target.value)} maxLength={40} disabled={full || busy}
-            placeholder={full ? `Limit of ${MAX_VERTICALS} reached` : 'New vertical, e.g. Auto Insurance'}
+            placeholder={full ? `Limit of ${MAX_VERTICALS} reached` : 'New vertical, e.g. ACA'}
             className="flex-1 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm outline-none transition focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 disabled:opacity-60" />
           <button type="submit" disabled={full || busy || !newName.trim()}
             style={{ padding: '7px 16px', borderRadius: 9, border: 0, background: `linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: full || !newName.trim() ? 'not-allowed' : 'pointer', opacity: full || !newName.trim() ? 0.55 : 1, fontFamily: FONT }}>
