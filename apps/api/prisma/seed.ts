@@ -19,7 +19,7 @@ const SALE_FIELDS: Field[] = [
   { fieldKey: 'age',              label: 'Age',                    section: 'Personal Information',   fieldType: 'number',   placeholder: 'Age',         isRequired: true, sortOrder: 6 },
   { fieldKey: 'date_of_birth',    label: 'Date of Birth',          section: 'Personal Information',   fieldType: 'date',     sortOrder: 7 },
   { fieldKey: 'phone',            label: 'Phone',                  section: 'Personal Information',   fieldType: 'text',     placeholder: 'Phone number', isRequired: true, sortOrder: 8 },
-  { fieldKey: 'address',          label: 'Address',                section: 'Address Information',    fieldType: 'text',     placeholder: 'Full street address', colSpan: 'full', isCore: true, sortOrder: 9 },
+  { fieldKey: 'address',          label: 'Address',                section: 'Address Information',    fieldType: 'textarea', placeholder: 'Full street address', colSpan: 'full', textareaRows: 2, isCore: true, sortOrder: 9 },
   { fieldKey: 'city',             label: 'City',                   section: 'Address Information',    fieldType: 'text',     placeholder: 'City',  sortOrder: 10 },
   { fieldKey: 'state',            label: 'State',                  section: 'Address Information',    fieldType: 'text',     placeholder: 'State', isRequired: true, sortOrder: 11 },
   { fieldKey: 'postal_code',      label: 'Postal Code',            section: 'Address Information',    fieldType: 'text',     placeholder: 'ZIP',   isRequired: true, sortOrder: 12 },

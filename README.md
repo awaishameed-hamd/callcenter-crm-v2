@@ -79,7 +79,9 @@ Every route is under `/api` and needs a Bearer token, except `POST /api/auth/log
 
 ### UI conventions
 
-The look follows argroup.cloud: Aptos text, Faster One page titles, the teal pill filter bar, gold table headers. To build a new list page, copy `components/sales/MySalesPage.tsx`: `PageShell` + `PageHeader` + `FilterBar` + `DataTable` + `Pager`. Use `StyledSelect` for form dropdowns.
+The look follows argroup.cloud: Aptos text, Faster One page titles, the teal pill filter bar, gold table headers.
+
+The agent's New Sale page (`components/sales/NewSalePage.tsx`) is laid out from CRM Management > Sale Form: sections become cards, Width sizes each field, Textarea fields become the large boxes at the bottom of their card, and the Vertical Type options become the pills. Change the form there, not in code. To build a new list page, copy `components/sales/MySalesPage.tsx`: `PageShell` + `PageHeader` + `FilterBar` + `DataTable` + `Pager`. Use `StyledSelect` for form dropdowns.
 
 ## Deploying
 

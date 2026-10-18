@@ -259,6 +259,19 @@ export function FormManagementTab({ formType, formLabel, setToast }: { formType:
         <span>Width buttons set how much horizontal space the field takes on the {formLabel}.</span>
       </div>
 
+      {/* How these settings appear on the agent's New Sale page */}
+      {formType === 'sale' && (
+        <div className="mb-4 rounded-xl px-4 py-3 text-xs" style={{ background: P.fillTeal, border: `1px solid ${P.teal}33`, color: P.navy, lineHeight: 1.6 }}>
+          <p className="font-bold mb-1" style={{ color: P.teal }}>How the New Sale page uses this form</p>
+          <ul className="list-disc pl-5 space-y-0.5">
+            <li>Vertical Type options become the coloured pills at the top; Select DID shows that vertical&apos;s DIDs as tiles.</li>
+            <li>Each section is a card, in this order. The first section sits beside the DID card, the rest go two per row.</li>
+            <li>Textarea fields are drawn as large boxes at the bottom of their card (Rows sets the minimum height). Every other field sits above them, sized by its Width.</li>
+            <li>Hidden fields are left out, and Required fields are counted in the summary bar.</li>
+          </ul>
+        </div>
+      )}
+
       <div className="overflow-x-auto">
         <div style={{ minWidth: 880 }}>
           {sectionOrder.map((sectionName, si) => {

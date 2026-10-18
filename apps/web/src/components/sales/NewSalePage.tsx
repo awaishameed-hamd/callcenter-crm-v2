@@ -3,8 +3,13 @@
 // New Sale on one screen: vertical pills on top (same as the Approvals pills), a horizontal
 // summary bar with the Record Sale button, then the DID tiles and form sections as cards with
 // gold table-style headings. On a desktop the cards stretch to the bottom of the screen.
-// Same fields, rules and API payload as before. The original design is kept in
-// NewSalePageClassic.tsx; point app/(dashboard)/agent/new-sale/page.tsx at it to switch back.
+//
+// Everything below the pills follows CRM Management > Sale Form (GET /crm/form-fields/public):
+//   - sections and their order become the cards (the first sits beside the DID card)
+//   - labels, placeholders, required flags, widths, dropdown options and visibility come from there
+//   - Textarea fields are drawn as large boxes filling the bottom of their card; "Rows" is their
+//     minimum height. Every other field sits above them, sized by its "Width".
+//   - the Vertical Type options are the pills; verticals added there get their own colour.
 
 import { useState, useEffect, useMemo } from 'react'
 import { STANDARD_FIELD_KEYS, snakeToCamel } from '@crm/shared'
@@ -29,8 +34,14 @@ const VERTICAL_TO_CAMPAIGN: Record<string, string> = { Medicare: 'Medicare', 'Fi
 const FALLBACK_KEYS = ['vertical_type', 'client_id', 'first_name', 'mid_name', 'last_name', 'age', 'date_of_birth', 'phone', 'address', 'city', 'state', 'postal_code', 'transferred_from', 'did_comments', 'reason']
 
 const VERTICAL_COLOR: Record<string, string> = { Medicare: P.teal, 'Final Expense': '#1565C0', ACA: P.forest, Other: P.brick }
-// Teal until a vertical is picked
-const verticalColor = (v?: string) => VERTICAL_COLOR[v ?? ''] ?? P.teal
+const EXTRA_COLORS = [P.purple, '#B7791F', P.navy, '#0F766E', '#9D174D']
+/** Teal until a vertical is picked; verticals without a fixed colour take one from EXTRA_COLORS by position. */
+const verticalColor = (v: string | undefined, options: string[]) => {
+  if (!v) return P.teal
+  if (VERTICAL_COLOR[v]) return VERTICAL_COLOR[v]
+  const extra = options.filter(o => !VERTICAL_COLOR[o])
+  return EXTRA_COLORS[Math.max(0, extra.indexOf(v)) % EXTRA_COLORS.length]
+}
 /** '#1E8496' + 0.5 -> 'rgba(30,132,150,0.5)', for fading a colour out. */
 const withAlpha = (hex: string, a: number) => {
   const n = parseInt(hex.slice(1), 16)
@@ -50,8 +61,8 @@ type Form = Record<string, string>
 type DidOption = { id: string; didCode: string; campaign: string; saleType: string | null }
 
 const filled = (v?: string) => !!v && v.trim() !== ''
-/** Fields drawn as a big box that fills the rest of their card. */
-const isFillField = (f: FormField) => f.fieldType === 'textarea' || f.fieldKey === 'address'
+/** Textarea fields (set in CRM Management) are drawn as a big box filling the rest of their card. */
+const isFillField = (f: FormField) => f.fieldType === 'textarea'
 
 // ── Building blocks ──────────────────────────────────────────────────────────
 
@@ -100,16 +111,8 @@ function GenericField({ field, value, onChange, error, fill }: { field: FormFiel
       return (
         <textarea name={field.fieldKey} value={value} onChange={onChange} rows={fill ? undefined : Math.min(field.textareaRows || 2, 2)}
           placeholder={field.placeholder || ''} required={field.isRequired} className={`${cls} resize-none`}
-          style={fill ? { flex: 1, minHeight: 90 } : undefined} />
+          style={fill ? { flex: 1, minHeight: (field.textareaRows || 2) * 20 + 18 } : undefined} />
       )
-    case 'text':
-      if (fill) {
-        return (
-          <textarea name={field.fieldKey} value={value} onChange={onChange} placeholder={field.placeholder || ''} required={field.isRequired}
-            onKeyDown={e => { if (e.key === 'Enter') e.preventDefault() }} className={`${cls} resize-none`} style={{ flex: 1, minHeight: 60 }} />
-        )
-      }
-      return <input type="text" name={field.fieldKey} value={value} onChange={onChange} placeholder={field.placeholder || ''} required={field.isRequired} className={cls} />
     case 'date':
       return <DateInput name={field.fieldKey} value={value} onChange={onChange} required={field.isRequired} className={`${cls} text-gray-800`} />
     case 'number':
@@ -154,7 +157,7 @@ function VerticalPills({ options, value, onPick, error }: { options: string[]; v
             const active = value === v
             return (
               <button key={v} type="button" onClick={() => onPick(v)}
-                style={{ flexShrink: 0, padding: '5px 14px', borderRadius: 6, cursor: 'pointer', fontFamily: FONT, fontSize: 12, fontWeight: active ? 700 : 500, transition: 'all .15s', border: 'none', background: active ? verticalColor(v) : 'transparent', color: active ? '#fff' : '#5C5C5C', whiteSpace: 'nowrap' }}>
+                style={{ flexShrink: 0, padding: '5px 14px', borderRadius: 6, cursor: 'pointer', fontFamily: FONT, fontSize: 12, fontWeight: active ? 700 : 500, transition: 'all .15s', border: 'none', background: active ? verticalColor(v, options) : 'transparent', color: active ? '#fff' : '#5C5C5C', whiteSpace: 'nowrap' }}>
                 {v}
               </button>
             )
@@ -163,7 +166,7 @@ function VerticalPills({ options, value, onPick, error }: { options: string[]; v
       </div>
       <div style={{ display: 'flex', gap: 3, padding: '0 20px', height: 3 }}>
         {options.map(v => (
-          <div key={v} style={{ flex: 1, background: verticalColor(v), borderRadius: 2, opacity: value === v ? 1 : 0.35, transition: 'opacity .2s' }} />
+          <div key={v} style={{ flex: 1, background: verticalColor(v, options), borderRadius: 2, opacity: value === v ? 1 : 0.35, transition: 'opacity .2s' }} />
         ))}
       </div>
       {error && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#EF4444', textAlign: 'center' }}>{error}</p>}
@@ -330,7 +333,7 @@ export default function NewSalePage() {
     )
   }
 
-  const vColor = verticalColor(form.vertical_type)
+  const vColor = verticalColor(form.vertical_type, verticalField?.options ?? ['Medicare', 'Final Expense', 'ACA', 'Other'])
   const verticalOptions = verticalField?.options ?? ['Medicare', 'Final Expense', 'ACA', 'Other']
   const selectedDid = dids.find(d => d.id === form.client_id)
   const customer = [form.first_name, form.last_name].filter(filled).join(' ')
@@ -443,9 +446,8 @@ export default function NewSalePage() {
   )
 
   /**
-   * A section's fields. When a section has a big field (a long text box or the street address),
-   * the other fields share one line on top and the big field fills the rest of the card below.
-   * Other sections use the configured widths.
+   * A section's fields, laid out by their Width setting. Textarea fields go below the others
+   * and stretch to fill the rest of the card.
    */
   const sectionBody = (list: FormField[]) => {
     const field = (f: FormField, fill?: boolean) => (
@@ -458,7 +460,9 @@ export default function NewSalePage() {
     if (!compact && fills.length && others.length) {
       return (
         <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '0.7rem' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: `repeat(${Math.min(others.length, 3)}, minmax(0, 1fr))`, gap: '0.6rem 0.75rem' }}>{others.map(f => field(f))}</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.6rem 0.75rem' }}>
+            {others.map(f => <div key={f.fieldKey} style={{ gridColumn: `span ${COL_SPAN[f.colSpan] ?? 2}` }}>{field(f)}</div>)}
+          </div>
           {fills.map(f => field(f, true))}
         </div>
       )
