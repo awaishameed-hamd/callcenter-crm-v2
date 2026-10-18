@@ -30,6 +30,11 @@ const FALLBACK_KEYS = ['vertical_type', 'client_id', 'first_name', 'mid_name', '
 
 const VERTICAL_COLOR: Record<string, string> = { Medicare: '#1565C0', 'Final Expense': P.teal, ACA: P.forest, Other: P.brick }
 const verticalColor = (v?: string) => VERTICAL_COLOR[v ?? ''] ?? P.navy
+/** '#1E8496' + 0.5 -> 'rgba(30,132,150,0.5)', for fading a colour out. */
+const withAlpha = (hex: string, a: number) => {
+  const n = parseInt(hex.slice(1), 16)
+  return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`
+}
 
 const ICONS = {
   person:  'M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z',
@@ -399,7 +404,7 @@ export default function NewSalePage() {
       {/* Customer block shaded in the vertical's colour, fading out to the right */}
       {/* A long, horizontal fade with several stops so it melts into the white instead of ending in an edge */}
       <div style={{ padding: '10px 120px 10px 20px', minWidth: 250, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff',
-        background: `linear-gradient(90deg, ${vColor} 0%, ${P.navy} 42%, rgba(19,46,87,0.88) 54%, rgba(19,46,87,0.62) 66%, rgba(19,46,87,0.36) 77%, rgba(19,46,87,0.16) 87%, rgba(19,46,87,0.05) 94%, rgba(19,46,87,0) 100%)`,
+        background: `linear-gradient(90deg, ${vColor} 0%, ${vColor} 42%, ${withAlpha(vColor, 0.88)} 54%, ${withAlpha(vColor, 0.62)} 66%, ${withAlpha(vColor, 0.36)} 77%, ${withAlpha(vColor, 0.16)} 87%, ${withAlpha(vColor, 0.05)} 94%, ${withAlpha(vColor, 0)} 100%)`,
         transition: 'background .3s' }}>
         <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 10, letterSpacing: '0.05em', opacity: 0.9 }}>SALE SUMMARY</p>
         <p style={{ margin: '3px 0 0', fontFamily: BEBAS, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 240 }}>{customer || 'New Customer'}</p>
