@@ -1,7 +1,8 @@
 'use client'
 
-// New Sale on one screen: vertical pills on top (Approvals style), a horizontal summary bar with
-// the Record Sale button, then the DID tiles and form sections as cards with gold table-style headings.
+// New Sale on one screen: vertical pills on top (same as the Approvals pills), a horizontal
+// summary bar with the Record Sale button, then the DID tiles and form sections as cards with
+// gold table-style headings. On a desktop the cards stretch to the bottom of the screen.
 // Same fields, rules and API payload as before. The original design is kept in
 // NewSalePageClassic.tsx; point app/(dashboard)/agent/new-sale/page.tsx at it to switch back.
 
@@ -27,15 +28,15 @@ const STANDARD = new Set(STANDARD_FIELD_KEYS.sale)
 const VERTICAL_TO_CAMPAIGN: Record<string, string> = { Medicare: 'Medicare', 'Final Expense': 'Final Expense', ACA: 'ACA' }
 const FALLBACK_KEYS = ['vertical_type', 'client_id', 'first_name', 'mid_name', 'last_name', 'age', 'date_of_birth', 'phone', 'address', 'city', 'state', 'postal_code', 'transferred_from', 'did_comments', 'reason']
 
-const VERTICAL_COLOR: Record<string, string> = { Medicare: '#1565C0', 'Final Expense': P.purple, ACA: P.teal, Other: P.brick }
+const VERTICAL_COLOR: Record<string, string> = { Medicare: '#1565C0', 'Final Expense': P.teal, ACA: P.forest, Other: P.brick }
 const verticalColor = (v?: string) => VERTICAL_COLOR[v ?? ''] ?? P.navy
 
-// Section icons, picked from the section name
 const ICONS = {
   person:  'M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z',
   address: 'M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z',
   notes:   'M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25M8.25 8.25H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z',
   phone:   'M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 0 0 2.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-.282.376-.769.542-1.21.38a12.035 12.035 0 0 1-7.143-7.143c-.162-.441.004-.928.38-1.21l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 0 0-1.091-.852H4.5A2.25 2.25 0 0 0 2.25 4.5v2.25Z',
+  tag:     'M9.568 3H5.25A2.25 2.25 0 0 0 3 5.25v4.318c0 .597.237 1.17.659 1.591l9.581 9.581c.699.699 1.78.872 2.607.33a18.095 18.095 0 0 0 5.223-5.223c.542-.827.369-1.908-.33-2.607L11.16 3.66A2.25 2.25 0 0 0 9.568 3ZM6 6h.008v.008H6V6Z',
 }
 const sectionIcon = (name: string) => /address|location/i.test(name) ? ICONS.address : /personal|customer|info/i.test(name) && !/additional/i.test(name) ? ICONS.person : ICONS.notes
 
@@ -50,9 +51,10 @@ const Svg = ({ d, size = 15 }: { d: string; size?: number }) => (
   <svg width={size} height={size} fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d={d} /></svg>
 )
 
-function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
+/** Label, input and error. `fill` lets the input (a text box) grow to the available height. */
+function Field({ label, required, error, fill, children }: { label: string; required?: boolean; error?: string; fill?: boolean; children: React.ReactNode }) {
   return (
-    <div>
+    <div style={fill ? { display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 } : undefined}>
       <label style={{ display: 'block', fontFamily: RAJDHANI, fontSize: 12.5, fontWeight: 700, color: '#5C6D82', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 3 }}>
         {label}{required && <span style={{ color: '#D62828' }}> *</span>}
       </label>
@@ -68,8 +70,8 @@ function SectionCard({ title, icon, done, total, complete, style, children }: {
   style?: React.CSSProperties; children: React.ReactNode
 }) {
   return (
-    <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${P.border}`, display: 'flex', flexDirection: 'column', ...style }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: P.gold, borderRadius: '11px 11px 0 0', color: '#1a1a1a' }}>
+    <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${P.border}`, display: 'flex', flexDirection: 'column', minWidth: 0, ...style }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: P.gold, borderRadius: '11px 11px 0 0', color: '#1a1a1a', flexShrink: 0 }}>
         <Svg d={icon} size={14} />
         <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{title}</span>
         {total > 0 && (
@@ -78,16 +80,20 @@ function SectionCard({ title, icon, done, total, complete, style, children }: {
           </span>
         )}
       </div>
-      <div style={{ padding: '12px 14px 14px', flex: 1 }}>{children}</div>
+      <div style={{ padding: '12px 14px 14px', flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0 }}>{children}</div>
     </div>
   )
 }
 
-function GenericField({ field, value, onChange, error, rows }: { field: FormField; value: string; onChange: (e: React.ChangeEvent<any>) => void; error?: string; rows?: number }) {
+function GenericField({ field, value, onChange, error, fill }: { field: FormField; value: string; onChange: (e: React.ChangeEvent<any>) => void; error?: string; fill?: boolean }) {
   const cls = `${inputCls} ${error ? 'border-red-400' : ''}`
   switch (field.fieldType) {
     case 'textarea':
-      return <textarea name={field.fieldKey} value={value} onChange={onChange} rows={rows ?? Math.min(field.textareaRows || 2, 2)} placeholder={field.placeholder || ''} required={field.isRequired} className={`${cls} resize-none`} />
+      return (
+        <textarea name={field.fieldKey} value={value} onChange={onChange} rows={fill ? undefined : Math.min(field.textareaRows || 2, 2)}
+          placeholder={field.placeholder || ''} required={field.isRequired} className={`${cls} resize-none`}
+          style={fill ? { flex: 1, minHeight: 90 } : undefined} />
+      )
     case 'date':
       return <DateInput name={field.fieldKey} value={value} onChange={onChange} required={field.isRequired} className={`${cls} text-gray-800`} />
     case 'number':
@@ -112,38 +118,36 @@ function GenericField({ field, value, onChange, error, rows }: { field: FormFiel
   }
 }
 
-function SaleTypeBadge({ type, light }: { type: string; light?: boolean }) {
+function SaleTypeBadge({ type, light, small }: { type: string; light?: boolean; small?: boolean }) {
   const cpa = type === 'CPA'
   return (
-    <span style={{ fontFamily: RAJDHANI, fontSize: 11, fontWeight: 700, padding: '0 7px', borderRadius: 99, lineHeight: '17px',
+    <span style={{ fontFamily: RAJDHANI, fontSize: small ? 10 : 11, fontWeight: 700, padding: small ? '0 5px' : '0 7px', borderRadius: 99, lineHeight: small ? '14px' : '17px',
       background: light ? 'rgba(255,255,255,0.25)' : cpa ? '#EDE9FE' : '#CCFBF1', color: light ? '#fff' : cpa ? '#6D28D9' : '#0F766E' }}>
       {type}
     </span>
   )
 }
 
-/** The vertical choice, styled exactly like the status pills on the Approvals page. */
+/** The vertical choice: an exact copy of the status pills and colour bars on the Approvals page. */
 function VerticalPills({ options, value, onPick, error }: { options: string[]; value?: string; onPick: (v: string) => void; error?: string }) {
   return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ display: 'flex', justifyContent: 'center' }}>
-        <div style={{ display: 'flex', gap: 2, background: '#fff', border: `1px solid ${error ? '#F87171' : P.border}`, borderRadius: 10, padding: 4, boxShadow: '0 1px 3px rgba(19,46,87,0.06)', overflowX: 'auto', maxWidth: '100%' }}>
+    <div style={{ flexShrink: 0 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', padding: '14px 24px 8px', overflowX: 'auto' }}>
+        <div style={{ display: 'flex', gap: 2, background: '#fff', border: `1px solid ${error ? '#F87171' : P.border}`, borderRadius: 8, padding: 3 }}>
           {options.map(v => {
             const active = value === v
-            const c = verticalColor(v)
             return (
               <button key={v} type="button" onClick={() => onPick(v)}
-                style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 7, padding: '7px 18px', borderRadius: 7, border: 'none', cursor: 'pointer', fontFamily: FONT, fontSize: 13, fontWeight: active ? 700 : 500, whiteSpace: 'nowrap', transition: 'all .15s', background: active ? c : 'transparent', color: active ? '#fff' : '#5C5C5C' }}>
-                <span style={{ width: 7, height: 7, borderRadius: '50%', background: active ? '#fff' : c }} />
+                style={{ flexShrink: 0, padding: '5px 14px', borderRadius: 6, cursor: 'pointer', fontFamily: FONT, fontSize: 12, fontWeight: active ? 700 : 500, transition: 'all .15s', border: 'none', background: active ? verticalColor(v) : 'transparent', color: active ? '#fff' : '#5C5C5C', whiteSpace: 'nowrap' }}>
                 {v}
               </button>
             )
           })}
         </div>
       </div>
-      <div style={{ display: 'flex', gap: 3, height: 3, marginTop: 8, padding: '0 4px' }}>
+      <div style={{ display: 'flex', gap: 3, padding: '0 20px', height: 3 }}>
         {options.map(v => (
-          <div key={v} style={{ flex: 1, borderRadius: 2, background: verticalColor(v), opacity: value === v ? 1 : 0.3, transition: 'opacity .2s' }} />
+          <div key={v} style={{ flex: 1, background: verticalColor(v), borderRadius: 2, opacity: value === v ? 1 : 0.35, transition: 'opacity .2s' }} />
         ))}
       </div>
       {error && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#EF4444', textAlign: 'center' }}>{error}</p>}
@@ -151,16 +155,40 @@ function VerticalPills({ options, value, onPick, error }: { options: string[]; v
   )
 }
 
-/** One block of the horizontal summary bar: small label above the value. */
-function SummaryItem({ label, grow, children }: { label: string; grow?: boolean; children: React.ReactNode }) {
+/** One block of the summary bar: a tinted icon bubble, then a small label above the value. */
+function SummaryItem({ icon, color, label, grow, children }: { icon: string; color: string; label: string; grow?: boolean; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: 4, padding: '10px 18px', minWidth: 0, flex: grow ? '1 1 200px' : '0 0 auto' }}>
-      <span style={{ fontFamily: RAJDHANI, fontSize: 12.5, fontWeight: 700, color: P.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</span>
-      <span style={{ fontSize: 13, fontWeight: 600, color: P.navy, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{children}</span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', minWidth: 0, flex: grow ? '1 1 180px' : '0 0 auto' }}>
+      <span style={{ width: 32, height: 32, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${color}1A`, color }}>
+        <Svg d={icon} size={15} />
+      </span>
+      <div style={{ minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
+        <span style={{ fontFamily: RAJDHANI, fontSize: 12, fontWeight: 700, color: P.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1 }}>{label}</span>
+        <span style={{ fontSize: 13, fontWeight: 600, color: P.navy, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{children}</span>
+      </div>
     </div>
   )
 }
 const NotSet = () => <span style={{ color: '#9CA3AF', fontWeight: 400 }}>Not entered</span>
+
+/** Required-fields progress as a small ring with the count in the middle. */
+function ProgressRing({ done, total }: { done: number; total: number }) {
+  const r = 17, c = 2 * Math.PI * r
+  const pct = total ? done / total : 1
+  const complete = done === total
+  return (
+    <div style={{ position: 'relative', width: 44, height: 44, flexShrink: 0 }}>
+      <svg width={44} height={44} viewBox="0 0 44 44" style={{ transform: 'rotate(-90deg)' }}>
+        <circle cx={22} cy={22} r={r} fill="none" stroke={P.gridLine} strokeWidth={5} />
+        <circle cx={22} cy={22} r={r} fill="none" stroke={complete ? P.teal : P.gold} strokeWidth={5} strokeLinecap="round"
+          strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ transition: 'stroke-dashoffset .3s, stroke .3s' }} />
+      </svg>
+      <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: BEBAS, fontSize: 14, letterSpacing: '0.02em', color: complete ? P.teal : P.navy }}>
+        {done}/{total}
+      </span>
+    </div>
+  )
+}
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
@@ -236,7 +264,6 @@ export default function NewSalePage() {
     return keys
   }, [config, verticalRequired, needsDid])
   const doneCount = requiredKeys.filter(k => filled(form[k])).length
-  const pct = requiredKeys.length ? Math.round((doneCount / requiredKeys.length) * 100) : 100
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -300,13 +327,13 @@ export default function NewSalePage() {
 
   // ── DID card ────────────────────────────────────────────────────────────────
   const didCard = (
-    <SectionCard style={{ flex: 1, minWidth: 0 }} title={form.vertical_type === 'Other' ? 'Other Vertical' : didField?.label ?? 'Select DID'} icon={ICONS.phone}
+    <SectionCard style={{ flex: 1 }} title={form.vertical_type === 'Other' ? 'Other Vertical' : didField?.label ?? 'Select DID'} icon={ICONS.phone}
       done={form.client_id || (form.vertical_type === 'Other') ? 1 : 0} total={form.vertical_type ? 1 : 0}
       complete={form.vertical_type === 'Other' ? true : filled(form.client_id)}>
       {!form.vertical_type ? (
-        <div style={{ height: '100%', minHeight: 110, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, border: `2px dashed ${P.border}`, borderRadius: 12, color: P.textMuted }}>
+        <div style={{ flex: 1, minHeight: 90, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, border: `2px dashed ${P.border}`, borderRadius: 12, color: P.textMuted }}>
           <span style={{ fontSize: 20, lineHeight: 1 }}>↑</span>
-          <span style={{ fontFamily: RAJDHANI, fontSize: 15, fontWeight: 700, letterSpacing: '0.04em' }}>Pick a vertical above to see its DIDs</span>
+          <span style={{ fontFamily: RAJDHANI, fontSize: 15, fontWeight: 700, letterSpacing: '0.04em', textAlign: 'center' }}>Pick a vertical above to see its DIDs</span>
         </div>
       ) : form.vertical_type === 'Other' ? (
         <Field label="Specify Other" error={err('vertical_other')}>
@@ -319,78 +346,70 @@ export default function NewSalePage() {
         <div className="px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-600">No active DIDs found for {form.vertical_type}</div>
       ) : (
         <>
-          {/* DID tiles: tap one to pick it; the chosen tile fills with the vertical's colour */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))', gap: 10, maxHeight: 176, overflowY: 'auto', padding: '2px 2px 4px' }}>
+          {/* Compact DID tiles, about five per row; the chosen one fills with the vertical's colour */}
+          <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(68px, 1fr))', gap: 7, alignContent: 'start', padding: 1 }}>
             {dids.map(d => {
               const on = form.client_id === d.id
               return (
                 <button key={d.id} type="button" onClick={() => set(asEvent('client_id', d.id))}
                   style={{
-                    position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '12px 8px 10px',
-                    borderRadius: 12, cursor: 'pointer', transition: 'all .18s',
-                    border: `2px solid ${on ? vColor : P.border}`,
-                    background: on ? `linear-gradient(145deg, ${vColor} 0%, ${P.navy} 140%)` : 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
-                    color: on ? '#fff' : P.navy, transform: on ? 'translateY(-2px)' : 'none',
-                    boxShadow: on ? `0 12px 22px -12px ${vColor}` : '0 1px 2px rgba(0,0,0,0.04)',
+                    position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3, padding: '7px 4px 6px',
+                    borderRadius: 9, cursor: 'pointer', transition: 'all .15s', fontFamily: FONT,
+                    border: `1.5px solid ${on ? vColor : P.border}`,
+                    background: on ? `linear-gradient(145deg, ${vColor} 0%, ${P.navy} 150%)` : '#fff',
+                    color: on ? '#fff' : P.navy, boxShadow: on ? `0 8px 16px -10px ${vColor}` : 'none',
                   }}
-                  onMouseEnter={e => { if (!on) { e.currentTarget.style.borderColor = vColor; e.currentTarget.style.transform = 'translateY(-2px)' } }}
-                  onMouseLeave={e => { if (!on) { e.currentTarget.style.borderColor = P.border; e.currentTarget.style.transform = 'none' } }}>
-                  <span style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? 'rgba(255,255,255,0.2)' : `${vColor}18`, color: on ? '#fff' : vColor }}>
-                    <Svg d={ICONS.phone} size={14} />
+                  onMouseEnter={e => { if (!on) e.currentTarget.style.borderColor = vColor }}
+                  onMouseLeave={e => { if (!on) e.currentTarget.style.borderColor = P.border }}>
+                  <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+                    <span style={{ display: 'flex', color: on ? '#fff' : vColor }}><Svg d={ICONS.phone} size={9} /></span>
+                    <span style={{ fontFamily: BEBAS, fontSize: 17, letterSpacing: '0.06em', lineHeight: 1 }}>{d.didCode}</span>
                   </span>
-                  <span style={{ fontFamily: BEBAS, fontSize: 23, letterSpacing: '0.08em', lineHeight: 1 }}>{d.didCode}</span>
-                  {d.saleType && <SaleTypeBadge type={d.saleType} light={on} />}
+                  {d.saleType && <SaleTypeBadge type={d.saleType} light={on} small />}
                   {on && (
-                    <span style={{ position: 'absolute', top: 6, right: 6, width: 18, height: 18, borderRadius: '50%', background: '#fff', color: vColor, fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✓</span>
+                    <span style={{ position: 'absolute', top: -5, right: -5, width: 15, height: 15, borderRadius: '50%', background: '#fff', border: `1.5px solid ${vColor}`, color: vColor, fontSize: 9, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✓</span>
                   )}
                 </button>
               )
             })}
           </div>
-          <p style={{ margin: '6px 0 0', fontFamily: RAJDHANI, fontSize: 13, fontWeight: 600, color: P.textMuted }}>
+          <p style={{ margin: '6px 0 0', fontFamily: RAJDHANI, fontSize: 13, fontWeight: 600, color: P.textMuted, flexShrink: 0 }}>
             {dids.length} DID{dids.length !== 1 ? 's' : ''} available for {form.vertical_type}
           </p>
-          {err('client_id') && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#EF4444' }}>{err('client_id')}</p>}
+          {err('client_id') && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#EF4444' }}>{err('client_id')}</p>}
         </>
       )}
     </SectionCard>
   )
 
   // ── Summary bar (horizontal, under the pills) ──────────────────────────────
-  const divider = <div style={{ width: 1, alignSelf: 'stretch', background: P.border, margin: '10px 0' }} />
+  const divider = <div style={{ width: 1, alignSelf: 'stretch', background: P.border, margin: '12px 0', flexShrink: 0 }} />
   const summary = (
-    <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: compact ? 'wrap' : 'nowrap', background: '#fff', borderRadius: 14, overflow: 'hidden', marginBottom: 12, boxShadow: '0 1px 3px rgba(19,46,87,0.08), 0 10px 26px -16px rgba(19,46,87,0.35)' }}>
-      <div style={{ padding: '10px 18px', minWidth: 210, flexShrink: 0, background: `linear-gradient(135deg, ${vColor} 0%, ${P.navy} 100%)`, color: '#fff', display: 'flex', flexDirection: 'column', justifyContent: 'center', transition: 'background .3s' }}>
-        <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 11, letterSpacing: '0.04em', opacity: 0.9 }}>SALE SUMMARY</p>
-        <p style={{ margin: '4px 0 0', fontFamily: BEBAS, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 240 }}>{customer || 'New Customer'}</p>
-        <p style={{ margin: '1px 0 0', fontSize: 12, opacity: 0.85 }}>{form.phone || 'No phone yet'}</p>
+    <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: compact ? 'wrap' : 'nowrap', background: '#fff', borderRadius: 14, overflow: 'hidden', margin: '12px 0', flexShrink: 0, border: `1px solid ${P.border}`, boxShadow: '0 8px 22px -18px rgba(19,46,87,0.6)' }}>
+      {/* Strip in the vertical's colour, then the customer */}
+      <div style={{ width: 6, flexShrink: 0, background: vColor, transition: 'background .3s' }} />
+      <div style={{ padding: '10px 18px', minWidth: 190, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+        <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 10, letterSpacing: '0.05em', color: vColor, transition: 'color .3s' }}>SALE SUMMARY</p>
+        <p style={{ margin: '3px 0 0', fontFamily: BEBAS, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, color: P.navy, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 240 }}>{customer || 'New Customer'}</p>
+        <p style={{ margin: '1px 0 0', fontSize: 12, color: P.textMuted }}>{form.phone || 'No phone yet'}</p>
       </div>
-
-      <SummaryItem label="Vertical">
+      {divider}
+      <SummaryItem icon={ICONS.tag} color={vColor} label="Vertical">
         {form.vertical_type
-          ? <span style={{ padding: '2px 10px', borderRadius: 99, fontSize: 12, color: '#fff', background: vColor }}>{form.vertical_type === 'Other' && filled(form.vertical_other) ? form.vertical_other : form.vertical_type}</span>
+          ? <span style={{ padding: '1px 10px', borderRadius: 99, fontSize: 12, color: '#fff', background: vColor }}>{form.vertical_type === 'Other' && filled(form.vertical_other) ? form.vertical_other : form.vertical_type}</span>
           : <NotSet />}
       </SummaryItem>
-      {divider}
       {form.vertical_type !== 'Other' && (
-        <>
-          <SummaryItem label="DID">
-            {selectedDid ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: RAJDHANI, fontSize: 16, fontWeight: 700 }}>{selectedDid.didCode}{selectedDid.saleType && <SaleTypeBadge type={selectedDid.saleType} />}</span> : <NotSet />}
-          </SummaryItem>
-          {divider}
-        </>
+        <SummaryItem icon={ICONS.phone} color={vColor} label="DID">
+          {selectedDid ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: BEBAS, fontSize: 17, letterSpacing: '0.05em' }}>{selectedDid.didCode}{selectedDid.saleType && <SaleTypeBadge type={selectedDid.saleType} small />}</span> : <NotSet />}
+        </SummaryItem>
       )}
-      <SummaryItem label="Address" grow>{address || <NotSet />}</SummaryItem>
+      <SummaryItem icon={ICONS.address} color={vColor} label="Address" grow>{address || <NotSet />}</SummaryItem>
       {divider}
-      <SummaryItem label="Required fields">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{ width: 110, height: 7, borderRadius: 99, background: P.gridLine, overflow: 'hidden' }}>
-            <div style={{ width: `${pct}%`, height: '100%', borderRadius: 99, background: `linear-gradient(90deg, ${P.gold}, ${P.teal})`, transition: 'width .3s' }} />
-          </div>
-          <span style={{ fontFamily: BEBAS, fontSize: 20, letterSpacing: '0.04em', lineHeight: 1, color: pct === 100 ? P.teal : P.navy }}>{doneCount}/{requiredKeys.length}</span>
-        </div>
-      </SummaryItem>
-
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 16px', flexShrink: 0 }}>
+        <ProgressRing done={doneCount} total={requiredKeys.length} />
+        <span style={{ fontFamily: RAJDHANI, fontSize: 12, fontWeight: 700, color: P.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', lineHeight: 1.15 }}>Required<br />fields</span>
+      </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginLeft: 'auto', flexShrink: 0 }}>
         <button type="button" onClick={resetForm}
           style={{ padding: '9px 14px', borderRadius: 10, border: `1px solid ${P.border}`, background: '#fff', color: P.textMuted, fontFamily: RAJDHANI, fontSize: 13, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', whiteSpace: 'nowrap' }}>
@@ -404,25 +423,29 @@ export default function NewSalePage() {
     </div>
   )
 
-  /** A section's fields. Sections with a long text box show it in a left column, the rest stacked on the right. */
+  /**
+   * A section's fields. Sections with a long text box show it in a left column (stretching to the
+   * card's height) and the other fields stacked on the right; the rest use the configured widths,
+   * spread evenly down the card so a tall card has no empty band at the bottom.
+   */
   const sectionBody = (list: FormField[]) => {
-    const field = (f: FormField, rows?: number) => (
-      <Field key={f.fieldKey} label={f.label} required={f.isRequired} error={err(f.fieldKey)}>
-        <GenericField field={f} value={form[f.fieldKey] ?? ''} onChange={set} error={err(f.fieldKey)} rows={rows} />
+    const field = (f: FormField, fill?: boolean) => (
+      <Field key={f.fieldKey} label={f.label} required={f.isRequired} error={err(f.fieldKey)} fill={fill}>
+        <GenericField field={f} value={form[f.fieldKey] ?? ''} onChange={set} error={err(f.fieldKey)} fill={fill} />
       </Field>
     )
     const textareas = list.filter(f => f.fieldType === 'textarea')
     const others = list.filter(f => f.fieldType !== 'textarea')
     if (!compact && textareas.length && others.length) {
       return (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>{textareas.map(f => field(f, Math.max(4, others.length * 2)))}</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>{others.map(f => field(f))}</div>
+        <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.75rem' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>{textareas.map(f => field(f, true))}</div>
+          <div style={{ display: 'flex', flexDirection: 'column', justifyContent: 'space-around', gap: '0.6rem' }}>{others.map(f => field(f))}</div>
         </div>
       )
     }
     return (
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.6rem 0.75rem' }}>
+      <div style={{ flex: 1, display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.6rem 0.75rem', alignContent: compact ? 'start' : 'space-around' }}>
         {list.map(f => (
           <div key={f.fieldKey} style={{ gridColumn: `span ${compact ? 6 : COL_SPAN[f.colSpan] ?? 2}` }}>{field(f)}</div>
         ))}
@@ -441,13 +464,14 @@ export default function NewSalePage() {
   return (
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <div style={{ padding: '0 20px 16px', minHeight: '100vh', background: P.bgMain, fontFamily: FONT }}>
-        <div style={{ height: 12 }} />
+      {/* Fills the screen height on desktop; the card rows share whatever space is left */}
+      <div style={{ padding: '0 20px 16px', minHeight: '100vh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', background: P.bgMain, fontFamily: FONT }}>
         <VerticalPills options={verticalOptions} value={form.vertical_type} onPick={v => set(asEvent('vertical_type', v))} error={err('vertical_type')} />
 
         {summary}
 
-        <form id="new-sale-form" onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: compact ? 'minmax(0, 1fr)' : 'repeat(6, minmax(0, 1fr))', gap: 12 }}>
+        <form id="new-sale-form" onSubmit={handleSubmit}
+          style={{ flex: 1, display: 'grid', gridTemplateColumns: compact ? 'minmax(0, 1fr)' : 'repeat(6, minmax(0, 1fr))', gridAutoRows: compact ? 'auto' : '1fr', gap: 12 }}>
           <div style={{ gridColumn: compact ? '1 / -1' : 'span 2', display: 'flex', minWidth: 0 }}>{didCard}</div>
 
           {sections.order.map((name, i) => {
@@ -455,7 +479,7 @@ export default function NewSalePage() {
             const s = stats(list)
             return (
               <SectionCard key={name} title={name} icon={sectionIcon(name)} done={s.done} total={s.total} complete={s.complete}
-                style={{ gridColumn: spanFor(i), minWidth: 0 }}>
+                style={{ gridColumn: spanFor(i) }}>
                 {sectionBody(list)}
               </SectionCard>
             )
