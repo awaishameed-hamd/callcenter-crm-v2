@@ -429,7 +429,9 @@ export default function NewSalePage() {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginLeft: 'auto', flexShrink: 0 }}>
         <button type="button" onClick={resetForm}
-          style={{ padding: '9px 14px', borderRadius: 10, border: `1px solid ${P.border}`, background: '#fff', color: P.textMuted, fontFamily: RAJDHANI, fontSize: 13, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', whiteSpace: 'nowrap' }}>
+          style={{ padding: '9px 14px', borderRadius: 10, border: `1px solid ${withAlpha(P.brick, 0.3)}`, background: withAlpha(P.brick, 0.1), color: P.brick, fontFamily: RAJDHANI, fontSize: 13, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', cursor: 'pointer', whiteSpace: 'nowrap', transition: 'background .15s' }}
+          onMouseEnter={e => { e.currentTarget.style.background = withAlpha(P.brick, 0.18) }}
+          onMouseLeave={e => { e.currentTarget.style.background = withAlpha(P.brick, 0.1) }}>
           Reset
         </button>
         <button type="submit" form="new-sale-form" disabled={loading}
