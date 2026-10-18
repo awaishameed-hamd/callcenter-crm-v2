@@ -1,7 +1,7 @@
 'use client'
 
-// New Sale on one screen: vertical pills on top (Approvals style), a DID card, the form
-// sections as colour-headed cards in a two-column grid, and a sticky summary on the right.
+// New Sale on one screen: vertical pills on top (Approvals style), then the DID tiles and the
+// form sections as cards (gold table-style headings) two per row, and a sticky summary on the right.
 // Same fields, rules and API payload as before. The original design is kept in
 // NewSalePageClassic.tsx; point app/(dashboard)/agent/new-sale/page.tsx at it to switch back.
 
@@ -10,7 +10,6 @@ import { STANDARD_FIELD_KEYS, snakeToCamel } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
-import { PageTitle } from '@/components/ui/PageChrome'
 import { useCompact } from '@/hooks/useMediaQuery'
 import { apiGet, apiPost, errMsg, errFields } from '@/lib/api'
 import { P } from '@/lib/palette'
@@ -31,13 +30,7 @@ const FALLBACK_KEYS = ['vertical_type', 'client_id', 'first_name', 'mid_name', '
 const VERTICAL_COLOR: Record<string, string> = { Medicare: '#1565C0', 'Final Expense': P.purple, ACA: P.teal, Other: P.brick }
 const verticalColor = (v?: string) => VERTICAL_COLOR[v ?? ''] ?? P.navy
 
-// Header gradient per section, in order, plus an icon picked from the section name
-const SECTION_GRADIENTS = [
-  ['#132E57', '#24477F'],
-  ['#1E8496', '#0E5F6E'],
-  ['#7B2D8E', '#5A1F69'],
-  ['#C25A1F', '#9A4415'],
-]
+// Section icons, picked from the section name
 const ICONS = {
   person:  'M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z',
   address: 'M15 10.5a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1 1 15 0Z',
@@ -69,25 +62,23 @@ function Field({ label, required, error, children }: { label: string; required?:
   )
 }
 
-/** Card with a filled gradient heading: icon, Bebas title, and a required-field counter or tick. */
-function SectionCard({ title, icon, colors, done, total, complete, style, children }: {
-  title: string; icon: string; colors: string[]; done: number; total: number; complete: boolean
+/** Card whose heading matches the CRM's table headers (gold, dark uppercase), with a required-field counter. */
+function SectionCard({ title, icon, done, total, complete, style, children }: {
+  title: string; icon: string; done: number; total: number; complete: boolean
   style?: React.CSSProperties; children: React.ReactNode
 }) {
   return (
-    <div style={{ background: '#fff', borderRadius: 12, boxShadow: '0 1px 3px rgba(19,46,87,0.08), 0 6px 18px -12px rgba(19,46,87,0.25)', ...style }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 14px', background: `linear-gradient(135deg, ${colors[0]} 0%, ${colors[1]} 100%)`, borderRadius: '12px 12px 0 0', color: '#fff' }}>
-        <span style={{ width: 26, height: 26, borderRadius: 8, background: 'rgba(255,255,255,0.18)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-          <Svg d={icon} />
-        </span>
-        <span style={{ fontFamily: BEBAS, fontSize: 20, letterSpacing: '0.08em', lineHeight: 1, paddingTop: 2 }}>{title}</span>
+    <div style={{ background: '#fff', borderRadius: 12, border: `1px solid ${P.border}`, display: 'flex', flexDirection: 'column', ...style }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', background: P.gold, borderRadius: '11px 11px 0 0', color: '#1a1a1a' }}>
+        <Svg d={icon} size={14} />
+        <span style={{ fontFamily: FONT, fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }}>{title}</span>
         {total > 0 && (
-          <span style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 5, fontFamily: RAJDHANI, fontSize: 13, fontWeight: 700, padding: '2px 9px', borderRadius: 99, background: complete ? '#fff' : 'rgba(255,255,255,0.18)', color: complete ? colors[1] : '#fff', transition: 'all .2s' }}>
+          <span style={{ marginLeft: 'auto', fontFamily: FONT, fontSize: 11, fontWeight: 700, padding: '1px 8px', borderRadius: 99, background: complete ? '#1a1a1a' : 'rgba(0,0,0,0.12)', color: complete ? P.gold : '#1a1a1a', transition: 'all .2s' }}>
             {complete ? '✓ Done' : `${done}/${total}`}
           </span>
         )}
       </div>
-      <div style={{ padding: '12px 14px 14px' }}>{children}</div>
+      <div style={{ padding: '12px 14px 14px', flex: 1 }}>{children}</div>
     </div>
   )
 }
@@ -299,7 +290,6 @@ export default function NewSalePage() {
   const verticalOptions = verticalField?.options ?? ['Medicare', 'Final Expense', 'ACA', 'Other']
   const selectedDid = dids.find(d => d.id === form.client_id)
   const customer = [form.first_name, form.last_name].filter(filled).join(' ')
-  const initials = [form.first_name, form.last_name].filter(filled).map(s => s.trim()[0].toUpperCase()).join('') || '?'
   const address = [form.address, form.city, [form.state, form.postal_code].filter(filled).join(' ')].filter(filled).join(', ')
   const stats = (list: FormField[]) => {
     const req = list.filter(f => f.isRequired)
@@ -310,10 +300,13 @@ export default function NewSalePage() {
   // ── DID card ────────────────────────────────────────────────────────────────
   const didCard = (
     <SectionCard title={form.vertical_type === 'Other' ? 'Other Vertical' : didField?.label ?? 'Select DID'} icon={ICONS.phone}
-      colors={[P.gold, '#C8890F']} done={form.client_id || (form.vertical_type === 'Other') ? 1 : 0} total={form.vertical_type ? 1 : 0}
+      done={form.client_id || (form.vertical_type === 'Other') ? 1 : 0} total={form.vertical_type ? 1 : 0}
       complete={form.vertical_type === 'Other' ? true : filled(form.client_id)}>
       {!form.vertical_type ? (
-        <p style={{ margin: 0, fontSize: 13, color: P.textMuted }}>Pick a vertical above to see its DIDs.</p>
+        <div style={{ height: '100%', minHeight: 110, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 6, border: `2px dashed ${P.border}`, borderRadius: 12, color: P.textMuted }}>
+          <span style={{ fontSize: 20, lineHeight: 1 }}>↑</span>
+          <span style={{ fontFamily: RAJDHANI, fontSize: 15, fontWeight: 700, letterSpacing: '0.04em' }}>Pick a vertical above to see its DIDs</span>
+        </div>
       ) : form.vertical_type === 'Other' ? (
         <Field label="Specify Other" error={err('vertical_other')}>
           <input name="vertical_other" type="text" value={form.vertical_other ?? ''} onChange={set} placeholder="Specify vertical type"
@@ -325,19 +318,37 @@ export default function NewSalePage() {
         <div className="px-3 py-2 rounded-lg border border-amber-200 bg-amber-50 text-sm text-amber-600">No active DIDs found for {form.vertical_type}</div>
       ) : (
         <>
-          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 8, maxHeight: 84, overflowY: 'auto', padding: 1 }}>
+          {/* DID tiles: tap one to pick it; the chosen tile fills with the vertical's colour */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(104px, 1fr))', gap: 10, maxHeight: 176, overflowY: 'auto', padding: '2px 2px 4px' }}>
             {dids.map(d => {
               const on = form.client_id === d.id
               return (
                 <button key={d.id} type="button" onClick={() => set(asEvent('client_id', d.id))}
-                  style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '6px 12px', borderRadius: 8, cursor: 'pointer', fontFamily: RAJDHANI, fontSize: 15, fontWeight: 700, letterSpacing: '0.05em', transition: 'all .15s',
-                    border: `1.5px solid ${on ? vColor : P.border}`, background: on ? vColor : '#fff', color: on ? '#fff' : P.navy, boxShadow: on ? `0 6px 14px -8px ${vColor}` : 'none' }}>
-                  {d.didCode}
+                  style={{
+                    position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 5, padding: '12px 8px 10px',
+                    borderRadius: 12, cursor: 'pointer', transition: 'all .18s',
+                    border: `2px solid ${on ? vColor : P.border}`,
+                    background: on ? `linear-gradient(145deg, ${vColor} 0%, ${P.navy} 140%)` : 'linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%)',
+                    color: on ? '#fff' : P.navy, transform: on ? 'translateY(-2px)' : 'none',
+                    boxShadow: on ? `0 12px 22px -12px ${vColor}` : '0 1px 2px rgba(0,0,0,0.04)',
+                  }}
+                  onMouseEnter={e => { if (!on) { e.currentTarget.style.borderColor = vColor; e.currentTarget.style.transform = 'translateY(-2px)' } }}
+                  onMouseLeave={e => { if (!on) { e.currentTarget.style.borderColor = P.border; e.currentTarget.style.transform = 'none' } }}>
+                  <span style={{ width: 28, height: 28, borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? 'rgba(255,255,255,0.2)' : `${vColor}18`, color: on ? '#fff' : vColor }}>
+                    <Svg d={ICONS.phone} size={14} />
+                  </span>
+                  <span style={{ fontFamily: BEBAS, fontSize: 23, letterSpacing: '0.08em', lineHeight: 1 }}>{d.didCode}</span>
                   {d.saleType && <SaleTypeBadge type={d.saleType} light={on} />}
+                  {on && (
+                    <span style={{ position: 'absolute', top: 6, right: 6, width: 18, height: 18, borderRadius: '50%', background: '#fff', color: vColor, fontSize: 11, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>✓</span>
+                  )}
                 </button>
               )
             })}
           </div>
+          <p style={{ margin: '6px 0 0', fontFamily: RAJDHANI, fontSize: 13, fontWeight: 600, color: P.textMuted }}>
+            {dids.length} DID{dids.length !== 1 ? 's' : ''} available for {form.vertical_type}
+          </p>
           {err('client_id') && <p style={{ margin: '6px 0 0', fontSize: 12, color: '#EF4444' }}>{err('client_id')}</p>}
         </>
       )}
@@ -349,14 +360,9 @@ export default function NewSalePage() {
     <div style={{ background: '#fff', borderRadius: 14, overflow: 'hidden', position: compact ? 'static' : 'sticky', top: 12, boxShadow: '0 1px 3px rgba(19,46,87,0.08), 0 10px 26px -14px rgba(19,46,87,0.35)' }}>
       <div style={{ padding: '14px 18px 16px', background: `linear-gradient(135deg, ${vColor} 0%, ${P.navy} 100%)`, color: '#fff', transition: 'background .3s' }}>
         <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 12, letterSpacing: '0.04em', opacity: 0.9 }}>SALE SUMMARY</p>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 12 }}>
-          <div style={{ width: 44, height: 44, borderRadius: '50%', background: 'rgba(255,255,255,0.2)', border: '2px solid rgba(255,255,255,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: BEBAS, fontSize: 20, letterSpacing: '0.05em', flexShrink: 0 }}>
-            {initials}
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <p style={{ margin: 0, fontFamily: BEBAS, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{customer || 'New Customer'}</p>
-            <p style={{ margin: '2px 0 0', fontSize: 12, opacity: 0.85 }}>{form.phone || 'No phone yet'}</p>
-          </div>
+        <div style={{ marginTop: 10, minWidth: 0 }}>
+          <p style={{ margin: 0, fontFamily: BEBAS, fontSize: 24, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{customer || 'New Customer'}</p>
+          <p style={{ margin: '2px 0 0', fontSize: 12, opacity: 0.85 }}>{form.phone || 'No phone yet'}</p>
         </div>
       </div>
 
@@ -400,30 +406,25 @@ export default function NewSalePage() {
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       <div style={{ padding: '0 20px 16px', minHeight: '100vh', background: P.bgMain, fontFamily: FONT }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', minHeight: 52, gap: 12, flexWrap: 'wrap' }}>
-          <PageTitle>New Sale</PageTitle>
-          <span style={{ fontFamily: RAJDHANI, fontSize: 14, fontWeight: 600, color: P.textMuted, letterSpacing: '0.04em' }}>
-            Fill the form, then press <b style={{ color: P.teal }}>Record Sale</b>
-          </span>
-        </div>
-
+        <div style={{ height: 12 }} />
         <VerticalPills options={verticalOptions} value={form.vertical_type} onPick={v => set(asEvent('vertical_type', v))} error={err('vertical_type')} />
 
         <div style={{ display: 'grid', gridTemplateColumns: compact ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) 290px', gap: 14, alignItems: 'start' }}>
           <form id="new-sale-form" onSubmit={handleSubmit} style={{ display: 'grid', gridTemplateColumns: compact ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))', gap: 12, minWidth: 0 }}>
-            <div style={{ gridColumn: '1 / -1' }}>{didCard}</div>
+            {didCard}
 
             {sections.order.map((name, i) => {
               const list = sections.map[name]
               const s = stats(list)
-              // An odd last section takes the full row so the grid has no gap
-              const fullRow = !compact && sections.order.length % 2 === 1 && i === sections.order.length - 1
+              // DID card plus sections fill the grid two per row; an odd last card takes the full row
+              const fullRow = !compact && (sections.order.length + 1) % 2 === 1 && i === sections.order.length - 1
               return (
-                <SectionCard key={name} title={name} icon={sectionIcon(name)} colors={SECTION_GRADIENTS[i % SECTION_GRADIENTS.length]}
+                <SectionCard key={name} title={name} icon={sectionIcon(name)}
                   done={s.done} total={s.total} complete={s.complete} style={fullRow ? { gridColumn: '1 / -1' } : undefined}>
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.6rem 0.75rem' }}>
                     {list.map(field => (
-                      <div key={field.fieldKey} style={{ gridColumn: `span ${compact ? 6 : COL_SPAN[field.colSpan] ?? 2}` }}>
+                      // Cards are half the page wide, so dropdowns get at least half a card to stay readable
+                      <div key={field.fieldKey} style={{ gridColumn: `span ${compact ? 6 : Math.max(COL_SPAN[field.colSpan] ?? 2, field.fieldType === 'select' ? 3 : 0)}` }}>
                         <Field label={field.label} required={field.isRequired} error={err(field.fieldKey)}>
                           <GenericField field={field} value={form[field.fieldKey] ?? ''} onChange={set} error={err(field.fieldKey)} />
                         </Field>
