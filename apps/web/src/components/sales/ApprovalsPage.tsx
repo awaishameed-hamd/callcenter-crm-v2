@@ -461,7 +461,7 @@ export default function ApprovalsPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gridAutoRows: '1fr', gap: 12 }}>
                   <SectionCard title="QA Comments" icon={ICONS.notes} done={0} total={0} complete={false}>
                     {isReviewer && pending ? (
-                      <textarea ref={qaRef} value={noteQa} onChange={e => setNoteQa(e.target.value)} placeholder="Write the QA review here. It is saved when you approve or reject."
+                      <textarea ref={qaRef} value={noteQa} onChange={e => setNoteQa(e.target.value)}
                         className={`${inputCls} resize-none`} style={{ flex: 1, minHeight: 96 }} />
                     ) : (
                       <div style={INFO_GRID}>
