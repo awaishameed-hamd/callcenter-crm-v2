@@ -43,11 +43,13 @@ Admins, directors and HR managers form the "HR desk" (attendance and everyone's 
 ## Sale pipeline
 
 ```
-agent submits          -> PENDING
-manager approves       -> APPROVED          manager rejects  -> DISAPPROVED
-director/admin approve -> FINAL_APPROVED    director/admin reject -> FINAL_DISAPPROVED
-agent cancels on entry -> AGENT_REJECTED
+agent submits             -> PENDING
+QA/Floor manager approves -> APPROVED          QA/Floor manager rejects -> DISAPPROVED
+director/admin approve    -> FINAL_APPROVED    director/admin reject    -> FINAL_DISAPPROVED
+agent cancels on entry    -> AGENT_REJECTED
 ```
+
+Only QA Managers and Floor Managers/Team Leads act on the first stage (`isSaleReviewer` in staff-policy.ts and lib/roles.ts); directors and admins only on the final stage. Everyone else sees the Approvals queues read-only.
 
 When a sale is decided, its DID, client and rate are frozen onto the record (`sale_*` columns), so reports keep the values that applied at the time. Agents and managers see DID codes only; directors and admins also see client names and rates.
 

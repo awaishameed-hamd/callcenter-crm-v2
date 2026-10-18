@@ -28,13 +28,15 @@ export class CustomersController {
     return this.customers.update(actor, id, body)
   }
 
-  @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
+  // Stage one: QA and Floor managers only (checked in the service)
+  @Roles(Role.MANAGER)
   @Post(':id/approve')
   approve(@CurrentUser() actor: any, @Param('id') id: string, @Body() body: Record<string, any>) {
     return this.customers.approve(actor, id, body)
   }
 
-  @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
+  // Stage one: QA and Floor managers only (checked in the service)
+  @Roles(Role.MANAGER)
   @Post(':id/reject')
   reject(@CurrentUser() actor: any, @Param('id') id: string, @Body() body: Record<string, any>) {
     return this.customers.reject(actor, id, body)

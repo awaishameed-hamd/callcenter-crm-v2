@@ -11,7 +11,7 @@ import { useLayout } from '@/components/layout/AppLayout'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { apiGet, apiPost, apiPut, apiDelete, errMsg } from '@/lib/api'
 import { StatusBadge, fmtWithPKT, fullName } from '@/lib/format'
-import { isFinalApprover as finalRole } from '@/lib/roles'
+import { isFinalApprover as finalRole, isSaleReviewer } from '@/lib/roles'
 import { P } from '@/lib/palette'
 import type { Customer, Page } from '@/types'
 
@@ -19,19 +19,15 @@ const FONT = "'Aptos', sans-serif"
 const inputCls  = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20'
 const VERTICAL_TO_CAMPAIGN: Record<string, string> = { Medicare: 'Medicare', 'Final Expense': 'Final Expense', ACA: 'ACA' }
 
-// One colour per status, used by the top pills, their underline bars and the list rows (argroup Tasks style).
-const STATUS_COLOR: Record<string, string> = {
-  [CustomerStatus.PENDING]:           '#1565C0',
-  [CustomerStatus.APPROVED]:          '#1E8496',
-  [CustomerStatus.DISAPPROVED]:       '#C25A1F',
-  [CustomerStatus.FINAL_APPROVED]:    '#3A6B3A',
-  [CustomerStatus.FINAL_DISAPPROVED]: '#7B2D8E',
-  [CustomerStatus.AGENT_REJECTED]:    '#B45309',
-  '':                                 '#C25A1F',
-  AWAITING:                           '#C25A1F',
-}
 // Pending plus manager-approved: everything still waiting on someone
 const AWAITING = 'AWAITING'
+
+// One colour per queue, used by the top pills, their underline bars and the list rows (argroup Tasks style).
+const STATUS_COLOR: Record<string, string> = {
+  [CustomerStatus.PENDING]:  '#1565C0',
+  [CustomerStatus.APPROVED]: '#1E8496',
+  [AWAITING]:                '#C25A1F',
+}
 
 type EditForm = Record<string, string>
 type DidOption = { id: string; didCode: string; saleType: string | null }
@@ -78,7 +74,8 @@ const toEditForm = (c: Customer): EditForm => ({
 export default function ApprovalsPage() {
   const { user } = useAuth()
   const { sidebarCollapsed, setSidebarCollapsed } = useLayout()
-  const isFinalApprover = finalRole(user)
+  const isFinalApprover = finalRole(user)   // final stage: Director and Admin
+  const isReviewer      = isSaleReviewer(user) // first stage: QA and Floor managers
 
   const [customers, setCustomers]       = useState<Customer[]>([])
   const [meta, setMeta]                 = useState<Page<Customer> | null>(null)
@@ -111,19 +108,13 @@ export default function ApprovalsPage() {
   }, [])
   useEffect(() => { loadCounts() }, [loadCounts])
 
-  const TABS = isFinalApprover
-    ? [
-        // Decided records (approved or rejected) are reviewed in the Sales Report, so only open queues show here.
-        { key: CustomerStatus.PENDING,  label: 'Manager Approval' },
-        { key: CustomerStatus.APPROVED, label: 'Final Approval' },
-        { key: AWAITING,                label: 'All' },
-      ]
-    : [
-        { key: CustomerStatus.PENDING,     label: 'Pending' },
-        { key: CustomerStatus.APPROVED,    label: 'Approved by Manager' },
-        { key: CustomerStatus.DISAPPROVED, label: 'Rejected by Manager' },
-        { key: '',                         label: 'All' },
-      ]
+  // Same queues for managers and directors. Decided records (approved or rejected) are
+  // reviewed in the Sales Report, so only the open queues show here.
+  const TABS = [
+    { key: CustomerStatus.PENDING,  label: 'Manager Approval' },
+    { key: CustomerStatus.APPROVED, label: 'Final Approval' },
+    { key: AWAITING,                label: 'All' },
+  ]
 
   // silent: background refresh, so no loading state and a failed poll keeps the current list
   const load = useCallback(async (silent = false) => {
@@ -379,21 +370,25 @@ export default function ApprovalsPage() {
                 </div>
               </div>
 
-              {isFinalApprover && selected.status === CustomerStatus.APPROVED && (
+              {selected.status === CustomerStatus.APPROVED && (
                 <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 text-sm">
-                  <p className="font-semibold text-amber-900">Awaiting your final approval</p>
-                  <p className="text-amber-700 text-xs mt-0.5">This record was approved by the manager. Final approve or reject below.</p>
+                  <p className="font-semibold text-amber-900">{isFinalApprover ? 'Awaiting your final approval' : 'Awaiting final approval'}</p>
+                  <p className="text-amber-700 text-xs mt-0.5">
+                    {isFinalApprover ? 'This record was approved by the manager. Final approve or reject below.' : 'Approved by the manager. The director gives the final approval.'}
+                  </p>
                 </div>
               )}
-              {!isFinalApprover && selected.status === CustomerStatus.PENDING && (
+              {selected.status === CustomerStatus.PENDING && (
                 <div className="bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm">
-                  <p className="font-semibold text-blue-900">Awaiting your approval</p>
-                  <p className="text-blue-700 text-xs mt-0.5">After you approve, it will go to the director for final approval.</p>
+                  <p className="font-semibold text-blue-900">{isReviewer ? 'Awaiting your approval' : 'Awaiting manager approval'}</p>
+                  <p className="text-blue-700 text-xs mt-0.5">
+                    {isReviewer ? 'After you approve, it will go to the director for final approval.' : 'A QA Manager or Floor Manager approves or rejects it first.'}
+                  </p>
                 </div>
               )}
 
               <div className="flex flex-wrap gap-2">
-                {!isFinalApprover && selected.status === CustomerStatus.PENDING && (
+                {isReviewer && selected.status === CustomerStatus.PENDING && (
                   <>
                     <button onClick={() => setNoteModal('approve')} disabled={actionLoading} className="px-4 py-2 rounded-lg bg-green-600 text-white text-sm font-semibold hover:bg-green-700 transition-colors disabled:opacity-60">Approve</button>
                     <button onClick={() => setNoteModal('reject')} disabled={actionLoading} className="px-4 py-2 rounded-lg bg-red-600 text-white text-sm font-semibold hover:bg-red-700 transition-colors disabled:opacity-60">Reject</button>

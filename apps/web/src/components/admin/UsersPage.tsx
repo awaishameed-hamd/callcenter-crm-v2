@@ -225,7 +225,8 @@ function UserForm({ initial, allowedRoles, onSubmit, onCancel, loading, errors }
     <form onSubmit={submit}>
       <div style={{ padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <SectionCard title="Account">
-          <div className="grid grid-cols-2 gap-4">
+          {/* Fixed layout for every role: Role, Type, User Code, then Display Name and Password */}
+          <div className="grid grid-cols-3 gap-4 mb-4">
             <div>
               <label style={labelStyle}>Role{!isEdit && req}</label>
               {isEdit ? (
@@ -237,23 +238,23 @@ function UserForm({ initial, allowedRoles, onSubmit, onCancel, loading, errors }
               {fieldError('role')}
             </div>
             <div>
+              <label style={labelStyle}>{form.role === Role.AGENT ? 'Agent Type' : form.role === Role.MANAGER ? 'Manager Type' : 'Type'}</label>
+              {form.role === Role.AGENT ? (
+                <StyledSelect value={form.agentType} onChange={v => setAccount('agentType', v)} placeholder="Select Type"
+                  options={[{ value: '', label: 'Select Type' }, ...AGENT_TYPES.map(t => ({ value: t, label: t }))]} />
+              ) : form.role === Role.MANAGER ? (
+                <StyledSelect value={form.managerType} onChange={v => setAccount('managerType', v)} placeholder="Select Type"
+                  options={[{ value: '', label: 'Select Type' }, ...MANAGER_TYPES.map(t => ({ value: t, label: t }))]} />
+              ) : (
+                <div style={{ ...iStyle, background: '#F8FAFC', color: P.textMuted }}>Not applicable</div>
+              )}
+            </div>
+            <div>
               <label style={labelStyle}>{isEdit ? 'User Code' : 'User Code (Auto)'}</label>
               <div style={readOnlyStyle}>{codeLoading ? 'Loading...' : form.userCode || ' '}</div>
             </div>
-            {form.role === Role.AGENT && (
-              <div>
-                <label style={labelStyle}>Agent Type</label>
-                <StyledSelect value={form.agentType} onChange={v => setAccount('agentType', v)} placeholder="Select Type"
-                  options={[{ value: '', label: 'Select Type' }, ...AGENT_TYPES.map(t => ({ value: t, label: t }))]} />
-              </div>
-            )}
-            {form.role === Role.MANAGER && (
-              <div>
-                <label style={labelStyle}>Manager Type</label>
-                <StyledSelect value={form.managerType} onChange={v => setAccount('managerType', v)} placeholder="Select Type"
-                  options={[{ value: '', label: 'Select Type' }, ...MANAGER_TYPES.map(t => ({ value: t, label: t }))]} />
-              </div>
-            )}
+          </div>
+          <div className="grid grid-cols-2 gap-4">
             <div>
               <label style={labelStyle}>Display Name{req}</label>
               <input style={iStyle} value={form.displayName} onChange={e => setAccount('displayName', e.target.value)} placeholder="e.g. John Smith" required />

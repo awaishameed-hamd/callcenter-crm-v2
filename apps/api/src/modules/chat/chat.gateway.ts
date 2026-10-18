@@ -61,9 +61,14 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleDisconnect(client: AuthenticatedSocket) {
     if (!client.userId) return
     const wentOffline = this.presence.removeSocket(client.userId, client.id)
-    if (wentOffline) {
+    if (!wentOffline) return
+    // Lifecycle hooks run outside Nest's exception filters: an error here would be an
+    // unhandled rejection and take the whole API process down, so it is contained.
+    try {
       const lastSeenAt = await this.chatService.updateLastSeen(client.userId)
       this.server.emit('presence_update', { userId: client.userId, online: false, lastSeenAt })
+    } catch (err) {
+      console.error('presence update on disconnect failed', err)
     }
   }
 

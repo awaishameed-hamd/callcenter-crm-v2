@@ -5,6 +5,9 @@ type U = { role: Role | string; managerType?: string | null } | null | undefined
 export const isHrManager    = (u: U) => u?.role === Role.MANAGER && u?.managerType === ManagerType.HR
 export const isAccountant   = (u: U) => u?.role === Role.MANAGER && u?.managerType === ManagerType.ACCOUNTANT
 export const isFinalApprover = (u: U) => u?.role === Role.ADMIN || u?.role === Role.DIRECTOR
+/** First approval stage: only Floor Managers / Team Leads and QA Managers (same rule as the API). */
+export const isSaleReviewer = (u: U) =>
+  u?.role === Role.MANAGER && (u?.managerType === ManagerType.FLOOR || u?.managerType === ManagerType.QA)
 
 export const roleBase = (u: U) => `/${String(u?.role ?? '').toLowerCase()}`
 

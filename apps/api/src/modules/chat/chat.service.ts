@@ -257,7 +257,8 @@ export class ChatService {
 
   async updateLastSeen(userId: string): Promise<Date> {
     const lastSeenAt = new Date()
-    await this.prisma.user.update({ where: { id: userId }, data: { lastSeenAt } })
+    // updateMany: a user deleted while still connected is simply skipped instead of throwing
+    await this.prisma.user.updateMany({ where: { id: userId }, data: { lastSeenAt } })
     return lastSeenAt
   }
 

@@ -29,6 +29,17 @@ export function leaveRoles(a: Actor): Role[] {
   return a.role === Role.MANAGER && !isAccountant(a) ? [Role.AGENT] : []
 }
 
+/**
+ * Sale pipeline, first stage: only Floor Managers / Team Leads and QA Managers approve or
+ * reject a new sale. The final stage belongs to Directors (and Admins).
+ */
+export const isSaleReviewer = (a: Actor) =>
+  a.role === Role.MANAGER && (a.managerType === ManagerType.FLOOR || a.managerType === ManagerType.QA)
+
+export function assertSaleReviewer(a: Actor) {
+  if (!isSaleReviewer(a)) throw new ForbiddenException('Only a QA Manager or Floor Manager can approve or reject a new sale.')
+}
+
 export function assertHrDesk(a: Actor) {
   if (!hasHrDesk(a)) throw new ForbiddenException('Only Admin, Director or the HR Manager can do this.')
 }

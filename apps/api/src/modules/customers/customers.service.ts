@@ -4,8 +4,9 @@ import { CustomerStatus, Role, CANCEL_REASONS } from '@crm/shared'
 import { PrismaService } from '../prisma/prisma.service'
 import { V, fail, defined, pageArgs, toPage, FieldErrors } from '../../common/utils/validate'
 import { dateOnly, fmtStamp, PKT_TZ, US_TZ } from '../../common/utils/time'
+import { assertSaleReviewer } from '../../common/utils/staff-policy'
 
-type Actor = { id: string; role: Role }
+type Actor = { id: string; role: Role; managerType?: string | null }
 
 const FINAL_ROLES: Role[] = [Role.ADMIN, Role.DIRECTOR]
 const REVIEW_ROLES: Role[] = [Role.ADMIN, Role.DIRECTOR, Role.MANAGER]
@@ -170,6 +171,7 @@ export class CustomersService {
   }
 
   async approve(actor: Actor, id: string, b: Record<string, any>) {
+    assertSaleReviewer(actor)
     const c = await this.load(id)
     if (c.status !== CustomerStatus.PENDING) fail('Only pending customers can be approved.')
     const qaComments = V.str(b.qaComments, 'QA comments', { required: true, max: 2000 })!
@@ -181,6 +183,7 @@ export class CustomersService {
   }
 
   async reject(actor: Actor, id: string, b: Record<string, any>) {
+    assertSaleReviewer(actor)
     const c = await this.load(id)
     if (c.status !== CustomerStatus.PENDING) fail('Only pending customers can be rejected.')
     const reason      = V.oneOf(b.reason, 'Reason of cancellation', CANCEL_REASONS)
