@@ -8,14 +8,18 @@ import AttendanceApplicabilitySettings from '@/components/settings/AttendanceApp
 import { apiGet, apiPost, apiPut, apiDelete, errMsg, errFields } from '@/lib/api'
 import type { FormField, User } from '@/types'
 import { PageTitle } from '@/components/ui/PageChrome'
+import DataTable from '@/components/ui/DataTable'
+import { P } from '@/lib/palette'
+import { useLayout } from '@/components/layout/AppLayout'
 
-const NAVY  = '#132E57'
-const TEAL  = '#1E8496'
-const BG    = '#EDF0F3'
+const NAVY  = P.navy
+const TEAL  = P.teal
+const BG    = P.bgMain
 const WHITE = '#FFFFFF'
-const GRAD  = `linear-gradient(90deg, ${NAVY}, ${TEAL})`
-
-const TABS = ['User Access Level', 'Sale Form', 'Client Form', 'Profile Form', 'Attendance Settings']
+// Same teal gradient as the primary buttons everywhere else in the CRM
+const GRAD  = `linear-gradient(135deg, ${TEAL} 0%, #0E5F6E 100%)`
+// Gold table header used by DataTable
+const TH_ROW: React.CSSProperties = { background: P.gold, color: '#1a1a1a', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.07em' }
 
 const FIELD_TYPES = [
   { value: 'text',       label: 'Text' },
@@ -27,13 +31,13 @@ const FIELD_TYPES = [
   { value: 'amount_pkr', label: 'Amount (PKR)' },
 ]
 const TYPE_COLORS: Record<string, { bg: string; color: string }> = {
-  text:       { bg: '#EFF6FF', color: '#1D4ED8' },
-  number:     { bg: '#FEF9C3', color: '#854D0E' },
-  select:     { bg: '#F0FDF4', color: '#166534' },
-  date:       { bg: '#FDF4FF', color: '#7E22CE' },
-  textarea:   { bg: '#FFF7ED', color: '#9A3412' },
-  amount_usd: { bg: '#ECFDF5', color: '#065F46' },
-  amount_pkr: { bg: '#FFF7ED', color: '#92400E' },
+  text:       { bg: P.fillNavy,  color: P.navy },
+  number:     { bg: P.fillGold,  color: '#8A6100' },
+  select:     { bg: P.fillTeal,  color: P.teal },
+  date:       { bg: '#F1E4F4',   color: P.purple },
+  textarea:   { bg: P.fillBrick, color: P.brick },
+  amount_usd: { bg: '#E3EEE3',   color: P.forest },
+  amount_pkr: { bg: P.fillGold,  color: '#8A6100' },
 }
 const TYPE_LABELS: Record<string, string> = {
   text: 'Text', number: 'Number', select: 'Select', date: 'Date', textarea: 'Textarea', amount_usd: 'USD $', amount_pkr: 'PKR ₨',
@@ -408,7 +412,7 @@ function SectionHeader({ name, hasFields, isFirst, isLast, onRename, onDelete, o
   const commit = () => { if (val.trim() && val.trim() !== name) onRename(val.trim()); setEditing(false) }
 
   return (
-    <div className="flex items-center justify-between px-4 py-2.5" style={{ background: '#F1F5FA', borderBottom: '2px solid #E2E8F0' }}>
+    <div className="flex items-center justify-between px-4 py-2.5" style={{ background: P.fillNavy, borderBottom: `1px solid ${P.border}` }}>
       <div className="flex items-center gap-2">
         <div className="flex flex-col gap-0.5">
           <ArrowBtn dir="up" disabled={isFirst} onClick={onMoveUp} />
@@ -433,7 +437,7 @@ function SectionHeader({ name, hasFields, isFirst, isLast, onRename, onDelete, o
 }
 
 // Column widths shared by the hint row and every field row.
-const W = { arrows: 44, num: 24, label: 260, width: 132, type: 80, options: 80, visible: 96, required: 110, del: 36, edit: 36 }
+const W = { arrows: 44, num: 24, label: 220, width: 132, type: 80, options: 80, visible: 64, required: 72, del: 36, edit: 36 }
 
 function FieldRow({ field, index, count, onChange, onEditOptions, onDelete, onEdit, onMoveUp, onMoveDown }: {
   field: FormField; index: number; count: number; onChange: (c: Partial<FormField>) => void
@@ -441,7 +445,7 @@ function FieldRow({ field, index, count, onChange, onEditOptions, onDelete, onEd
 }) {
   const width = field.colSpan || 'third'
   return (
-    <div style={{ borderBottom: '1px solid #F1F5F9', background: index % 2 === 0 ? WHITE : '#FAFBFC' }}>
+    <div style={{ borderBottom: `1px solid ${P.border}50`, background: index % 2 === 0 ? WHITE : '#FAFCFC' }}>
       <div className="flex items-center px-4 py-2.5" style={{ gap: 8 }}>
         <div className="flex flex-col gap-0.5 flex-shrink-0" style={{ width: W.arrows }}>
           <ArrowBtn dir="up" disabled={index === 0} onClick={onMoveUp} />
@@ -461,7 +465,7 @@ function FieldRow({ field, index, count, onChange, onEditOptions, onDelete, onEd
           <div className="flex rounded-lg overflow-hidden border" style={{ borderColor: '#CBD5E1' }}>
             {WIDTH_OPTS.map(w => (
               <button key={w.value} type="button" onClick={() => onChange({ colSpan: w.value })} className="flex-1 text-xs font-bold py-1.5 transition-colors"
-                style={{ background: width === w.value ? GRAD : WHITE, color: width === w.value ? WHITE : '#64748B', borderRight: w.value !== 'third' ? '1px solid #CBD5E1' : 'none' }}>
+                style={{ background: width === w.value ? NAVY : WHITE, color: width === w.value ? WHITE : P.slate, borderRight: w.value !== 'third' ? `1px solid ${P.border}` : 'none' }}>
                 {w.label}
               </button>
             ))}
@@ -486,11 +490,9 @@ function FieldRow({ field, index, count, onChange, onEditOptions, onDelete, onEd
         </div>
         <div className="flex-shrink-0 flex items-center gap-1.5" style={{ width: W.visible }}>
           <Toggle checked={!!field.isVisible} disabled={field.isCore} onChange={v => onChange({ isVisible: v, isRequired: v ? field.isRequired : false })} />
-          <span className="text-xs font-semibold" style={{ color: '#64748B' }}>Visible</span>
         </div>
         <div className="flex-shrink-0 flex items-center gap-1.5" style={{ width: W.required }}>
           <Toggle checked={field.isRequired} disabled={!field.isVisible} onChange={v => onChange({ isRequired: v })} />
-          <span className="text-xs font-semibold" style={{ color: '#64748B' }}>Required</span>
         </div>
         <div className="flex-shrink-0 flex justify-center" style={{ width: W.del }}>
           {field.isCore ? <CoreBadge /> : (
@@ -652,16 +654,16 @@ function FormManagementTab({ formType, formLabel, setToast }: { formType: string
       </div>
 
       <div className="overflow-x-auto">
-        <div style={{ minWidth: 980 }}>
+        <div style={{ minWidth: 880 }}>
           {sectionOrder.map((sectionName, si) => {
             const sf = grouped[sectionName] || []
             return (
-              <div key={sectionName} className="mb-4 rounded-xl overflow-hidden" style={{ background: WHITE, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
+              <div key={sectionName} className="mb-4 overflow-hidden" style={{ background: WHITE, border: `1px solid ${P.border}`, borderRadius: 12 }}>
                 <SectionHeader name={sectionName} hasFields={sf.length > 0} isFirst={si === 0} isLast={si === sectionOrder.length - 1}
                   onRename={n => renameSection(sectionName, n)} onDelete={() => deleteSection(sectionName)}
                   onMoveUp={() => moveSection(si, -1)} onMoveDown={() => moveSection(si, 1)} />
                 {sf.length > 0 && (
-                  <div className="flex items-center px-4 py-1.5 text-xs font-bold uppercase tracking-wide" style={{ gap: 8, color: '#94A3B8', background: '#FAFBFC', borderBottom: '1px solid #F1F5F9' }}>
+                  <div className="flex items-center px-4" style={{ gap: 8, padding: '7px 16px', ...TH_ROW }}>
                     <div style={{ width: W.arrows }} />
                     <div style={{ width: W.num }} />
                     <div style={{ width: W.label }}>Label / Placeholder</div>
@@ -770,94 +772,165 @@ function UserAccessTab({ setToast }: { setToast: SetToast }) {
     }
   }
 
-  if (loading) return <Spinner />
+  const statusOf = (u: User) => (!u.isActive ? 'inactive' : u.profileLocked ? 'locked' : 'active')
+  const isDirty = (u: User) => pending[u.id] !== undefined && pending[u.id] !== u.role
 
   return (
-    <div className="rounded-xl" style={{ background: WHITE, boxShadow: '0 1px 4px rgba(0,0,0,0.08)' }}>
-      <div className="overflow-x-auto" style={{ minHeight: 260 }}>
-        <table className="w-full text-sm">
-          <thead>
-            <tr style={{ background: '#F2AC18' }}>
-              {['Name', 'Username', 'Role', 'Department', 'Status', 'Action'].map(h => (
-                <th key={h} className="text-left px-5 py-3 font-bold uppercase tracking-wide text-xs" style={{ color: '#1a1a1a' }}>{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {users.length === 0 && <tr><td colSpan={6} className="text-center py-10 text-gray-400">No users found.</td></tr>}
-            {users.map((user, i) => {
-              const current = pending[user.id] ?? user.role
-              const dirty   = pending[user.id] !== undefined && pending[user.id] !== user.role
-              const status  = !user.isActive ? 'inactive' : user.profileLocked ? 'locked' : 'active'
-              return (
-                <tr key={user.id} style={{ borderBottom: i < users.length - 1 ? '1px solid #F1F5F9' : 'none', background: i % 2 === 0 ? WHITE : '#FAFBFC' }}>
-                  <td className="px-5 py-3 font-semibold" style={{ color: NAVY }}>{user.displayName || 'N/A'}</td>
-                  <td className="px-5 py-3 font-mono text-xs" style={{ color: '#475569' }}>{user.userCode}</td>
-                  <td className="px-5 py-3">
-                    <div style={{ minWidth: 130 }}>
-                      <StyledSelect value={current} onChange={v => setPending(p => ({ ...p, [user.id]: v }))} options={ROLE_OPTS} borderColor={dirty ? TEAL : undefined} />
-                    </div>
-                  </td>
-                  <td className="px-5 py-3 text-sm" style={{ color: '#64748B' }}>{user.department ?? user.managerType ?? 'N/A'}</td>
-                  <td className="px-5 py-3">
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold capitalize" style={{ background: `${STATUS_COLOR[status]}18`, color: STATUS_COLOR[status] }}>{status}</span>
-                  </td>
-                  <td className="px-5 py-3">
-                    {dirty && (
-                      <button onClick={() => save(user)} disabled={saving[user.id]} className="px-3 py-1 rounded-lg text-xs font-bold text-white"
-                        style={{ background: GRAD, opacity: saving[user.id] ? 0.6 : 1, fontFamily: "'Aptos', sans-serif", letterSpacing: '0.05em' }}>
-                        {saving[user.id] ? 'Saving...' : 'Save'}
-                      </button>
-                    )}
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
-    </div>
+    <DataTable<User>
+      id="crm-user-access"
+      rows={users}
+      loading={loading}
+      rowKey={u => u.id}
+      emptyText="No users found."
+      // The role dropdown opens below its cell, so the table must not clip it
+      containerStyle={{ overflowX: 'visible' }}
+      columns={[
+        { key: 'name', label: 'Name', width: 200, headerStyle: { borderTopLeftRadius: 11 }, render: u => <span style={{ fontWeight: 600, color: P.textHeading }}>{u.displayName || 'N/A'}</span> },
+        { key: 'code', label: 'Username', width: 120, render: u => <span style={{ fontSize: 12, fontWeight: 700, color: P.teal, letterSpacing: '0.04em' }}>{u.userCode}</span> },
+        { key: 'role', label: 'Role', width: 170, cellStyle: { overflow: 'visible' }, render: u => (
+          <StyledSelect value={pending[u.id] ?? u.role} onChange={v => setPending(p => ({ ...p, [u.id]: v }))} options={ROLE_OPTS} borderColor={isDirty(u) ? TEAL : undefined} compact />
+        ) },
+        { key: 'dept', label: 'Department', width: 170, render: u => <span style={{ fontSize: 12, color: P.slate }}>{u.department ?? u.managerType ?? 'N/A'}</span> },
+        { key: 'status', label: 'Status', width: 110, render: u => {
+          const s = statusOf(u)
+          return <span style={{ display: 'inline-flex', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, textTransform: 'capitalize', background: `${STATUS_COLOR[s]}18`, color: STATUS_COLOR[s] }}>{s}</span>
+        } },
+        { key: 'action', label: 'Action', width: 100, resizable: false, headerStyle: { borderTopRightRadius: 11 }, render: u => isDirty(u) && (
+          <button onClick={() => save(u)} disabled={saving[u.id]}
+            style={{ padding: '4px 12px', borderRadius: 8, border: 0, background: GRAD, color: '#fff', fontSize: 12, fontWeight: 700, cursor: 'pointer', opacity: saving[u.id] ? 0.6 : 1, fontFamily: "'Aptos', sans-serif" }}>
+            {saving[u.id] ? 'Saving...' : 'Save'}
+          </button>
+        ) },
+      ]}
+    />
   )
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// MAIN PAGE
+// MAIN PAGE: second vertical menu on the left, the same pattern as argroup's Settings page
 // ════════════════════════════════════════════════════════════════════════════
+const NAV_SLATE  = '#64748B'
+const NAV_ACTIVE = '#E8EEF7'
+const NAV_HOVER  = 'rgba(30,132,150,0.12)'
+const NAV_BORDER = '#E2E8F0'
+
+const icon = (d: string) => <path strokeLinecap="round" strokeLinejoin="round" d={d} />
+const NAV = [
+  { key: 'access',  label: 'User Access Level', icon: icon('M9 12.75 11.25 15 15 9.75m-3-7.036A11.959 11.959 0 0 1 3.598 6 11.99 11.99 0 0 0 3 9.749c0 5.592 3.824 10.29 9 11.623 5.176-1.332 9-6.03 9-11.622 0-1.31-.21-2.571-.598-3.751h-.152c-3.196 0-6.1-1.248-8.25-3.285Z') },
+  { key: 'sale',    label: 'Sale Form',         icon: icon('M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 0 0 2.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 0 0-1.123-.08M15.75 18H18a2.25 2.25 0 0 0 2.25-2.25M8.25 8.25H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25Z') },
+  { key: 'client',  label: 'Client Form',       icon: icon('M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Zm0 3h.008v.008h-.008v-.008Z') },
+  { key: 'profile', label: 'Profile Form',      icon: icon('M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z') },
+] as const
+const ATT_SUB = [
+  { key: 'att-time',  label: 'Attendance Time', color: TEAL },
+  { key: 'att-apply', label: 'Applicability',   color: P.purple },
+] as const
+
+type NavKey = typeof NAV[number]['key'] | typeof ATT_SUB[number]['key']
+
+const navBtnStyle = (active: boolean, sub = false, color = TEAL): React.CSSProperties => ({
+  display: 'flex', alignItems: 'center', gap: sub ? 8 : 10,
+  padding: sub ? '0.3rem 0.75rem 0.3rem 40px' : '0.3rem 0.75rem', borderRadius: 8, border: 'none',
+  borderLeft: `3px solid ${active ? color : 'transparent'}`,
+  cursor: 'pointer', textAlign: 'left', width: '100%', whiteSpace: 'nowrap',
+  fontFamily: "'Rajdhani', sans-serif", fontSize: sub ? 14 : 16, fontWeight: 600, letterSpacing: '0.03em',
+  transition: 'background .15s, color .15s',
+  background: active ? NAV_ACTIVE : 'transparent',
+  color: active ? (sub ? color : NAVY) : NAV_SLATE,
+})
+const hoverOn  = (active: boolean) => (e: React.MouseEvent<HTMLButtonElement>) => { if (!active) { e.currentTarget.style.background = NAV_HOVER; e.currentTarget.style.color = NAVY } }
+const hoverOff = (active: boolean) => (e: React.MouseEvent<HTMLButtonElement>) => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = NAV_SLATE } }
+
 export default function CrmManagementPage() {
-  const [activeTab, setActiveTab] = useState(0)
+  const { sidebarCollapsed } = useLayout()
+  const [active, setActive]       = useState<NavKey>('access')
+  const [attOpen, setAttOpen]     = useState(false)
+  const [collapsed, setCollapsed] = useState(false)
   const [toast, setToastState]    = useState<{ type: 'success' | 'error'; message: string } | null>(null)
   const setToast = useCallback<SetToast>(t => setToastState(t), [])
+
+  const isAtt  = active.startsWith('att-')
+  const attSub = ATT_SUB.find(s => s.key === active)
+  const title  = isAtt ? 'Attendance Settings' : NAV.find(n => n.key === active)?.label ?? ''
+
+  const pick = (key: NavKey) => { setActive(key); if (!key.startsWith('att-')) setAttOpen(false) }
+  const toggleAtt = () => { setAttOpen(o => !o); if (!attOpen && !isAtt) setActive('att-time') }
 
   return (
     <>
       {toast && <Toast type={toast.type} message={toast.message} onClose={() => setToastState(null)} />}
-      <div className="px-6 pb-6 min-h-full" style={{ background: BG }}>
-        <div className="mb-3" style={{ display: 'flex', alignItems: 'center', minHeight: 52 }}>
-          <PageTitle>CRM Management</PageTitle>
-        </div>
+      <div style={{ display: 'flex', minHeight: '100vh', background: BG, position: 'relative' }}>
 
-        <div className="flex flex-wrap gap-1 mb-6 p-1 rounded-xl" style={{ background: WHITE, boxShadow: '0 1px 4px rgba(0,0,0,0.07)', display: 'inline-flex' }}>
-          {TABS.map((tab, i) => {
-            const active = i === activeTab
-            return (
-              <button key={tab} onClick={() => setActiveTab(i)} className="px-5 py-2 rounded-lg text-sm font-bold transition-all duration-150 focus:outline-none"
-                style={{ fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em', background: active ? GRAD : 'transparent', color: active ? WHITE : '#64748B', boxShadow: active ? '0 2px 8px rgba(30,132,150,0.2)' : 'none', border: 'none', cursor: 'pointer' }}>
-                {tab}
+        {/* Second sidebar */}
+        <div style={{ width: collapsed ? 0 : 260, flexShrink: 0, overflow: 'hidden', background: P.sidebarBg, borderRight: `1px solid ${NAV_BORDER}`, transition: 'width .25s' }}>
+          <div style={{ minWidth: 260, position: 'sticky', top: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: sidebarCollapsed ? '0 16px 0 54px' : '0 16px', height: 52, borderBottom: `1px solid ${NAV_BORDER}` }}>
+              <PageTitle size={18}>CRM Management</PageTitle>
+              <button onClick={() => setCollapsed(true)} title="Hide menu"
+                style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: P.iconMuted, padding: 4, borderRadius: 6, display: 'flex' }}
+                onMouseEnter={e => { e.currentTarget.style.color = NAVY; e.currentTarget.style.background = NAV_HOVER }}
+                onMouseLeave={e => { e.currentTarget.style.color = P.iconMuted; e.currentTarget.style.background = 'transparent' }}>
+                <svg width={16} height={16} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
               </button>
-            )
-          })}
+            </div>
+
+            <nav style={{ padding: '6px 8px', display: 'flex', flexDirection: 'column' }}>
+              {NAV.map(n => {
+                const on = active === n.key
+                return (
+                  <button key={n.key} onClick={() => pick(n.key)} style={navBtnStyle(on)} onMouseEnter={hoverOn(on)} onMouseLeave={hoverOff(on)}>
+                    <svg width={18} height={18} fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke={on ? TEAL : P.iconMuted} style={{ flexShrink: 0 }}>{n.icon}</svg>
+                    {n.label}
+                  </button>
+                )
+              })}
+
+              <button onClick={toggleAtt} style={navBtnStyle(isAtt)} onMouseEnter={hoverOn(isAtt)} onMouseLeave={hoverOff(isAtt)}>
+                <svg width={18} height={18} fill="none" viewBox="0 0 24 24" strokeWidth={1.7} stroke={isAtt ? TEAL : P.iconMuted} style={{ flexShrink: 0 }}>
+                  {icon('M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z')}
+                </svg>
+                <span style={{ flex: 1 }}>Attendance Settings</span>
+                <svg width={12} height={12} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} style={{ transition: 'transform .2s', transform: attOpen ? 'rotate(90deg)' : 'none', flexShrink: 0 }}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+              {attOpen && ATT_SUB.map(s => {
+                const on = active === s.key
+                return (
+                  <button key={s.key} onClick={() => pick(s.key)} style={navBtnStyle(on, true, s.color)} onMouseEnter={hoverOn(on)} onMouseLeave={hoverOff(on)}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: s.color, flexShrink: 0 }} />
+                    {s.label}
+                  </button>
+                )
+              })}
+            </nav>
+          </div>
         </div>
 
-        {activeTab === 0 && <UserAccessTab setToast={setToast} />}
-        {activeTab === 1 && <FormManagementTab key="sale" formType="sale" formLabel="Sale Form" setToast={setToast} />}
-        {activeTab === 2 && <FormManagementTab key="client" formType="client" formLabel="Client Form" setToast={setToast} />}
-        {activeTab === 3 && <FormManagementTab key="user" formType="user" formLabel="Profile Form" setToast={setToast} />}
-        {activeTab === 4 && (
-          <div className="space-y-6">
-            <AttendanceSettings />
-            <AttendanceApplicabilitySettings />
-          </div>
+        {collapsed && (
+          <button onClick={() => setCollapsed(false)} title="Show menu"
+            style={{ position: 'absolute', left: 0, top: 64, zIndex: 20, width: 22, height: 44, background: P.sidebarBg, border: `1px solid ${NAV_BORDER}`, borderLeft: 'none', borderRadius: '0 8px 8px 0', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: P.iconMuted, boxShadow: '2px 0 8px rgba(0,0,0,0.06)' }}
+            onMouseEnter={e => { e.currentTarget.style.color = NAVY }} onMouseLeave={e => { e.currentTarget.style.color = P.iconMuted }}>
+            <svg width={12} height={12} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
+          </button>
         )}
+
+        {/* Content */}
+        <div style={{ flex: 1, minWidth: 0, padding: collapsed ? '0 20px 20px 36px' : '0 20px 20px' }}>
+          <div style={{ height: 52, display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+            <PageTitle>{title}</PageTitle>
+            {attSub && (
+              <span style={{ fontSize: 12, fontWeight: 600, color: attSub.color, background: '#F3F4F6', padding: '3px 12px', borderRadius: 20, fontFamily: "'Aptos', sans-serif" }}>{attSub.label}</span>
+            )}
+          </div>
+
+          {active === 'access'    && <UserAccessTab setToast={setToast} />}
+          {active === 'sale'      && <FormManagementTab key="sale" formType="sale" formLabel="Sale Form" setToast={setToast} />}
+          {active === 'client'    && <FormManagementTab key="client" formType="client" formLabel="Client Form" setToast={setToast} />}
+          {active === 'profile'   && <FormManagementTab key="user" formType="user" formLabel="Profile Form" setToast={setToast} />}
+          {active === 'att-time'  && <AttendanceSettings />}
+          {active === 'att-apply' && <AttendanceApplicabilitySettings />}
+        </div>
       </div>
     </>
   )

@@ -319,8 +319,8 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
         : { width: collapsed ? 0 : 256, transition: 'width 0.2s' }),
     }}>
       {/* Brand */}
-      <div style={{ display: 'flex', alignItems: 'center', height: 52, padding: '0 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, minWidth: 256 }}>
-        <p style={{ margin: 0, fontFamily: "'Ethnocentric Rg', sans-serif", fontWeight: 300, fontSize: '1.15rem', marginLeft: '-6px', color: C.navy, letterSpacing: '0.01em', whiteSpace: 'nowrap', lineHeight: 1 }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 52, padding: '0 12px', borderBottom: `1px solid ${C.border}`, flexShrink: 0, minWidth: 256 }}>
+        <p style={{ margin: 0, fontFamily: "'Ethnocentric Rg', sans-serif", fontWeight: 300, fontSize: '1.15rem', color: C.navy, letterSpacing: '0.01em', whiteSpace: 'nowrap', lineHeight: 1 }}>
           META-VOICE
         </p>
       </div>
