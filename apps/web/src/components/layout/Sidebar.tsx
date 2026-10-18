@@ -382,7 +382,6 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
                 <Icon d={ICONS.myAtt} active={active} />
                 <span style={{ flex: 1 }}>Attendance</span>
                 <Badge n={counts.attApproval} active={false} />
-                <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke={C.iconMuted} strokeWidth={2.5} style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
               </div>
             )
           }
