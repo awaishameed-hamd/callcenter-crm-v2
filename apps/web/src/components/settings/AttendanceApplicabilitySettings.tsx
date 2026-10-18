@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import api from '@/lib/api'
 import { P } from '@/lib/palette'
 
-const NAVY = '#132E57'
 const TEAL = '#1E8496'
 
 const ROLE_ORDER = ['ADMIN', 'DIRECTOR', 'MANAGER', 'AGENT']

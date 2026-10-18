@@ -27,8 +27,6 @@ export function useMediaQuery(query: string): boolean {
 /** Phone, portrait or landscape. Sidebar goes off-canvas below this width. */
 export const usePhone = () => useMediaQuery('(max-width: 639px)')
 
-/** Tablet portrait through small landscape. */
-export const useTablet = () => useMediaQuery('(min-width: 640px) and (max-width: 1023px)')
 
 /** Anything narrower than a desktop window, phone or tablet. */
 export const useCompact = () => useMediaQuery('(max-width: 1023px)')

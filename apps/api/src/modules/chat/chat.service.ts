@@ -1,5 +1,4 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common'
-import { Role } from '@crm/shared'
 import { PrismaService } from '../prisma/prisma.service'
 import { PresenceService } from './presence.service'
 
@@ -16,7 +15,7 @@ export class ChatService {
     return { ...u, isOnline: this.presence.isOnline(u.id) }
   }
 
-  async getContacts(userId: string, role: Role) {
+  async getContacts(userId: string) {
     // All roles see all active users except themselves
     const contacts = await this.prisma.user.findMany({
       where:   { id: { not: userId }, isActive: true },

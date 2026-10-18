@@ -27,11 +27,6 @@ export function weekStartStr(s: string) {
   return addDaysStr(s, -((dow + 6) % 7))
 }
 export function monthStartStr(s: string) { const [y, m] = parts(s); return `${y}-${pad(m)}-01` }
-export function monthEndStr(s: string) {
-  const [y, m] = parts(s)
-  return fromUtc(new Date(Date.UTC(y, m, 0)))
-}
-
 export type PeriodKey = 'today' | 'week' | 'month' | 'all' | 'custom'
 
 /** Same rules as Laravel's period buttons: week = Monday through today, month = 1st through today. */

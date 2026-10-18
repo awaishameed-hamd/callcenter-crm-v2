@@ -86,7 +86,3 @@ export const STANDARD_FIELD_KEYS: Record<FormType, string[]> = {
 export function snakeToCamel(key: string): string {
   return key.replace(/_([a-z0-9])/g, (_, c: string) => c.toUpperCase())
 }
-
-export function camelToSnake(key: string): string {
-  return key.replace(/[A-Z]/g, c => `_${c.toLowerCase()}`)
-}

@@ -1,0 +1,101 @@
+# Metavoice CRM
+
+Call center CRM, live at **https://metavoice.cloud**. Agents submit sales, managers and directors approve them, and the rest of the app covers reports, team, clients and DIDs, attendance, leave, chat, invoicing and accounting.
+
+## Stack
+
+| Part | Tech | Folder |
+|---|---|---|
+| API | NestJS 10, Prisma 5, PostgreSQL | `apps/api` |
+| Web | Next.js 14 (app router), React 18, Tailwind | `apps/web` |
+| Shared enums and constants | TypeScript package `@crm/shared` | `packages/shared` |
+
+It is a pnpm + Turborepo monorepo. Node 20+ and pnpm 9+ are required.
+
+## Run it locally
+
+```bash
+pnpm install
+pnpm --filter @crm/shared build        # web and api import the built package
+
+# API: copy apps/api/.env.example to apps/api/.env and fill it in, then
+cd apps/api
+npx prisma migrate deploy               # create the tables
+npx ts-node prisma/seed.ts              # admin user (ADMIN / SEED_ADMIN_PASSWORD) and default settings
+pnpm dev                                # http://localhost:4000/api
+
+# Web: copy apps/web/.env.example to apps/web/.env.local, then
+cd apps/web
+pnpm dev                                # http://localhost:3000
+```
+
+After editing anything in `packages/shared`, run `pnpm --filter @crm/shared build` again.
+
+## Roles
+
+`ADMIN > DIRECTOR > MANAGER > AGENT`
+
+- **Manager types:** Floor Manager/Team Lead, QA Manager, HR Manager, Accountant
+- **Agent types:** Closer, Verifier, Self Closer, Fronter
+
+Admins, directors and HR managers form the "HR desk" (attendance and everyone's leave). The rules live in `apps/api/src/common/utils/staff-policy.ts` (enforced) and `apps/web/src/lib/roles.ts` (what the UI shows).
+
+## Sale pipeline
+
+```
+agent submits          -> PENDING
+manager approves       -> APPROVED          manager rejects  -> DISAPPROVED
+director/admin approve -> FINAL_APPROVED    director/admin reject -> FINAL_DISAPPROVED
+agent cancels on entry -> AGENT_REJECTED
+```
+
+When a sale is decided, its DID, client and rate are frozen onto the record (`sale_*` columns), so reports keep the values that applied at the time. Agents and managers see DID codes only; directors and admins also see client names and rates.
+
+## Where things live
+
+### API (`apps/api/src`)
+
+- `main.ts`, `app.module.ts`: bootstrap and module list
+- `modules/<feature>/`: one folder per feature, each with a `*.controller.ts` (routes), `*.service.ts` (logic) and `*.module.ts`
+  - `auth`, `users`, `customers` (sales and approvals), `clients` (clients and DIDs), `reports`, `dashboard`
+  - `attendance`, `leaves`, `working-days`, `chat`, `notifications`, `files`
+  - `crm` (form builder and role changes), `invoicing`, `accounting`
+- `common/`: auth guards, decorators, the response wrapper (`{ success, data }`), and utils for time zones, validation and staff policy
+- `prisma/schema.prisma`: the database schema; `prisma/migrations/`: its history
+
+Every route is under `/api` and needs a Bearer token, except `POST /api/auth/login` and `POST /api/auth/refresh`. Controllers opt in with `@UseGuards(JwtAuthGuard, RolesGuard)` and `@Roles(...)`.
+
+### Web (`apps/web/src`)
+
+- `app/(auth)/login`: login page
+- `app/(dashboard)/<role>/<page>/page.tsx`: one thin route file per role and page, each rendering a component from `components/`
+- `components/<area>/`: the actual screens (`sales`, `admin`, `reports`, `dashboard`, `attendance`, `leaves`, `chat`, `crm`, `invoicing`, `accounting`, `profile`)
+  - `components/layout/`: `AppLayout` (role routing), `Sidebar`, `RefreshButton`
+  - `components/ui/`: shared building blocks: `PageChrome` (page title, teal filter bar, buttons, pager), `DataTable` (gold-header table), `StyledSelect`, `PillSelect`, `Toast`
+- `lib/`: `api.ts` (axios with token refresh), `roles.ts`, `format.tsx`, `palette.ts` (all colours), `socket.ts`
+- `hooks/useAutoRefresh.ts`: refetches a page every 10 s, on notifications, on tab focus and when the refresh button is pressed
+
+### UI conventions
+
+The look follows argroup.cloud: Aptos text, Faster One page titles, the teal pill filter bar, gold table headers. To build a new list page, copy `components/sales/MySalesPage.tsx`: `PageShell` + `PageHeader` + `FilterBar` + `DataTable` + `Pager`. Use `StyledSelect` for form dropdowns.
+
+## Deploying
+
+The app runs on the argroup VPS (`ssh argroup-vps`), next to argroup.cloud. Never touch the `ca-firm-*` processes there.
+
+- Code: `/var/www/callcenter-crm-v2`, PM2 processes `metavoice-api` (port 4100) and `metavoice-web` (port 3100), behind nginx
+- Secrets: `apps/api/.env` and `apps/web/.env.production` on the server only
+
+To deploy, push to `main`, then on the server:
+
+```bash
+cd /var/www/callcenter-crm-v2
+git fetch origin && git reset --hard origin/main
+pnpm install --frozen-lockfile
+pnpm --filter @crm/shared build
+cd apps/api && npx prisma generate && npx prisma migrate deploy && rm -rf dist tsconfig.tsbuildinfo && npx nest build
+cd ../web && npx next build
+pm2 restart metavoice-api metavoice-web
+```
+
+Start Next with `node_modules/next/dist/bin/next start -p 3100` and never add `-H 127.0.0.1`.

@@ -9,22 +9,12 @@ import { formatTime12h } from '@/lib/utils'
 import { staffRole, rolePill, hasHrDesk } from '@/lib/roles'
 import { useAuth } from '@/contexts/AuthContext'
 
-const labelCls     = 'block text-xs font-bold uppercase tracking-widest mb-1'
-const inputCls     = 'rounded-lg px-3 py-1.5 text-sm outline-none transition'
-const filterStyle  = { background: 'rgba(0,0,0,0.18)', border: '1px solid rgba(255,255,255,0.25)', color: '#fff' } as React.CSSProperties
-
 const STATUS_TABS = [
   { key: 'all',      label: 'All'      },
   { key: 'pending',  label: 'Pending'  },
   { key: 'approved', label: 'Approved' },
   { key: 'rejected', label: 'Rejected' },
 ]
-
-const APPROVAL_BADGE: Record<string, string> = {
-  pending:  'border border-gray-300 text-gray-500',
-  approved: 'bg-green-100 text-green-700',
-  rejected: 'bg-red-100 text-red-700',
-}
 
 // ── Stat Card ─────────────────────────────────────────────────────────────────
 function StatCard({ label, value, border, fill, textColor }: { label: string; value: number; border: string; fill: string; textColor: string }) {

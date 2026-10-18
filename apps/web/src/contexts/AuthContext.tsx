@@ -1,8 +1,8 @@
 'use client'
 
 import { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react'
-import { Role } from '@crm/shared'
 import api from '@/lib/api'
+import { disconnectSocket } from '@/lib/socket'
 import type { User } from '@/types'
 
 interface AuthState {
@@ -87,6 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     sessionStorage.removeItem('access_token')
     sessionStorage.removeItem('refresh_token')
     sessionStorage.removeItem('user')
+    disconnectSocket()
 
     setState({ user: null, token: null, isAuthenticated: false, isLoading: false })
   }, [])

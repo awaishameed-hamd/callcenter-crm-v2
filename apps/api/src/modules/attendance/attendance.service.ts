@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
+import { Injectable, NotFoundException } from '@nestjs/common'
 import { PrismaService } from '../prisma/prisma.service'
 import { AttendanceStatus, DayType, Role } from '@prisma/client'
 import { ManagerType } from '@crm/shared'
@@ -9,11 +9,6 @@ const attendanceRoles = (a: Actor) => policyAttendanceRoles(a) as Role[]
 const leaveRoles      = (a: Actor) => policyLeaveRoles(a) as Role[]
 // Accountants never appear on attendance screens (same as the Laravel CRM).
 const NOT_ACCOUNTANT = { OR: [{ managerType: null }, { managerType: { not: ManagerType.ACCOUNTANT } }] }
-
-const MONTH_NAMES = [
-  'January','February','March','April','May','June',
-  'July','August','September','October','November','December',
-]
 
 const DAY_NAMES = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday']
 

@@ -14,11 +14,6 @@ const MONTH_NAMES = ['January','February','March','April','May','June','July','A
 const MODULE_START_YEAR  = 2026
 const MODULE_START_MONTH = 1
 
-const labelCls          = 'block text-xs font-bold uppercase tracking-widest mb-0.5'
-const selectCls         = 'w-full rounded-lg px-2.5 py-1.5 text-xs outline-none transition cursor-pointer'
-const inputCls          = 'w-full rounded-lg px-2.5 py-1.5 text-xs outline-none transition'
-const filterSelectStyle = { background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff' } as React.CSSProperties
-const filterInputStyle  = { background: 'rgba(0,0,0,0.15)', border: '1px solid rgba(255,255,255,0.3)', color: '#fff' } as React.CSSProperties
 
 
 function statusLabel(s: string) {

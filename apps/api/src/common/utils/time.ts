@@ -119,12 +119,6 @@ export function fmtStamp(date: Date, tz: string, label: string): string {
 }
 
 /** "7:05 PM" — Laravel 'g:i A'. */
-export function fmtClock(date: Date, tz: string): string {
-  const p = zonedParts(date, tz)
-  const h12 = p.hour % 12 === 0 ? 12 : p.hour % 12
-  return `${h12}:${pad(p.minute)} ${p.hour < 12 ? 'AM' : 'PM'}`
-}
-
 /** "Friday, October 16, 2026" — Laravel 'l, F j, Y'. */
 export function fmtLongDate(s: string): string {
   const { y, m, d } = parseYmd(s)
@@ -138,4 +132,3 @@ export function dayShort(s: string): string {
 }
 
 export function monthShort(m: number): string { return MONTHS_SHORT[m - 1] }
-export function monthLong(m: number): string { return MONTHS_LONG[m - 1] }

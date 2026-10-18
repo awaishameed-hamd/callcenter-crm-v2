@@ -1,7 +1,6 @@
 import {
   Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards,
 } from '@nestjs/common'
-import { Role } from '@crm/shared'
 import { ChatService } from './chat.service'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { CurrentUser } from '../../common/decorators/current-user.decorator'
@@ -12,8 +11,8 @@ export class ChatController {
   constructor(private chatService: ChatService) {}
 
   @Get('contacts')
-  getContacts(@CurrentUser() user: { id: string; role: Role }) {
-    return this.chatService.getContacts(user.id, user.role)
+  getContacts(@CurrentUser() user: { id: string }) {
+    return this.chatService.getContacts(user.id)
   }
 
   @Get('conversations')

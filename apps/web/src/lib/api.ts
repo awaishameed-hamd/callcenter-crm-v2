@@ -2,7 +2,6 @@ import axios from 'axios'
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api'
 
-export const FILE_BASE_URL = API_URL.replace(/\/api\/?$/, '')
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -80,10 +79,6 @@ export async function apiPost<T = any>(url: string, body?: unknown): Promise<T> 
 }
 export async function apiPut<T = any>(url: string, body?: unknown): Promise<T> {
   const { data } = await api.put(url, body)
-  return data.data as T
-}
-export async function apiPatch<T = any>(url: string, body?: unknown): Promise<T> {
-  const { data } = await api.patch(url, body)
   return data.data as T
 }
 export async function apiDelete<T = any>(url: string, body?: unknown): Promise<T> {

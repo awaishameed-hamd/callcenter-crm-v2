@@ -16,7 +16,6 @@ export class WorkingDaysService {
   async getMonth(month: number, year: number) {
     const startDate = new Date(`${year}-${String(month).padStart(2,'0')}-01T00:00:00Z`)
     const endDate   = new Date(year, month, 1)
-    const today     = new Date().toISOString().split('T')[0]
 
     const existing = await this.prisma.workingDay.findMany({
       where:   { date: { gte: startDate, lt: endDate } },

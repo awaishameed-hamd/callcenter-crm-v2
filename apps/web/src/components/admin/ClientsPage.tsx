@@ -97,7 +97,6 @@ function ClientForm({ initial, onSubmit, loading, errors }: { initial?: Client; 
   const cfg = (key: string) => fields.find(f => f.fieldKey === key)
   const vis = (key: string) => fields.length === 0 || !!cfg(key)
   const label = (key: string, fb: string) => cfg(key)?.label ?? fb
-  const req = (key: string, fb = false) => cfg(key)?.isRequired ?? fb
   const ph = (key: string, fb = '') => cfg(key)?.placeholder ?? fb
   const customFields = useMemo(() => fields.filter(f => !CORE_KEYS.has(f.fieldKey)), [fields])
   const err = (k: string) => errors[k]?.[0]
