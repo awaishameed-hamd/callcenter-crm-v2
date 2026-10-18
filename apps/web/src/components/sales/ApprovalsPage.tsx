@@ -43,6 +43,35 @@ function Info({ label, span = 1, children }: { label: string; span?: number; chi
 }
 const INFO_GRID: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px 14px' }
 
+// Small copy icon next to a value; turns into a tick for a moment once copied
+function CopyButton({ text }: { text: string }) {
+  const [copied, setCopied] = useState(false)
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(text)
+    } catch {
+      const t = document.createElement('textarea')   // older browsers / plain http
+      t.value = text
+      document.body.appendChild(t)
+      t.select()
+      document.execCommand('copy')
+      t.remove()
+    }
+    setCopied(true)
+    setTimeout(() => setCopied(false), 1500)
+  }
+  return (
+    <button type="button" onClick={copy} title={copied ? 'Copied' : 'Copy'}
+      style={{ width: 22, height: 22, borderRadius: 6, border: `1px solid ${copied ? '#86EFAC' : P.border}`, background: copied ? '#F0FDF4' : '#fff', color: copied ? '#16A34A' : P.slate, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all .15s' }}>
+      <svg width={12} height={12} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}>
+        {copied
+          ? <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+          : <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 17.25v3.375c0 .621-.504 1.125-1.125 1.125h-9.75a1.125 1.125 0 0 1-1.125-1.125V7.875c0-.621.504-1.125 1.125-1.125H6.75a9.06 9.06 0 0 1 1.5.124m7.5 10.376h3.375c.621 0 1.125-.504 1.125-1.125V11.25c0-4.46-3.243-8.161-7.5-9.75H9.375c-.621 0-1.125.504-1.125 1.125v3.375m7.5 10.375H9.375a1.125 1.125 0 0 1-1.125-1.125v-9.25m12 6.625v-1.875a3.375 3.375 0 0 0-3.375-3.375h-1.5a1.125 1.125 0 0 1-1.125-1.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25" />}
+      </svg>
+    </button>
+  )
+}
+
 // Smaller buttons so the whole summary bar stays on one line
 const barBtn = (bg: string, color?: string, border?: string): React.CSSProperties => ({ ...actionBtn(bg, color, border), padding: '5px 10px', fontSize: 12, borderRadius: 7 })
 
@@ -459,7 +488,7 @@ export default function ApprovalsPage() {
                         <Info label="Last Name">{selected.lastName}</Info>
                         <Info label="Age">{selected.age}</Info>
                         <Info label="Date of Birth">{selected.dateOfBirth?.slice(0, 10)}</Info>
-                        <Info label="Phone">{selected.phone}</Info>
+                        <Info label="Phone">{selected.phone && <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{selected.phone}<CopyButton text={selected.phone} /></span>}</Info>
                       </div>
                     )}
                   </SectionCard>
