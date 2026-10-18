@@ -397,8 +397,10 @@ export default function NewSalePage() {
   const summary = (
     <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: compact ? 'wrap' : 'nowrap', background: '#fff', borderRadius: 14, overflow: 'hidden', margin: '12px 0', flexShrink: 0, border: `1px solid ${P.border}`, boxShadow: '0 8px 22px -18px rgba(19,46,87,0.6)' }}>
       {/* Customer block shaded in the vertical's colour, fading out to the right */}
-      <div style={{ padding: '10px 40px 10px 20px', minWidth: 250, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff',
-        background: `linear-gradient(100deg, ${vColor} 0%, ${P.navy} 72%, rgba(19,46,87,0) 100%)`, transition: 'background .3s' }}>
+      {/* A long, horizontal fade with several stops so it melts into the white instead of ending in an edge */}
+      <div style={{ padding: '10px 120px 10px 20px', minWidth: 250, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff',
+        background: `linear-gradient(90deg, ${vColor} 0%, ${P.navy} 42%, rgba(19,46,87,0.88) 54%, rgba(19,46,87,0.62) 66%, rgba(19,46,87,0.36) 77%, rgba(19,46,87,0.16) 87%, rgba(19,46,87,0.05) 94%, rgba(19,46,87,0) 100%)`,
+        transition: 'background .3s' }}>
         <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 10, letterSpacing: '0.05em', opacity: 0.9 }}>SALE SUMMARY</p>
         <p style={{ margin: '3px 0 0', fontFamily: BEBAS, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 240 }}>{customer || 'New Customer'}</p>
         <p style={{ margin: '1px 0 0', fontSize: 12, opacity: 0.85 }}>{form.phone || 'No phone yet'}</p>
