@@ -26,7 +26,7 @@ const STATUS_COLOR: Record<string, string> = {
   [CustomerStatus.FINAL_APPROVED]:    '#3A6B3A',
   [CustomerStatus.FINAL_DISAPPROVED]: '#7B2D8E',
   [CustomerStatus.AGENT_REJECTED]:    '#B45309',
-  '':                                 '#374151',
+  '':                                 '#C25A1F',
 }
 
 type EditForm = Record<string, string>
@@ -109,12 +109,10 @@ export default function ApprovalsPage() {
 
   const TABS = isFinalApprover
     ? [
-        { key: CustomerStatus.APPROVED,          label: 'Awaiting Final' },
-        { key: CustomerStatus.FINAL_APPROVED,    label: 'Final Approved' },
-        { key: CustomerStatus.FINAL_DISAPPROVED, label: 'Final Rejected' },
-        { key: CustomerStatus.PENDING,           label: 'Pending (Manager)' },
-        { key: CustomerStatus.DISAPPROVED,       label: 'Rejected by Manager' },
-        { key: '',                               label: 'All' },
+        // Decided records (approved or rejected) are reviewed in the Sales Report, so only open queues show here.
+        { key: CustomerStatus.PENDING,  label: 'Awaiting Manager' },
+        { key: CustomerStatus.APPROVED, label: 'Awaiting Final' },
+        { key: '',                      label: 'All' },
       ]
     : [
         { key: CustomerStatus.PENDING,     label: 'Pending' },
