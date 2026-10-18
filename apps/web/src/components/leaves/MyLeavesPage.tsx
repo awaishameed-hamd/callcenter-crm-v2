@@ -12,7 +12,6 @@ const LEAVE_TYPE_OPTIONS = [
   { value: 'sick',   label: 'Sick Leave'   },
   { value: 'casual', label: 'Casual Leave' },
   { value: 'annual', label: 'Annual Leave' },
-  { value: 'exam',   label: 'Exam Leave'   },
   { value: 'other',  label: 'Other'        },
 ]
 

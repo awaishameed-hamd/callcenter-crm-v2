@@ -2,7 +2,7 @@ import { IsString, IsNotEmpty, IsIn } from 'class-validator'
 
 export class CreateLeaveDto {
   @IsString() @IsNotEmpty()
-  @IsIn(['sick', 'casual', 'annual', 'exam', 'other'])
+  @IsIn(['sick', 'casual', 'annual', 'other'])
   leaveType: string
 
   @IsString() @IsNotEmpty()
