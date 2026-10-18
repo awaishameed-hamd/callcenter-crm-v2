@@ -9,13 +9,16 @@ import { useAuth } from '@/contexts/AuthContext'
 import { apiGet, apiPut, errMsg, errFields } from '@/lib/api'
 import { roleLabel } from '@/lib/roles'
 import type { FormField, User } from '@/types'
-import { PageTitle } from '@/components/ui/PageChrome'
 
 const CORE_KEYS = new Set(['display_name', ...STANDARD_FIELD_KEYS.user])
 const READONLY_KEYS = new Set(['date_of_joining', 'department', 'basic_salary', 'punctuality_allowance', 'travelling_allowance', 'other_allowance'])
 const SALARY_KEYS = ['basic_salary', 'punctuality_allowance', 'travelling_allowance', 'other_allowance']
 const COL_SPAN: Record<string, number> = { full: 6, two_thirds: 4, half: 3, third: 2 }
-const inputCls    = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed'
+// Styles copied from argroup's ProfilePage
+const inputCls    = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm text-gray-800 placeholder-gray-400 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed'
+const TEAL_GRAD   = 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)'
+const TEAL_HOVER  = 'linear-gradient(135deg, #2296AA 0%, #1E8496 100%)'
+const tealBtn: React.CSSProperties = { background: TEAL_GRAD, color: '#fff', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em' }
 const inputErrCls = 'border-red-400 focus:border-red-400 focus:ring-red-400/20'
 
 function formatCNIC(raw: string) {
@@ -38,9 +41,11 @@ function Field({ label, required, error, children }: { label: string; required?:
 
 function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
   return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="px-5 py-3.5 border-b border-gray-100 bg-gray-50"><h3 className="text-sm font-semibold text-gray-700">{title}</h3></div>
-      <div className="p-5">{children}</div>
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm" style={{ overflow: 'visible' }}>
+      <div className="px-5 py-2.5 border-b border-gray-200" style={{ background: 'linear-gradient(90deg, #E4E9F0, #EDF0F5)', borderRadius: '12px 12px 0 0' }}>
+        <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: '#64748B' }}>{title}</h3>
+      </div>
+      <div className="px-5 py-3">{children}</div>
     </div>
   )
 }
@@ -152,7 +157,7 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div className="px-6 pb-6 max-w-3xl mx-auto space-y-5">
+      <div className="p-6 max-w-3xl mx-auto space-y-5">
         {[1, 2, 3].map(i => (
           <div key={i} className="bg-white rounded-xl border border-gray-200 p-5">
             <div className="h-4 bg-gray-200 rounded animate-pulse w-1/3 mb-4" />
@@ -172,25 +177,40 @@ export default function ProfilePage() {
   return (
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <div className="px-6 pb-6 max-w-3xl mx-auto space-y-5">
+      <div className="p-6 max-w-3xl mx-auto space-y-5">
         <div className="flex items-center justify-between">
-          <div style={{ display: 'flex', alignItems: 'center', minHeight: 52 }}>
-            <PageTitle>My Profile</PageTitle>
+          <div>
+            <h1 style={{ margin: 0, fontFamily: "'Faster One', cursive", textTransform: 'uppercase', fontSize: 26, display: 'inline-block', color: '#1E8496', fontWeight: 400 }}>
+              My Profile
+            </h1>
           </div>
           {locked ? (
-            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium">Profile Locked</div>
+            <div className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-50 border border-amber-200 text-amber-700 text-sm font-medium">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z" />
+              </svg>
+              Profile Locked
+            </div>
           ) : editing ? (
             <div className="flex items-center gap-2">
               <button type="button" onClick={() => { setEditing(false); load(profile); setErrors({}) }} className="px-4 py-2 rounded-lg text-sm font-medium transition-colors"
-                style={{ border: '1px solid #5C6D82', color: '#5C6D82', background: 'transparent' }}>Cancel</button>
-              <button type="button" onClick={save} disabled={loading} className="px-5 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
-                style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em' }}>
-                {loading ? 'Saving' : 'Save Changes'}
+                style={{ border: '1px solid #5C6D82', color: '#9FA7B2', background: 'transparent' }}
+                onMouseEnter={e => { e.currentTarget.style.color = '#FBDCB4'; e.currentTarget.style.borderColor = '#AA7F56' }}
+                onMouseLeave={e => { e.currentTarget.style.color = '#9FA7B2'; e.currentTarget.style.borderColor = '#5C6D82' }}>
+                Cancel
+              </button>
+              <button type="button" onClick={save} disabled={loading} className="px-5 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all disabled:opacity-60" style={tealBtn}
+                onMouseEnter={e => { if (!loading) e.currentTarget.style.background = TEAL_HOVER }}
+                onMouseLeave={e => { if (!loading) e.currentTarget.style.background = TEAL_GRAD }}>
+                {loading ? 'Saving...' : 'Save Changes'}
               </button>
             </div>
           ) : (
-            <button onClick={() => setEditing(true)} className="px-5 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all"
-              style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em' }}>Edit Profile</button>
+            <button onClick={() => setEditing(true)} className="px-5 py-2 rounded-lg text-sm font-semibold shadow-sm transition-all" style={tealBtn}
+              onMouseEnter={e => { e.currentTarget.style.background = TEAL_HOVER }}
+              onMouseLeave={e => { e.currentTarget.style.background = TEAL_GRAD }}>
+              Edit Profile
+            </button>
           )}
         </div>
 
@@ -256,9 +276,10 @@ export default function ProfilePage() {
             </div>
             {pwError && <p className="text-xs text-red-500">{pwError}</p>}
             <div className="flex justify-end">
-              <button type="submit" disabled={pwLoading} className="px-5 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
-                style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em' }}>
-                {pwLoading ? 'Updating' : 'Change Password'}
+              <button type="submit" disabled={pwLoading} className="px-5 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-all disabled:opacity-60" style={tealBtn}
+                onMouseEnter={e => { if (!pwLoading) e.currentTarget.style.background = TEAL_HOVER }}
+                onMouseLeave={e => { if (!pwLoading) e.currentTarget.style.background = TEAL_GRAD }}>
+                {pwLoading ? 'Updating...' : 'Change Password'}
               </button>
             </div>
           </form>

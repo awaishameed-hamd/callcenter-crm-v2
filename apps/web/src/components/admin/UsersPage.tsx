@@ -37,7 +37,16 @@ const DEFAULT_PASSWORD = '12345678'
 const CORE_KEYS = new Set(STANDARD_FIELD_KEYS.user)
 const SALARY_KEYS = ['basic_salary', 'punctuality_allowance', 'travelling_allowance', 'other_allowance']
 const COL_SPAN: Record<string, number> = { full: 6, two_thirds: 4, half: 3, third: 2 }
-const inputCls  = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 disabled:bg-gray-50 disabled:text-gray-400'
+// Create/edit user modal styles, copied from argroup's UserProfileModal
+const inputCls  = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed'
+const iStyle: React.CSSProperties = {
+  width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 13, outline: 'none',
+  color: P.textHeading, fontFamily: '"Aptos", sans-serif', boxSizing: 'border-box',
+}
+const readOnlyStyle: React.CSSProperties = { ...iStyle, background: '#F8FAFC', color: P.teal, fontWeight: 700, letterSpacing: '0.06em' }
+const labelStyle: React.CSSProperties = {
+  display: 'block', fontSize: 11, fontWeight: 700, color: P.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5,
+}
 const roleName = (r: string) => r.charAt(0) + r.slice(1).toLowerCase()
 
 function lsGet<T>(key: string, fallback: T): T {
@@ -63,18 +72,26 @@ function Field({ label, required, error, children }: { label: string; required?:
   )
 }
 
+function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm" style={{ overflow: 'visible' }}>
+      <div className="px-5 py-2.5 border-b border-gray-200" style={{ background: 'linear-gradient(90deg, #E4E9F0, #EDF0F5)', borderRadius: '12px 12px 0 0' }}>
+        <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: P.textMuted }}>{title}</h3>
+      </div>
+      <div className="px-5 py-3">{children}</div>
+    </div>
+  )
+}
+
 function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={onClose} />
-      <div className="relative bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
-          <h2 className="text-base font-semibold text-gray-800">{title}</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors" aria-label="Close">
-            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" /></svg>
-          </button>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(19,46,87,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px 16px', overflowY: 'auto' }}>
+      <div style={{ background: '#F8FAFC', borderRadius: 18, width: '100%', maxWidth: 780, boxShadow: '0 32px 80px rgba(0,0,0,0.3)', marginBottom: 24 }}>
+        <div style={{ padding: '18px 28px', borderBottom: `1px solid ${P.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'linear-gradient(135deg, #DDE3EC 0%, #D0D8E4 100%)', borderRadius: '18px 18px 0 0' }}>
+          <h2 style={{ margin: 0, fontFamily: '"Aptos", sans-serif', fontSize: 18, fontWeight: 900, color: P.navy, letterSpacing: '0.04em' }}>{title}</h2>
+          <button onClick={onClose} aria-label="Close" style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 24, color: P.textMuted, lineHeight: 1 }}>×</button>
         </div>
-        <div className="overflow-y-auto flex-1 px-6 py-5">{children}</div>
+        {children}
       </div>
     </div>
   )
@@ -137,8 +154,8 @@ function toForm(u?: User): { form: Form; extra: Form } {
   return { form, extra }
 }
 
-function UserForm({ initial, allowedRoles, onSubmit, loading, errors }: {
-  initial?: User; allowedRoles: Role[]; onSubmit: (payload: Record<string, unknown>) => void; loading: boolean; errors: Record<string, string[]>
+function UserForm({ initial, allowedRoles, onSubmit, onCancel, loading, errors }: {
+  initial?: User; allowedRoles: Role[]; onSubmit: (payload: Record<string, unknown>) => void; onCancel: () => void; loading: boolean; errors: Record<string, string[]>
 }) {
   const isEdit = !!initial
   const init = useMemo(() => toForm(initial), [initial])
@@ -201,47 +218,61 @@ function UserForm({ initial, allowedRoles, onSubmit, loading, errors }: {
     onSubmit(payload)
   }
 
-  return (
-    <form onSubmit={submit} className="space-y-4">
-      <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest">Account</p>
-      <div className={`grid gap-4 ${form.role === Role.AGENT || form.role === Role.MANAGER ? 'grid-cols-3' : 'grid-cols-2'}`}>
-        <Field label="Role" required error={err('role')}>
-          <StyledSelect value={form.role} onChange={v => setAccount('role', v)} disabled={isEdit} required
-            options={(isEdit && !allowedRoles.includes(form.role as Role) ? [form.role as Role, ...allowedRoles] : allowedRoles).map(r => ({ value: r, label: roleName(r) }))} />
-        </Field>
-        {form.role === Role.AGENT && (
-          <Field label="Agent Type">
-            <StyledSelect value={form.agentType} onChange={v => setAccount('agentType', v)} placeholder="Select Type"
-              options={[{ value: '', label: 'Select Type' }, ...AGENT_TYPES.map(t => ({ value: t, label: t }))]} />
-          </Field>
-        )}
-        {form.role === Role.MANAGER && (
-          <Field label="Manager Type">
-            <StyledSelect value={form.managerType} onChange={v => setAccount('managerType', v)} placeholder="Select Type"
-              options={[{ value: '', label: 'Select Type' }, ...MANAGER_TYPES.map(t => ({ value: t, label: t }))]} />
-          </Field>
-        )}
-        <Field label="Display Name" required error={err('displayName')}>
-          <input value={form.displayName} onChange={e => setAccount('displayName', e.target.value)} placeholder="e.g. John Smith" required className={inputCls} />
-        </Field>
-      </div>
-      <div className="grid grid-cols-2 gap-4">
-        <Field label="Username" required>
-          <input value={form.userCode} disabled placeholder={codeLoading ? 'Generating' : ''} className={inputCls} />
-        </Field>
-        <Field label="Password" required={!isEdit}>
-          <input type="text" value={form.password} onChange={e => setAccount('password', e.target.value)} required={!isEdit} minLength={8}
-            placeholder={isEdit ? 'Leave blank to keep the current password' : DEFAULT_PASSWORD} className={inputCls} />
-        </Field>
-      </div>
+  const fieldError = (k: string) => err(k) && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#EF4444' }}>{err(k)}</p>
+  const req = <span style={{ color: '#D62828' }}> *</span>
 
-      {order.map(section => {
-        const list = grouped[section] ?? []
-        const salary = SALARY_KEYS.some(k => list.some(f => f.fieldKey === k))
-        return (
-          <div key={section}>
-            <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest pt-2 pb-1">{section}</p>
-            <div className={salary ? 'rounded-xl border border-gray-200 bg-gray-50 p-4' : ''}>
+  return (
+    <form onSubmit={submit}>
+      <div style={{ padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <SectionCard title="Account">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label style={labelStyle}>Role{!isEdit && req}</label>
+              {isEdit ? (
+                <div style={{ ...iStyle, background: '#F8FAFC', fontWeight: 600 }}>{roleName(form.role)}</div>
+              ) : (
+                <StyledSelect value={form.role} onChange={v => setAccount('role', v)} required
+                  options={allowedRoles.map(r => ({ value: r, label: roleName(r) }))} />
+              )}
+              {fieldError('role')}
+            </div>
+            <div>
+              <label style={labelStyle}>{isEdit ? 'User Code' : 'User Code (Auto)'}</label>
+              <div style={readOnlyStyle}>{codeLoading ? 'Loading...' : form.userCode || ' '}</div>
+            </div>
+            {form.role === Role.AGENT && (
+              <div>
+                <label style={labelStyle}>Agent Type</label>
+                <StyledSelect value={form.agentType} onChange={v => setAccount('agentType', v)} placeholder="Select Type"
+                  options={[{ value: '', label: 'Select Type' }, ...AGENT_TYPES.map(t => ({ value: t, label: t }))]} />
+              </div>
+            )}
+            {form.role === Role.MANAGER && (
+              <div>
+                <label style={labelStyle}>Manager Type</label>
+                <StyledSelect value={form.managerType} onChange={v => setAccount('managerType', v)} placeholder="Select Type"
+                  options={[{ value: '', label: 'Select Type' }, ...MANAGER_TYPES.map(t => ({ value: t, label: t }))]} />
+              </div>
+            )}
+            <div>
+              <label style={labelStyle}>Display Name{req}</label>
+              <input style={iStyle} value={form.displayName} onChange={e => setAccount('displayName', e.target.value)} placeholder="e.g. John Smith" required />
+              {fieldError('displayName')}
+            </div>
+            <div>
+              <label style={labelStyle}>Password{!isEdit && req}</label>
+              <input style={iStyle} type="text" value={form.password} onChange={e => setAccount('password', e.target.value)} required={!isEdit} minLength={8}
+                placeholder={isEdit ? 'Leave blank to keep the current password' : 'Min 8 characters'} />
+              {fieldError('password')}
+            </div>
+          </div>
+        </SectionCard>
+
+        {order.map(section => {
+          const list = grouped[section] ?? []
+          const salary = SALARY_KEYS.some(k => list.some(f => f.fieldKey === k))
+          return (
+            <SectionCard key={section} title={section}>
               <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
                 {list.map(f => (
                   <DynamicField key={f.fieldKey} field={f} value={(CORE_KEYS.has(f.fieldKey) ? form[f.fieldKey] : extra[f.fieldKey]) ?? ''} onChange={handleField} error={err(f.fieldKey)} />
@@ -253,15 +284,19 @@ function UserForm({ initial, allowedRoles, onSubmit, loading, errors }: {
                   <span className="text-sm font-bold" style={{ color: '#AA7F56' }}>PKR {total.toLocaleString('en-PK')}</span>
                 </div>
               )}
-            </div>
-          </div>
-        )
-      })}
+            </SectionCard>
+          )
+        })}
+      </div>
 
-      <div className="flex justify-end gap-3 pt-2">
-        <button type="submit" disabled={loading} className="px-6 py-2.5 rounded-lg text-sm font-semibold shadow-sm transition-all disabled:opacity-60"
-          style={{ background: 'linear-gradient(135deg, #1E8496 0%, #0E5F6E 100%)', color: '#ffffff', fontFamily: "'Aptos', sans-serif", letterSpacing: '0.04em' }}>
-          {loading ? 'Saving' : isEdit ? 'Save Changes' : 'Create User'}
+      <div style={{ padding: '16px 28px', borderTop: `1px solid ${P.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10, background: '#fff', borderRadius: '0 0 18px 18px' }}>
+        <button type="button" onClick={onCancel}
+          style={{ padding: '9px 20px', borderRadius: 8, border: `1px solid ${P.border}`, background: '#fff', color: P.textMuted, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          Cancel
+        </button>
+        <button type="submit" disabled={loading}
+          style={{ padding: '9px 24px', borderRadius: 8, border: 0, background: `linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontFamily: '"Aptos", sans-serif', letterSpacing: '0.04em' }}>
+          {loading ? 'Saving...' : isEdit ? 'Save Changes' : 'Create User'}
         </button>
       </div>
     </form>
@@ -449,12 +484,12 @@ export default function UsersPage() {
 
       {showCreate && (
         <Modal title="Create New User" onClose={() => { setShowCreate(false); setFormErrors({}) }}>
-          <UserForm allowedRoles={allowedRoles} onSubmit={save} loading={busy} errors={formErrors} />
+          <UserForm allowedRoles={allowedRoles} onSubmit={save} onCancel={() => { setShowCreate(false); setFormErrors({}) }} loading={busy} errors={formErrors} />
         </Modal>
       )}
       {editUser && (
         <Modal title={`Edit ${editUser.displayName}`} onClose={() => { setEditUser(null); setFormErrors({}) }}>
-          <UserForm initial={editUser} allowedRoles={allowedRoles} onSubmit={save} loading={busy} errors={formErrors} />
+          <UserForm initial={editUser} allowedRoles={allowedRoles} onSubmit={save} onCancel={() => { setEditUser(null); setFormErrors({}) }} loading={busy} errors={formErrors} />
         </Modal>
       )}
 
