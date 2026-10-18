@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Sidebar from './Sidebar'
+import RefreshButton from './RefreshButton'
 import { useCompact } from '@/hooks/useMediaQuery'
 import { useAuth } from '@/contexts/AuthContext'
 import { roleBase, roleHome, managerRedirect } from '@/lib/roles'
@@ -67,6 +68,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           )}
           {allowed ? children : null}
         </main>
+
+        {/* Sits above every page, so one control refreshes whichever is showing. */}
+        {allowed && <RefreshButton compact={compact} />}
       </div>
     </LayoutContext.Provider>
   )

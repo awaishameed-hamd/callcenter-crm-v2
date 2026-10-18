@@ -10,6 +10,7 @@ import { PageShell, PageHeader, FilterBar, FilterSep, FilterPills, FilterSearch,
 import { P } from '@/lib/palette'
 import { apiGet, apiPost, apiPut, errMsg, errFields } from '@/lib/api'
 import type { Client, FormField, Page } from '@/types'
+import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 
 const CORE_KEYS = new Set(STANDARD_FIELD_KEYS.client)
 const COL_SPAN: Record<string, number> = { full: 6, two_thirds: 4, half: 3, third: 2 }
@@ -275,16 +276,17 @@ export default function ClientsPage() {
   const [formErrors, setFormErrors] = useState<Record<string, string[]>>({})
   const [toast, setToast]       = useState<{ message: string; type: 'success' | 'error' } | null>(null)
 
-  const fetchClients = useCallback(async () => {
-    setLoading(true)
+  const fetchClients = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       setData(await apiGet<Page<Client>>('/clients', { page, search, campaign: campaignFilter, status: statusFilter }))
     } catch {
-      setToast({ message: 'Failed to load clients.', type: 'error' })
-    } finally { setLoading(false) }
+      if (!silent) setToast({ message: 'Failed to load clients.', type: 'error' })
+    } finally { if (!silent) setLoading(false) }
   }, [page, search, campaignFilter, statusFilter])
 
   useEffect(() => { fetchClients() }, [fetchClients])
+  useAutoRefresh(() => fetchClients(true))
 
   const save = async (payload: Record<string, unknown>) => {
     setBusy(true); setFormErrors({})

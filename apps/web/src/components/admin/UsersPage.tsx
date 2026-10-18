@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { apiGet, apiPost, apiPut, apiDelete, errMsg, errFields, downloadText } from '@/lib/api'
 import { fmtDay, pktToday } from '@/lib/format'
 import type { FormField, Page, User } from '@/types'
+import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 
 const HIERARCHY: Role[] = [Role.ADMIN, Role.DIRECTOR, Role.MANAGER, Role.AGENT]
 const VISIBLE_ROLES: Partial<Record<Role, Role[]>> = {
@@ -313,18 +314,19 @@ export default function UsersPage() {
   useEffect(() => { lsSet(LS_ROLE, roleFilter) }, [roleFilter])
   useEffect(() => { lsSet(LS_STATUS, statusFilter) }, [statusFilter])
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true)
+  const fetchUsers = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       setData(await apiGet<Page<User>>('/users', { page, status: statusFilter, role: roleFilter, search }))
     } catch {
-      setToast({ message: 'Failed to load users.', type: 'error' })
+      if (!silent) setToast({ message: 'Failed to load users.', type: 'error' })
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [page, statusFilter, roleFilter, search])
 
   useEffect(() => { fetchUsers() }, [fetchUsers])
+  useAutoRefresh(() => fetchUsers(true))
 
   const handleExport = async () => {
     try {

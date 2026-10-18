@@ -8,6 +8,7 @@ import type { Customer, Page } from '@/types'
 import DataTable, { type Column } from '@/components/ui/DataTable'
 import { PageShell, PageHeader, FilterBar, FilterSep, FilterPills, FilterSearch, FilterCount, Pager } from '@/components/ui/PageChrome'
 import { P } from '@/lib/palette'
+import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 
 const TABS = [
   { key: '',                                 label: 'All' },
@@ -120,18 +121,19 @@ export default function MySalesPage() {
   const [loading, setLoading] = useState(false)
   const [selected, setSelected] = useState<Customer | null>(null)
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       setData(await apiGet<Page<Customer>>('/customers', { page, status: tab, search }))
     } catch {
-      setData(null)
+      if (!silent) setData(null)
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [tab, page, search])
 
   useEffect(() => { load() }, [load])
+  useAutoRefresh(() => load(true))
 
   const rows = data?.data ?? []
   const from = data ? (data.currentPage - 1) * data.perPage + 1 : 0

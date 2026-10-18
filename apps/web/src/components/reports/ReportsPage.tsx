@@ -12,6 +12,7 @@ import { apiGet, downloadBlob } from '@/lib/api'
 import { STATUS_BADGE, STATUS_LABEL, periodDates, stampTime, fmtDay, BUSINESS_TZ, type PeriodKey } from '@/lib/format'
 import { isFinalApprover } from '@/lib/roles'
 import type { Customer, Page, Client } from '@/types'
+import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 
 const STATUS_OPTIONS = Object.keys(STATUS_LABEL) as CustomerStatus[]
 const PERIODS: { key: PeriodKey; label: string }[] = [
@@ -207,18 +208,19 @@ export default function ReportsPage() {
     }
   }, [canSeeAgent, canSeeCompany])
 
-  const fetchData = useCallback(async () => {
-    setLoading(true)
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       setData(await apiGet<Page<Customer>>('/reports', { ...filters, page }))
     } catch {
-      setToast({ message: 'Failed to load report data.', type: 'error' })
+      if (!silent) setToast({ message: 'Failed to load report data.', type: 'error' })
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [filters, page])
 
   useEffect(() => { fetchData() }, [fetchData])
+  useAutoRefresh(() => fetchData(true))
 
   // Every filter applies as soon as it changes, the way argroup's filter bars work.
   const setF = (name: keyof Filters, value: string) => { setFilters(p => ({ ...p, [name]: value })); setPage(1) }

@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { apiGet } from '@/lib/api'
 import { P, CHART_COLORS } from '@/lib/palette'
 import { businessToday } from '@/lib/format'
+import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 
 type Slice = { name: string; value: number }
 interface Stats {
@@ -110,19 +111,20 @@ export default function DashboardPage() {
   const [error, setError]         = useState('')
   const [d, setD]                 = useState<DashboardData | null>(null)
 
-  const fetchData = useCallback(async () => {
+  const fetchData = useCallback(async (silent = false) => {
     if (period === 'custom' && (!fromDate || !toDate)) return
-    setLoading(true); setError('')
+    if (!silent) { setLoading(true); setError('') }
     try {
       setD(await apiGet<DashboardData>('/dashboard/stats', { period, ...(period === 'custom' ? { fromDate, toDate } : {}) }))
     } catch {
-      setError('Failed to load dashboard data.')
+      if (!silent) setError('Failed to load dashboard data.')
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [period, fromDate, toDate])
 
   useEffect(() => { fetchData() }, [fetchData])
+  useAutoRefresh(() => fetchData(true))
 
   const stats = d?.stats ?? EMPTY_STATS
   const rate  = d?.approvalRate ?? { rate: 0, approved: 0, pending: 0, rejected: 0, total: 0 }

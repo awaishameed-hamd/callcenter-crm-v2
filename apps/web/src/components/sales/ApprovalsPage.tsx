@@ -8,6 +8,7 @@ import StyledSelect from '@/components/ui/StyledSelect'
 import { PageTitle } from '@/components/ui/PageChrome'
 import { useAuth } from '@/contexts/AuthContext'
 import { useLayout } from '@/components/layout/AppLayout'
+import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { apiGet, apiPost, apiPut, apiDelete, errMsg } from '@/lib/api'
 import { StatusBadge, fmtWithPKT, fullName } from '@/lib/format'
 import { isFinalApprover as finalRole } from '@/lib/roles'
@@ -124,20 +125,22 @@ export default function ApprovalsPage() {
         { key: '',                         label: 'All' },
       ]
 
-  const load = useCallback(async () => {
-    setLoading(true)
+  // silent: background refresh, so no loading state and a failed poll keeps the current list
+  const load = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try {
       const res = await apiGet<Page<Customer>>('/customers', { page, status: statusFilter, search })
       setCustomers(res.data)
       setMeta(res)
     } catch {
-      setCustomers([])
+      if (!silent) setCustomers([])
     } finally {
-      setLoading(false)
+      if (!silent) setLoading(false)
     }
   }, [page, statusFilter, search])
 
   useEffect(() => { load() }, [load])
+  useAutoRefresh(() => { load(true); loadCounts() })
   useEffect(() => () => setSidebarCollapsed(false), [setSidebarCollapsed])
 
   const handleTab = (key: string) => { setStatusFilter(key); setPage(1); setSelected(null); setSidebarCollapsed(false) }
