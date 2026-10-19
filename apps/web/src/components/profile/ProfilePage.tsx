@@ -62,7 +62,6 @@ function tenure(iso?: string | null) {
   const y = Math.floor(months / 12), m = months % 12
   return [y && `${y} yr${y > 1 ? 's' : ''}`, m && `${m} mo${m > 1 ? 's' : ''}`].filter(Boolean).join(' ')
 }
-const greeting = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening' }
 /** 0..4 for the strength meter. */
 function strength(pw: string) {
   if (!pw) return 0
@@ -73,7 +72,7 @@ function strength(pw: string) {
 
 function Card({ title, icon, action, children, style }: { title: string; icon: string; action?: React.ReactNode; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <section className="mv-card" style={{ flex: 1, background: '#fff', borderRadius: 18, border: `1px solid ${withAlpha(P.navy, 0.07)}`, boxShadow: '0 10px 30px -22px rgba(19,46,87,0.45)', padding: '13px 16px', display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, ...style }}>
+    <section style={{ flex: 1, background: '#fff', borderRadius: 18, border: `1px solid ${withAlpha(P.navy, 0.07)}`, boxShadow: '0 10px 30px -22px rgba(19,46,87,0.45)', padding: '12px 16px', display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, ...style }}>
       <header style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexShrink: 0 }}>
         <span style={{ width: 30, height: 30, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: withAlpha(P.teal, 0.1), color: P.teal }}>
           <Svg d={icon} size={15} />
@@ -245,8 +244,8 @@ export default function ProfilePage() {
   // ── Header: cover banner, photo, name, quick facts ─────────────────────────
   const header = (
     <section style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', flexShrink: 0, border: `1px solid ${withAlpha(P.navy, 0.07)}`, boxShadow: '0 14px 34px -24px rgba(19,46,87,0.55)' }}>
-      <div className="mv-cover" style={{ position: 'relative', height: 84,
-        background: `radial-gradient(420px 160px at 88% 10%, ${withAlpha('#F2AC18', 0.38)}, transparent 70%), radial-gradient(520px 220px at 6% 120%, ${withAlpha('#2BB3C8', 0.55)}, transparent 70%), linear-gradient(120deg, ${P.navy} 0%, #1A4672 30%, ${P.teal} 60%, #1A4672 80%, ${P.navy} 100%)`, backgroundSize: '100% 100%, 100% 100%, 220% 100%' }}>
+      <div style={{ position: 'relative', height: 74,
+        background: `radial-gradient(420px 160px at 88% 10%, ${withAlpha('#F2AC18', 0.38)}, transparent 70%), radial-gradient(520px 220px at 6% 120%, ${withAlpha('#2BB3C8', 0.55)}, transparent 70%), linear-gradient(120deg, ${P.navy} 0%, #1A4672 48%, ${P.teal} 100%)` }}>
         {/* fine diagonal texture */}
         <div style={{ position: 'absolute', inset: 0, opacity: 0.12, background: 'repeating-linear-gradient(135deg, #fff 0 1px, transparent 1px 14px)' }} />
         <div style={{ position: 'absolute', right: 20, top: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -265,7 +264,7 @@ export default function ProfilePage() {
 
       <div style={{ display: 'flex', alignItems: 'flex-end', flexWrap: compact ? 'wrap' : 'nowrap', gap: 16, padding: '0 22px 12px' }}>
         <input ref={fileRef} type="file" accept="image/*" onChange={pickPhoto} style={{ display: 'none' }} />
-        <div style={{ position: 'relative', marginTop: -44, flexShrink: 0, padding: 3, borderRadius: '50%', background: `conic-gradient(from 210deg, ${P.teal}, #F2AC18, ${P.teal}, #2BB3C8, ${P.teal})`, boxShadow: '0 14px 28px -12px rgba(19,46,87,0.55)' }}>
+        <div style={{ position: 'relative', marginTop: -40, flexShrink: 0, padding: 3, borderRadius: '50%', background: `conic-gradient(from 210deg, ${P.teal}, #F2AC18, ${P.teal}, #2BB3C8, ${P.teal})`, boxShadow: '0 14px 28px -12px rgba(19,46,87,0.55)' }}>
           <button type="button" onClick={() => fileRef.current?.click()} title="Change profile photo"
             style={{ width: 88, height: 88, borderRadius: '50%', padding: 0, cursor: 'pointer', border: '4px solid #fff', background: `linear-gradient(135deg, ${P.teal}, ${P.navy})`, boxShadow: '0 14px 28px -12px rgba(19,46,87,0.55)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {avatar
@@ -280,7 +279,6 @@ export default function ProfilePage() {
         </div>
 
         <div style={{ minWidth: 0, flex: '1 1 260px', paddingBottom: 2 }}>
-          <div style={{ fontSize: 12.5, fontWeight: 600, color: '#8A97AB' }}>{greeting()},</div>
           <h1 style={{ margin: 0, fontFamily: OUTFIT, fontSize: 25, fontWeight: 700, color: P.navy, letterSpacing: '-0.02em', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.displayName}</h1>
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
             <span style={{ padding: '3px 11px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: withAlpha(P.teal, 0.12), color: '#0E6A79' }}>{roleLabel(profile)}</span>
@@ -303,17 +301,47 @@ export default function ProfilePage() {
   )
 
   // ── Cards ──────────────────────────────────────────────────────────────────
-  const contactCard = (
-    <Card title="Contact" icon={ICONS.person}>
-      <div style={{ overflowY: 'auto', minHeight: 0 }}>
-        {CONTACT_KEYS.filter(shows).map(k => {
-          const raw = val(k)
-          const shown = raw && k === 'date_of_birth' ? fmtDay(raw.slice(0, 10)) : raw
-          return <InfoRow key={k} icon={EXTRA_ICONS[k]} label={labelOf(k, k)}>{shown || <Empty />}</InfoRow>
-        })}
-        {moreFields.map(f => (
-          <InfoRow key={f.fieldKey} icon={ICONS.notes} label={f.label}>{(f.fieldType === 'date' && val(f.fieldKey) ? fmtDay(val(f.fieldKey).slice(0, 10)) : val(f.fieldKey)) || <Empty />}</InfoRow>
-        ))}
+  const personalRows = [
+    ...CONTACT_KEYS.filter(shows).map(k => ({ key: k, label: labelOf(k, k), value: k === 'date_of_birth' && val(k) ? fmtDay(val(k).slice(0, 10)) : val(k), wide: k === 'email' || k === 'experience' })),
+    ...moreFields.map(f => ({ key: f.fieldKey, label: f.label, value: f.fieldType === 'date' && val(f.fieldKey) ? fmtDay(val(f.fieldKey).slice(0, 10)) : val(f.fieldKey), wide: f.fieldType === 'textarea' })),
+  ]
+  const personalCard = (
+    <Card title="Personal Information" icon={ICONS.person}>
+      <div style={{ borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff',
+        border: `1px solid ${withAlpha(P.navy, 0.1)}`, boxShadow: '0 18px 30px -22px rgba(19,46,87,0.7)' }}>
+        {/* band across the top, like a company ID card */}
+        <div style={{ position: 'relative', padding: '12px 18px 32px', color: '#fff', overflow: 'hidden', flexShrink: 0,
+          background: `radial-gradient(260px 120px at 100% 0%, ${withAlpha('#F2AC18', 0.32)}, transparent 70%), linear-gradient(135deg, ${P.navy} 0%, #1B4F7E 55%, ${P.teal} 100%)` }}>
+          <div style={{ position: 'absolute', right: -36, top: -50, width: 150, height: 150, borderRadius: '50%', border: '22px solid rgba(255,255,255,0.06)' }} />
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ fontFamily: "'Ethnocentric Rg', sans-serif", fontWeight: 300, fontSize: 11, letterSpacing: '0.04em' }}>META-VOICE</span>
+            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', opacity: 0.85 }}>EMPLOYEE CARD</span>
+          </div>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, padding: '0 18px', marginTop: -28, flexShrink: 0 }}>
+          <div style={{ width: 72, height: 72, borderRadius: 16, border: '3px solid #fff', overflow: 'hidden', flexShrink: 0, boxShadow: '0 8px 16px -8px rgba(19,46,87,0.6)',
+            background: `linear-gradient(135deg, ${P.teal}, ${P.navy})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {avatar
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              : <span style={{ fontFamily: OUTFIT, fontSize: 24, fontWeight: 700, color: '#fff' }}>{profile.displayName?.charAt(0)?.toUpperCase() ?? '?'}</span>}
+          </div>
+          <div style={{ minWidth: 0, paddingBottom: 2 }}>
+            <div style={{ fontFamily: OUTFIT, fontSize: 17, fontWeight: 700, color: P.navy, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+              {[val('first_name'), val('mid_name'), val('last_name')].filter(Boolean).join(' ') || profile.displayName}
+            </div>
+            <div style={{ fontSize: 12, color: '#8A97AB' }}>{roleLabel(profile)}{roleType && roleType !== roleLabel(profile) ? ` · ${roleType}` : ''}</div>
+          </div>
+          <span style={{ marginLeft: 'auto', marginBottom: 4, padding: '3px 10px', borderRadius: 8, background: '#F3F6F9', color: P.navy, fontFamily: OUTFIT, fontSize: 12.5, fontWeight: 600, letterSpacing: '0.04em', flexShrink: 0 }}>{profile.userCode}</span>
+        </div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px 16px', padding: '14px 18px 16px' }}>
+          {personalRows.map(r => (
+            <div key={r.key} style={{ gridColumn: r.wide ? '1 / -1' : undefined, minWidth: 0 }}>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: '#8A97AB', letterSpacing: '0.07em', textTransform: 'uppercase' }}>{r.label}</div>
+              <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: P.navy, wordBreak: 'break-word' }}>{r.value || <Empty />}</div>
+            </div>
+          ))}
+        </div>
       </div>
     </Card>
   )
@@ -323,25 +351,30 @@ export default function ProfilePage() {
       {salaryTotal === 0 ? (
         <div style={{ margin: 'auto', textAlign: 'center', color: '#8A97AB', fontSize: 13 }}>Salary details are not set yet.<br />HR adds them.</div>
       ) : (
-        <>
-          <div style={{ fontFamily: OUTFIT, fontSize: 30, fontWeight: 700, color: P.navy, letterSpacing: '-0.02em', lineHeight: 1 }}>
-            <span style={{ fontSize: 15, fontWeight: 600, color: GOLD, marginRight: 6 }}>PKR</span>{salaryTotal.toLocaleString('en-PK')}
+        <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '14px 28px' }}>
+          <div style={{ flexShrink: 0 }}>
+            <div style={{ fontSize: 11, fontWeight: 600, color: '#8A97AB', letterSpacing: '0.04em', textTransform: 'uppercase' }}>Total per month</div>
+            <div style={{ marginTop: 4, fontFamily: OUTFIT, fontSize: 30, fontWeight: 700, color: P.navy, letterSpacing: '-0.02em', lineHeight: 1 }}>
+              <span style={{ fontSize: 15, fontWeight: 600, color: GOLD, marginRight: 6 }}>PKR</span>{salaryTotal.toLocaleString('en-PK')}
+            </div>
           </div>
-          <div className="mv-grow" style={{ display: 'flex', height: 10, borderRadius: 99, overflow: 'hidden', margin: '12px 0 10px', background: '#EEF2F6' }}>
-            {salary.filter(s => s.value > 0).map(s => <div key={s.key} title={`${s.label}: ${pkr(s.value)}`} style={{ width: `${(s.value / salaryTotal) * 100}%`, background: s.color }} />)}
-          </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px 14px' }}>
-            {salary.map(s => (
-              <div key={s.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, minWidth: 0 }}>
-                <span style={{ width: 9, height: 9, borderRadius: 3, background: s.color, marginTop: 4, flexShrink: 0 }} />
-                <div style={{ minWidth: 0 }}>
-                  <div style={{ fontSize: 11.5, color: '#8A97AB', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</div>
-                  <div style={{ fontSize: 13.5, fontWeight: 600, color: s.value ? P.navy : '#A3ADBB' }}>{s.value ? pkr(s.value) : 'None'}</div>
+          <div style={{ flex: '1 1 320px', minWidth: 0 }}>
+            <div className="mv-grow" style={{ display: 'flex', height: 10, borderRadius: 99, overflow: 'hidden', marginBottom: 12, background: '#EEF2F6' }}>
+              {salary.filter(s => s.value > 0).map(s => <div key={s.key} title={`${s.label}: ${pkr(s.value)}`} style={{ width: `${(s.value / salaryTotal) * 100}%`, background: s.color }} />)}
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: `repeat(${compact ? 2 : salary.length}, minmax(0, 1fr))`, gap: '10px 14px' }}>
+              {salary.map(s => (
+                <div key={s.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, minWidth: 0 }}>
+                  <span style={{ width: 9, height: 9, borderRadius: 3, background: s.color, marginTop: 4, flexShrink: 0 }} />
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 11.5, color: '#8A97AB', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</div>
+                    <div style={{ fontSize: 13.5, fontWeight: 600, color: s.value ? P.navy : '#A3ADBB' }}>{s.value ? pkr(s.value) : 'None'}</div>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
-        </>
+        </div>
       )}
     </Card>
   )
@@ -361,7 +394,7 @@ export default function ProfilePage() {
   const acct = val('bank_account_no').replace(/\s/g, '')
   const bankCard = BANK_KEYS.some(shows) && (
     <Card title="Bank Details" icon={ICONS.bank}>
-      <div style={{ position: 'relative', borderRadius: 16, padding: '16px 18px', color: '#fff', overflow: 'hidden', minHeight: 150, display: 'flex', flexDirection: 'column',
+      <div style={{ position: 'relative', borderRadius: 16, padding: '16px 18px', color: '#fff', overflow: 'hidden', minHeight: 136, display: 'flex', flexDirection: 'column',
         background: `radial-gradient(260px 140px at 100% 0%, ${withAlpha('#F2AC18', 0.35)}, transparent 70%), linear-gradient(135deg, ${P.navy} 0%, #1B4F7E 55%, ${P.teal} 100%)`, boxShadow: '0 18px 30px -20px rgba(19,46,87,0.9)' }}>
         <div style={{ position: 'absolute', right: -40, bottom: -60, width: 180, height: 180, borderRadius: '50%', border: '24px solid rgba(255,255,255,0.06)' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
@@ -419,46 +452,6 @@ export default function ProfilePage() {
     </Card>
   )
 
-  // ── Profile strength: how complete the profile is, with one-click fixes ────
-  const checks = [
-    ...fields.filter(f => !READONLY_KEYS.has(f.fieldKey) && !SALARY_KEYS.includes(f.fieldKey)).map(f => ({ key: f.fieldKey, label: f.label, done: !!val(f.fieldKey) })),
-    { key: 'photo', label: 'Profile photo', done: !!avatar },
-  ]
-  const doneCount = checks.filter(c => c.done).length
-  const pct = checks.length ? Math.round((doneCount / checks.length) * 100) : 100
-  const missing = checks.filter(c => !c.done)
-  const ringColor = pct >= 90 ? '#22C55E' : pct >= 60 ? P.teal : '#F2AC18'
-  const strengthCard = (
-    <Card title="Profile Strength" icon={ICONS.tag}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-        <div className="mv-ring" style={{ width: 84, height: 84, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `conic-gradient(${ringColor} ${pct * 3.6}deg, #EEF2F6 0deg)` }}>
-          <div style={{ width: 66, height: 66, borderRadius: '50%', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-            <span style={{ fontFamily: OUTFIT, fontSize: 21, fontWeight: 700, color: P.navy, lineHeight: 1 }}>{pct}%</span>
-            <span style={{ fontSize: 10, color: '#8A97AB', marginTop: 2 }}>complete</span>
-          </div>
-        </div>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontFamily: OUTFIT, fontSize: 15, fontWeight: 600, color: P.navy }}>
-            {pct === 100 ? 'All set, looking great!' : pct >= 60 ? 'Almost there' : 'Let us fill it in'}
-          </div>
-          <div style={{ fontSize: 12.5, color: '#8A97AB', marginTop: 2 }}>{doneCount} of {checks.length} details added</div>
-        </div>
-      </div>
-      {missing.length > 0 && (
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, overflow: 'hidden' }}>
-          {missing.slice(0, 6).map(m => (
-            <button key={m.key} type="button" disabled={locked}
-              onClick={() => (m.key === 'photo' ? fileRef.current?.click() : (setErrors({}), setEditing(true)))}
-              style={{ padding: '4px 10px', borderRadius: 99, border: `1px dashed ${withAlpha(P.teal, 0.5)}`, background: withAlpha(P.teal, 0.06), color: '#0E6A79', fontSize: 12, fontWeight: 600, cursor: locked ? 'default' : 'pointer' }}>
-              + {m.label}
-            </button>
-          ))}
-          {missing.length > 6 && <span style={{ padding: '4px 6px', fontSize: 12, color: '#8A97AB' }}>and {missing.length - 6} more</span>}
-        </div>
-      )}
-    </Card>
-  )
-
   // ── Edit panel ─────────────────────────────────────────────────────────────
   const editPanel = editing && (
     <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'flex-end' }}>
@@ -505,31 +498,18 @@ export default function ProfilePage() {
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       {editPanel}
       <style>{`
-        @keyframes mvDrift { from { background-position: 0 0, 0 0, 0% 0 } to { background-position: 0 0, 0 0, 100% 0 } }
-        @keyframes mvGrow  { from { transform: scaleX(0) } to { transform: scaleX(1) } }
-        @keyframes mvPop   { from { transform: scale(.85); opacity: 0 } to { transform: scale(1); opacity: 1 } }
-        .mv-cover { animation: mvDrift 14s ease-in-out infinite alternate }
-        .mv-grow  { transform-origin: left; animation: mvGrow .9s cubic-bezier(.2,.8,.2,1) both }
-        .mv-ring  { animation: mvPop .6s cubic-bezier(.2,.8,.2,1) both }
-        .mv-card  { transition: transform .18s ease, box-shadow .18s ease }
-        .mv-card:hover { transform: translateY(-2px); box-shadow: 0 18px 36px -24px rgba(19,46,87,0.55) !important }
-        @media (prefers-reduced-motion: reduce) { .mv-cover, .mv-grow, .mv-ring { animation: none } .mv-card:hover { transform: none } }
+        @keyframes mvGrow { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+        .mv-grow { transform-origin: left; animation: mvGrow .9s cubic-bezier(.2,.8,.2,1) both }
+        @media (prefers-reduced-motion: reduce) { .mv-grow { animation: none } }
       `}</style>
-      <div style={{ height: compact ? 'auto' : '100vh', display: 'flex', flexDirection: 'column', gap: 14, padding: '12px 18px 14px', overflowY: 'auto', fontFamily: FONT, background: P.bgMain }}>
+      <div style={{ height: compact ? 'auto' : '100vh', display: 'flex', flexDirection: 'column', gap: 12, padding: '10px 18px 7px', overflowY: 'auto', fontFamily: FONT, background: P.bgMain }}>
         {header}
-        <div style={{ flex: 1, minHeight: 0, display: 'grid', gap: 14, gridTemplateColumns: compact ? '1fr' : 'repeat(3, minmax(0, 1fr))' }}>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
-            <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex' }}>{contactCard}</div>
-            <div style={{ flexShrink: 0, display: 'flex' }}>{securityCard}</div>
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
-            <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex' }}>{identityCard}</div>
-            {salaryCard && <div style={{ flexShrink: 0, display: 'flex' }}>{salaryCard}</div>}
-          </div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
-            {bankCard && <div style={{ flexShrink: 0, display: 'flex' }}>{bankCard}</div>}
-            <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex' }}>{strengthCard}</div>
-          </div>
+        <div style={{ display: 'grid', gap: 12, gridTemplateColumns: compact ? '1fr' : 'repeat(3, minmax(0, 1fr))', alignContent: 'start' }}>
+          <div style={{ display: 'flex', minWidth: 0 }}>{personalCard}</div>
+          <div style={{ display: 'flex', minWidth: 0 }}>{identityCard}</div>
+          {bankCard && <div style={{ display: 'flex', minWidth: 0 }}>{bankCard}</div>}
+          {salaryCard && <div style={{ display: 'flex', minWidth: 0, gridColumn: compact ? undefined : 'span 2' }}>{salaryCard}</div>}
+          <div style={{ display: 'flex', minWidth: 0 }}>{securityCard}</div>
         </div>
       </div>
     </>
