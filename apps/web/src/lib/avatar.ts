@@ -1,27 +1,22 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
+import { useAuth } from '@/contexts/AuthContext'
+import { apiPut, apiDelete } from './api'
 
-// Profile photo, kept in this browser like argroup's sidebar avatar. The sidebar and the Profile
-// page share it: saving in either place updates the other at once (and other open tabs).
+// Profile photo, stored on the server (users.avatar holds the file name), so it follows the user
+// to any computer and shows in the sidebar, the Profile page and chat. The browser shrinks the
+// picture before uploading it.
 
-const KEY = (userId: string) => `metavoice_avatar_${userId}`
-const EVENT = 'avatar:changed'
-const MAX_SIDE = 320   // stored photos are shrunk to this, so they stay well inside browser storage
+const API_URL  = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000/api'
+const MAX_SIDE = 320
+const LEGACY_KEY = (userId: string) => `metavoice_avatar_${userId}`   // where photos lived before
 
-export function readAvatar(userId?: string | null): string | null {
-  if (!userId) return null
-  try { return localStorage.getItem(KEY(userId)) } catch { return null }
-}
+/** The image URL for a stored photo name (full URLs and data URLs pass through). */
+export const avatarUrl = (v?: string | null) =>
+  !v ? null : /^(data:|https?:|\/)/.test(v) ? v : `${API_URL}/files/avatar/${v}`
 
-/** Shrinks the picked image, stores it and tells every listener; resolves to the stored image. */
-export async function saveAvatar(userId: string, file: File): Promise<string> {
-  const src = await new Promise<string>((resolve, reject) => {
-    const reader = new FileReader()
-    reader.onload = () => resolve(reader.result as string)
-    reader.onerror = () => reject(reader.error)
-    reader.readAsDataURL(file)
-  })
+async function shrink(src: string): Promise<string> {
   const img = await new Promise<HTMLImageElement>((resolve, reject) => {
     const i = new Image()
     i.onload = () => resolve(i)
@@ -33,26 +28,44 @@ export async function saveAvatar(userId: string, file: File): Promise<string> {
   canvas.width = Math.round(img.width * scale)
   canvas.height = Math.round(img.height * scale)
   canvas.getContext('2d')!.drawImage(img, 0, 0, canvas.width, canvas.height)
-  const data = canvas.toDataURL('image/jpeg', 0.88)
-  localStorage.setItem(KEY(userId), data)
-  window.dispatchEvent(new Event(EVENT))
-  return data
+  return canvas.toDataURL('image/jpeg', 0.85)
 }
+const readFile = (file: File) => new Promise<string>((resolve, reject) => {
+  const reader = new FileReader()
+  reader.onload = () => resolve(reader.result as string)
+  reader.onerror = () => reject(reader.error)
+  reader.readAsDataURL(file)
+})
 
-export function removeAvatar(userId: string) {
-  try { localStorage.removeItem(KEY(userId)) } catch { /* ignore */ }
-  window.dispatchEvent(new Event(EVENT))
-}
+let moving = false   // the sidebar and the Profile page both mount this hook; move an old photo once
 
-/** The current user's photo, kept up to date when it changes here or in another tab. */
-export function useAvatar(userId?: string | null) {
-  const [avatar, setAvatar] = useState<string | null>(null)
+/** The signed-in user's photo URL, plus save and remove. */
+export function useAvatar() {
+  const { user, updateUser } = useAuth()
+
+  // A photo saved in this browser before photos lived on the server moves up once
   useEffect(() => {
-    const sync = () => setAvatar(readAvatar(userId))
-    sync()
-    window.addEventListener(EVENT, sync)
-    window.addEventListener('storage', sync)
-    return () => { window.removeEventListener(EVENT, sync); window.removeEventListener('storage', sync) }
-  }, [userId])
-  return avatar
+    if (!user || user.avatar || moving) return
+    let local: string | null = null
+    try { local = localStorage.getItem(LEGACY_KEY(user.id)) } catch { /* storage blocked */ }
+    if (!local?.startsWith('data:image')) return
+    moving = true
+    shrink(local)
+      .then(image => apiPut<{ avatar: string }>('/profile/avatar', { image }))
+      .then(r => { updateUser({ avatar: r.avatar }); try { localStorage.removeItem(LEGACY_KEY(user.id)) } catch { /* ignore */ } })
+      .catch(() => {})
+      .finally(() => { moving = false })
+  }, [user?.id, user?.avatar]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const save = async (file: File) => {
+    const image = await shrink(await readFile(file))
+    const r = await apiPut<{ avatar: string }>('/profile/avatar', { image })
+    updateUser({ avatar: r.avatar })
+  }
+  const remove = async () => {
+    await apiDelete('/profile/avatar')
+    updateUser({ avatar: null })
+    try { if (user) localStorage.removeItem(LEGACY_KEY(user.id)) } catch { /* ignore */ }
+  }
+  return { avatar: avatarUrl(user?.avatar), save, remove }
 }

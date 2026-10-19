@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Put, Body, UseGuards } from '@nestjs/common'
+import { Controller, Post, Get, Put, Delete, Body, UseGuards } from '@nestjs/common'
 import { AuthService }  from './auth.service'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 import { CurrentUser }  from '../../common/decorators/current-user.decorator'
@@ -44,6 +44,12 @@ export class ProfileController {
 
   @Put()
   update(@CurrentUser() user: any, @Body() body: Record<string, any>) { return this.auth.updateProfile(user.id, body) }
+
+  @Put('avatar')
+  setAvatar(@CurrentUser() user: any, @Body('image') image: string) { return this.auth.setAvatar(user.id, image) }
+
+  @Delete('avatar')
+  clearAvatar(@CurrentUser() user: any) { return this.auth.clearAvatar(user.id) }
 
   @Put('password')
   changePassword(@CurrentUser() user: any, @Body() body: Record<string, any>) { return this.auth.changePassword(user.id, body) }

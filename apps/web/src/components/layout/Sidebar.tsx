@@ -8,7 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import api from '@/lib/api'
 import { getSocket } from '@/lib/socket'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
-import { useAvatar, saveAvatar } from '@/lib/avatar'
+import { useAvatar } from '@/lib/avatar'
 import { isHrManager, isAccountant, isFinalApprover, isSaleReviewer, roleLabel } from '@/lib/roles'
 
 const C = {
@@ -154,7 +154,7 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
   const router   = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const avatar = useAvatar(user?.id)   // shared with the Profile page (lib/avatar.ts)
+  const { avatar, save: saveAvatar } = useAvatar()   // stored on the server (lib/avatar.ts)
 
   // ── Attendance flyout ──
   const triggerRef = useRef<HTMLDivElement>(null)
@@ -293,7 +293,7 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (file && user) saveAvatar(user.id, file).catch(() => {})
+    if (file) saveAvatar(file).catch(() => {})
     e.target.value = ''
   }
 

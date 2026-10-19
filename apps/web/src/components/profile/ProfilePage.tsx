@@ -14,7 +14,7 @@ import StyledSelect from '@/components/ui/StyledSelect'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompact } from '@/hooks/useMediaQuery'
 import { apiGet, apiPut, errMsg, errFields } from '@/lib/api'
-import { useAvatar, saveAvatar, removeAvatar } from '@/lib/avatar'
+import { useAvatar } from '@/lib/avatar'
 import { fmtDay } from '@/lib/format'
 import { roleLabel } from '@/lib/roles'
 import { P } from '@/lib/palette'
@@ -137,7 +137,7 @@ function EditField({ field, value, onChange, error }: { field: FormField; value:
 export default function ProfilePage() {
   const { user: me, updateUser } = useAuth()
   const compact = useCompact()
-  const avatar  = useAvatar(me?.id)
+  const { avatar, save: saveAvatar, remove: removeAvatar } = useAvatar()
   const fileRef = useRef<HTMLInputElement>(null)
 
   const [profile, setProfile] = useState<User | null>(null)
@@ -211,8 +211,8 @@ export default function ProfilePage() {
   const pickPhoto = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
-    if (!file || !me) return
-    saveAvatar(me.id, file)
+    if (!file) return
+    saveAvatar(file)
       .then(() => setToast({ message: 'Profile photo updated.', type: 'success' }))
       .catch(err => setToast({ message: err?.message || 'Could not use that image.', type: 'error' }))
   }
@@ -286,7 +286,7 @@ export default function ProfilePage() {
             <span style={{ padding: '3px 11px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: profile.isActive ? '#E8F7EE' : '#FDECEC', color: profile.isActive ? '#15803D' : '#B91C1C', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />{profile.isActive ? 'Active' : 'Inactive'}
             </span>
-            {avatar && <button type="button" onClick={() => me && removeAvatar(me.id)} style={{ marginLeft: 4, padding: 0, border: 0, background: 'none', color: '#8A97AB', fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}>Remove photo</button>}
+            {avatar && <button type="button" onClick={() => removeAvatar().catch(() => setToast({ message: 'Could not remove the photo.', type: 'error' }))} style={{ marginLeft: 4, padding: 0, border: 0, background: 'none', color: '#8A97AB', fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}>Remove photo</button>}
           </div>
         </div>
 
@@ -305,42 +305,33 @@ export default function ProfilePage() {
     ...CONTACT_KEYS.filter(shows).map(k => ({ key: k, label: labelOf(k, k), value: k === 'date_of_birth' && val(k) ? fmtDay(val(k).slice(0, 10)) : val(k), wide: k === 'email' || k === 'experience' })),
     ...moreFields.map(f => ({ key: f.fieldKey, label: f.label, value: f.fieldType === 'date' && val(f.fieldKey) ? fmtDay(val(f.fieldKey).slice(0, 10)) : val(f.fieldKey), wide: f.fieldType === 'textarea' })),
   ]
+  const fullName = [val('first_name'), val('mid_name'), val('last_name')].filter(Boolean).join(' ') || profile.displayName
   const personalCard = (
     <Card title="Personal Information" icon={ICONS.person}>
-      <div style={{ borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column', background: '#fff',
-        border: `1px solid ${withAlpha(P.navy, 0.1)}`, boxShadow: '0 18px 30px -22px rgba(19,46,87,0.7)' }}>
-        {/* band across the top, like a company ID card */}
-        <div style={{ position: 'relative', padding: '12px 18px 32px', color: '#fff', overflow: 'hidden', flexShrink: 0,
-          background: `radial-gradient(260px 120px at 100% 0%, ${withAlpha('#F2AC18', 0.32)}, transparent 70%), linear-gradient(135deg, ${P.navy} 0%, #1B4F7E 55%, ${P.teal} 100%)` }}>
-          <div style={{ position: 'absolute', right: -36, top: -50, width: 150, height: 150, borderRadius: '50%', border: '22px solid rgba(255,255,255,0.06)' }} />
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <span style={{ fontFamily: "'Ethnocentric Rg', sans-serif", fontWeight: 300, fontSize: 11, letterSpacing: '0.04em' }}>META-VOICE</span>
-            <span style={{ fontSize: 10, fontWeight: 700, letterSpacing: '0.14em', opacity: 0.85 }}>EMPLOYEE CARD</span>
-          </div>
-        </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', gap: 14, padding: '0 18px', marginTop: -28, flexShrink: 0 }}>
-          <div style={{ width: 72, height: 72, borderRadius: 16, border: '3px solid #fff', overflow: 'hidden', flexShrink: 0, boxShadow: '0 8px 16px -8px rgba(19,46,87,0.6)',
-            background: `linear-gradient(135deg, ${P.teal}, ${P.navy})`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {avatar
-              // eslint-disable-next-line @next/next/no-img-element
-              ? <img src={avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <span style={{ fontFamily: OUTFIT, fontSize: 24, fontWeight: 700, color: '#fff' }}>{profile.displayName?.charAt(0)?.toUpperCase() ?? '?'}</span>}
-          </div>
-          <div style={{ minWidth: 0, paddingBottom: 2 }}>
-            <div style={{ fontFamily: OUTFIT, fontSize: 17, fontWeight: 700, color: P.navy, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-              {[val('first_name'), val('mid_name'), val('last_name')].filter(Boolean).join(' ') || profile.displayName}
-            </div>
-            <div style={{ fontSize: 12, color: '#8A97AB' }}>{roleLabel(profile)}{roleType && roleType !== roleLabel(profile) ? ` · ${roleType}` : ''}</div>
-          </div>
-          <span style={{ marginLeft: 'auto', marginBottom: 4, padding: '3px 10px', borderRadius: 8, background: '#F3F6F9', color: P.navy, fontFamily: OUTFIT, fontSize: 12.5, fontWeight: 600, letterSpacing: '0.04em', flexShrink: 0 }}>{profile.userCode}</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '12px 16px', padding: '14px 18px 16px' }}>
+      {/* Laid out like a national ID card: soft tinted card, fine pattern, name on top, number at the foot */}
+      <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', padding: '14px 18px 12px 22px',
+        background: `repeating-radial-gradient(circle at 88% 18%, ${withAlpha(P.teal, 0.055)} 0 1px, transparent 1px 9px), linear-gradient(135deg, #EDF7F4 0%, #F8FCFB 55%, #E4F2EE 100%)`,
+        border: `1px solid ${withAlpha(P.teal, 0.22)}`, boxShadow: '0 16px 28px -24px rgba(19,46,87,0.6)' }}>
+        <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, background: `linear-gradient(180deg, ${P.teal}, ${P.navy})` }} />
+        <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6B8A86', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Name</div>
+        <div style={{ fontFamily: OUTFIT, fontSize: 19, fontWeight: 700, color: P.navy, letterSpacing: '-0.01em', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fullName}</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px 16px', marginTop: 12 }}>
           {personalRows.map(r => (
             <div key={r.key} style={{ gridColumn: r.wide ? '1 / -1' : undefined, minWidth: 0 }}>
-              <div style={{ fontSize: 10.5, fontWeight: 700, color: '#8A97AB', letterSpacing: '0.07em', textTransform: 'uppercase' }}>{r.label}</div>
-              <div style={{ marginTop: 2, fontSize: 14, fontWeight: 600, color: P.navy, wordBreak: 'break-word' }}>{r.value || <Empty />}</div>
+              <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6B8A86', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{r.label}</div>
+              <div style={{ marginTop: 1, fontSize: 14, fontWeight: 600, color: P.navy, wordBreak: 'break-word' }}>{r.value || <Empty />}</div>
             </div>
           ))}
+        </div>
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginTop: 12, paddingTop: 10, borderTop: `1px dashed ${withAlpha(P.teal, 0.3)}` }}>
+          <div>
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6B8A86', letterSpacing: '0.08em', textTransform: 'uppercase' }}>User ID</div>
+            <div style={{ fontFamily: OUTFIT, fontSize: 16, fontWeight: 600, color: P.navy, letterSpacing: '0.12em' }}>{profile.userCode}</div>
+          </div>
+          <div style={{ textAlign: 'right', minWidth: 0 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6B8A86', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Role</div>
+            <div style={{ fontSize: 13.5, fontWeight: 600, color: P.navy, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{roleLabel(profile)}{roleType && roleType !== roleLabel(profile) ? ` · ${roleType}` : ''}</div>
+          </div>
         </div>
       </div>
     </Card>

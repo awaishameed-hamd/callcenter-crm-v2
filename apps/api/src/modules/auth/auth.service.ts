@@ -4,11 +4,14 @@ import { ConfigService } from '@nestjs/config'
 import { Prisma } from '@prisma/client'
 import * as bcrypt       from 'bcryptjs'
 import * as crypto       from 'crypto'
+import * as fs           from 'fs'
+import * as path         from 'path'
 import { v4 as uuidv4 }  from 'uuid'
 import { Role, ManagerType } from '@crm/shared'
 import { PrismaService } from '../prisma/prisma.service'
 import { AttendanceService } from '../attendance/attendance.service'
 import { EmailService } from '../email/email.service'
+import { uploadRoot, AVATAR_RE } from '../files/files.controller'
 import { USER_SELECT } from '../users/users.service'
 import { V, fail, defined } from '../../common/utils/validate'
 import { PKT_TZ, todayIn, monthStart, monthEnd, dateOnly, fmtLongDate } from '../../common/utils/time'
@@ -138,6 +141,35 @@ export class AuthService {
     if (!(await bcrypt.compare(current, user.password))) fail('Current password is incorrect.')
     await this.prisma.user.update({ where: { id: userId }, data: { password: await bcrypt.hash(next, 12) } })
     return { message: 'Password updated successfully.' }
+  }
+
+  // ── Profile photo (stored on the server, shown everywhere) ─────────────────
+
+  /** Saves a small image sent as a data URL (the browser shrinks it first) and returns its file name. */
+  async setAvatar(userId: string, image: unknown) {
+    const m = /^data:image\/(jpeg|png|webp);base64,([A-Za-z0-9+/=]+)$/.exec(String(image ?? ''))
+    if (!m) fail('Please choose a JPG, PNG or WebP image.')
+    const bytes = Buffer.from(m![2], 'base64')
+    if (bytes.length > 400 * 1024) fail('That image is too large.')
+    const dir = path.join(uploadRoot(), 'avatars')
+    fs.mkdirSync(dir, { recursive: true })
+    const name = `${uuidv4()}.${m![1] === 'jpeg' ? 'jpg' : m![1]}`
+    fs.writeFileSync(path.join(dir, name), bytes)
+    const before = await this.prisma.user.findUnique({ where: { id: userId }, select: { avatar: true } })
+    await this.prisma.user.update({ where: { id: userId }, data: { avatar: name } })
+    this.dropAvatarFile(before?.avatar)
+    return { avatar: name }
+  }
+
+  async clearAvatar(userId: string) {
+    const before = await this.prisma.user.findUnique({ where: { id: userId }, select: { avatar: true } })
+    await this.prisma.user.update({ where: { id: userId }, data: { avatar: null } })
+    this.dropAvatarFile(before?.avatar)
+    return { avatar: null }
+  }
+
+  private dropAvatarFile(name?: string | null) {
+    if (name && AVATAR_RE.test(name)) fs.rm(path.join(uploadRoot(), 'avatars', name), { force: true }, () => {})
   }
 
   // ── Forgot password by emailed code (the argroup flow) ──────────────────────

@@ -14,6 +14,8 @@ async function bootstrap() {
   })
 
   app.setGlobalPrefix('api')
+  // Room for a profile photo sent as a data URL (the browser shrinks it to about 30 KB first)
+  app.useBodyParser('json', { limit: '1mb' })
 
   app.useGlobalPipes(
     new ValidationPipe({

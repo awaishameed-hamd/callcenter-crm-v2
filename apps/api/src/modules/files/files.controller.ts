@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Get, NotFoundException, Post, Query, Req, Res, UnauthorizedException, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common'
+import { BadRequestException, Body, Controller, Get, NotFoundException, Param, Post, Query, Req, Res, UnauthorizedException, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common'
 import { FileInterceptor } from '@nestjs/platform-express'
 import { ConfigService } from '@nestjs/config'
 import { JwtService } from '@nestjs/jwt'
@@ -12,6 +12,7 @@ import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 const FOLDERS = ['chat', 'misc'] as const
 const MAX_BYTES = 25 * 1024 * 1024
 const KEY_RE = /^(chat|misc)\/[0-9a-f-]{36}(\.[a-z0-9]{1,8})?$/
+export const AVATAR_RE = /^[0-9a-f-]{36}\.(jpg|png|webp)$/
 
 export const uploadRoot = () => path.resolve(process.env.UPLOAD_DIR ?? 'uploads')
 
@@ -51,6 +52,17 @@ export class FilesController {
     if (!file) throw new BadRequestException('No file uploaded.')
     const dir = FOLDERS.includes((folder ?? '') as any) ? folder : 'misc'
     return { key: `${dir}/${file.filename}`, fileName: file.originalname, mimeType: file.mimetype, size: file.size }
+  }
+
+  // Profile photos are shown everywhere (sidebar, chat), so they are served without a token. Each
+  // upload gets a new random name, which also lets browsers cache it for good.
+  @Get('avatar/:name')
+  avatar(@Param('name') name: string, @Res() res: Response) {
+    if (!AVATAR_RE.test(name ?? '')) throw new BadRequestException('Invalid photo.')
+    const file = path.join(uploadRoot(), 'avatars', name)
+    if (!fs.existsSync(file)) throw new NotFoundException('Photo not found.')
+    res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+    return res.sendFile(file)
   }
 
   // <img>, <audio> and <a> cannot send an Authorization header, so the token may ride in ?t=.
