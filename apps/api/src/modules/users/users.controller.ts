@@ -39,6 +39,11 @@ export class UsersController {
     return this.users.update(actor, id, body)
   }
 
+  // Permanent delete; the service enforces who may delete whom and refuses users with sales
+  @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
+  @Delete(':id/permanent')
+  deletePermanently(@CurrentUser() actor: any, @Param('id') id: string) { return this.users.deletePermanently(actor, id) }
+
   @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
   @Delete(':id')
   deactivate(@CurrentUser() actor: any, @Param('id') id: string, @Body('inactiveSince') inactiveSince: string) {

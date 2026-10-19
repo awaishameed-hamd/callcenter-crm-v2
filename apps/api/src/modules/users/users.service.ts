@@ -241,6 +241,33 @@ export class UsersService {
     return { message: 'User disabled.' }
   }
 
+  /**
+   * Permanent delete (argroup's rule): only someone you could create, never yourself, and never a
+   * user whose sales are on record; disable those instead so the Sales Report keeps the agent.
+   */
+  async deletePermanently(actor: Actor, id: string) {
+    if (id === actor.id) fail('You cannot delete your own account.')
+    const user = await this.prisma.user.findUnique({
+      where: { id }, select: { id: true, role: true, displayName: true, _count: { select: { submittedSales: true } } },
+    })
+    if (!user) throw new NotFoundException('User not found.')
+    if (!this.canEdit(actor, user)) throw new ForbiddenException('You do not have permission to delete this user.')
+    const sales = user._count.submittedSales
+    if (sales > 0) fail(`${user.displayName} has ${sales} sale${sales === 1 ? '' : 's'} on record. Disable the account instead, so the Sales Report keeps them.`)
+
+    await this.prisma.$transaction(async tx => {
+      // Chat messages are tied to their sender and are not work, so they go
+      await tx.message.deleteMany({ where: { senderId: id } })
+      // Their own leave requests go with them; invoices they created pass to whoever deletes them
+      await tx.leaveApplication.deleteMany({ where: { applicantId: id } })
+      await tx.invoice.updateMany({ where: { createdById: id }, data: { createdById: actor.id } })
+      // The rest releases itself: sale approvals, leave reviews, attendance edits and vouchers keep
+      // their record with the name cleared; attendance, notifications, sessions and chat memberships go
+      await tx.user.delete({ where: { id } })
+    })
+    return { message: 'User deleted permanently.' }
+  }
+
   async activate(actor: Actor, id: string) {
     const user = await this.target(id)
     if (!this.canToggleActive(actor, user)) throw new ForbiddenException('Forbidden.')

@@ -335,7 +335,7 @@ export default function UsersPage() {
   const [editUser, setEditUser]     = useState<User | null>(null)
   const [disableUser, setDisableUser] = useState<User | null>(null)
   const [disableDate, setDisableDate] = useState('')
-  const [confirm, setConfirm] = useState<{ type: 'lock' | 'activate'; user: User } | null>(null)
+  const [confirm, setConfirm] = useState<{ type: 'lock' | 'activate' | 'delete'; user: User } | null>(null)
   const [busy, setBusy]       = useState(false)
   const [formErrors, setFormErrors] = useState<Record<string, string[]>>({})
   const [toast, setToast]     = useState<{ message: string; type: 'success' | 'error' } | null>(null)
@@ -405,7 +405,10 @@ export default function UsersPage() {
     const { type, user: u } = confirm
     setConfirm(null)
     try {
-      if (type === 'activate') {
+      if (type === 'delete') {
+        await apiDelete(`/users/${u.id}/permanent`)
+        setToast({ message: `${u.displayName} deleted permanently.`, type: 'success' })
+      } else if (type === 'activate') {
         await apiPost(`/users/${u.id}/activate`)
         setToast({ message: `${u.displayName} re-activated.`, type: 'success' })
       } else {
@@ -475,6 +478,7 @@ export default function UsersPage() {
         {me?.role === Role.ADMIN && !inactive && iconBtn(u.profileLocked ? 'Unlock profile' : 'Lock profile', () => setConfirm({ type: 'lock', user: u }), '#D97706', 'M16.5 10.5V6.75a4.5 4.5 0 10-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 002.25-2.25v-6.75a2.25 2.25 0 00-2.25-2.25H6.75a2.25 2.25 0 00-2.25 2.25v6.75a2.25 2.25 0 002.25 2.25z', u.profileLocked ? '#D97706' : undefined)}
         {!inactive && iconBtn('Disable user', () => { setDisableUser(u); setDisableDate('') }, '#DC2626', 'M22 10.5h-6m-2.25-4.125a3.375 3.375 0 1 1-6.75 0 3.375 3.375 0 0 1 6.75 0ZM4 19.235v-.11a6.375 6.375 0 0 1 12.75 0v.109A12.318 12.318 0 0 1 10.374 21c-2.331 0-4.512-.645-6.374-1.766Z')}
         {inactive && iconBtn('Re-activate user', () => setConfirm({ type: 'activate', user: u }), '#16A34A', 'M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z')}
+        {u.id !== me?.id && iconBtn('Delete permanently', () => setConfirm({ type: 'delete', user: u }), '#DC2626', 'm14.74 9-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 0 1-2.244 2.077H8.084a2.25 2.25 0 0 1-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 0 0-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 0 1 3.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 0 0-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 0 0-7.5 0')}
       </div>
     )
   }
@@ -514,6 +518,15 @@ export default function UsersPage() {
       {confirm?.type === 'lock' && (
         <Confirm onCancel={() => setConfirm(null)} onConfirm={handleConfirm} confirmLabel="Confirm" confirmCls="bg-blue-600 hover:bg-blue-700">
           <p className="text-sm text-gray-700">{confirm.user.profileLocked ? 'Unlock' : 'Lock'} profile of &quot;{confirm.user.displayName}&quot;?</p>
+        </Confirm>
+      )}
+      {confirm?.type === 'delete' && (
+        <Confirm onCancel={() => setConfirm(null)} onConfirm={handleConfirm} confirmLabel="Delete" confirmCls="bg-red-600 hover:bg-red-700">
+          <p className="text-sm font-semibold text-gray-800">Permanently delete &quot;{confirm.user.displayName}&quot;?</p>
+          <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+            This removes the account, its chat messages and leave requests, and cannot be undone.
+            It is refused if the user has sales on record; disable them instead so the Sales Report keeps them.
+          </p>
         </Confirm>
       )}
       {confirm?.type === 'activate' && (
