@@ -23,7 +23,7 @@ import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { apiGet, apiPost, errMsg, errFields } from '@/lib/api'
 import { P } from '@/lib/palette'
 import type { FormField } from '@/types'
-import { FONT, BEBAS, RAJDHANI, ETHNO, inputCls, withAlpha, ICONS, Svg, Field, SectionCard, SaleTypeBadge, SummaryItem, NotSet } from './saleUi'
+import { FONT, BEBAS, CRISP, RAJDHANI, ETHNO, inputCls, withAlpha, ICONS, Svg, Field, SectionCard, SaleTypeBadge, SummaryItem, NotSet } from './saleUi'
 
 /** StyledSelect reports a plain value; the form's handlers expect a change event. */
 const asEvent = (name: string, value: string) => ({ target: { name, value } }) as React.ChangeEvent<any>
@@ -117,7 +117,7 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
         <circle cx={22} cy={22} r={r} fill="none" stroke={complete ? P.teal : P.gold} strokeWidth={5} strokeLinecap="round"
           strokeDasharray={c} strokeDashoffset={c * (1 - pct)} style={{ transition: 'stroke-dashoffset .3s, stroke .3s' }} />
       </svg>
-      <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: BEBAS, fontSize: 14, letterSpacing: '0.02em', color: complete ? P.teal : P.navy }}>
+      <span style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: BEBAS, ...CRISP, fontSize: 14, letterSpacing: '0.02em', color: complete ? P.teal : P.navy }}>
         {done}/{total}
       </span>
     </div>
@@ -315,7 +315,7 @@ export default function NewSalePage() {
                   onMouseLeave={e => { if (!on) e.currentTarget.style.borderColor = P.border }}>
                   <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                     <span style={{ display: 'flex', color: on ? '#fff' : vColor }}><Svg d={ICONS.phone} size={9} /></span>
-                    <span style={{ fontFamily: BEBAS, fontSize: 17, letterSpacing: '0.06em', lineHeight: 1 }}>{d.didCode}</span>
+                    <span style={{ fontFamily: BEBAS, ...CRISP, fontSize: 17, letterSpacing: '0.06em', lineHeight: 1 }}>{d.didCode}</span>
                   </span>
                   {d.saleType && <SaleTypeBadge type={d.saleType} light={on} small />}
                   {on && (
@@ -344,7 +344,7 @@ export default function NewSalePage() {
         background: `linear-gradient(90deg, ${vColor} 0%, ${vColor} 42%, ${withAlpha(vColor, 0.88)} 54%, ${withAlpha(vColor, 0.62)} 66%, ${withAlpha(vColor, 0.36)} 77%, ${withAlpha(vColor, 0.16)} 87%, ${withAlpha(vColor, 0.05)} 94%, ${withAlpha(vColor, 0)} 100%)`,
         transition: 'background .3s' }}>
         <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 10, letterSpacing: '0.05em', opacity: 0.9 }}>SALE SUMMARY</p>
-        <p style={{ margin: '3px 0 0', fontFamily: BEBAS, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 240 }}>{customer || 'New Customer'}</p>
+        <p style={{ margin: '3px 0 0', fontFamily: BEBAS, ...CRISP, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 240 }}>{customer || 'New Customer'}</p>
         <p style={{ margin: '1px 0 0', fontSize: 12, opacity: 0.85 }}>{form.phone || 'No phone yet'}</p>
       </div>
       <SummaryItem icon={ICONS.tag} color={vColor} label="Vertical">
@@ -354,7 +354,7 @@ export default function NewSalePage() {
       </SummaryItem>
       {!isOther && (
         <SummaryItem icon={ICONS.phone} color={vColor} label="DID">
-          {selectedDid ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: BEBAS, fontSize: 17, letterSpacing: '0.05em', fontWeight: 400, fontSynthesis: 'none', WebkitFontSmoothing: 'antialiased' }}>{selectedDid.didCode}{selectedDid.saleType && <SaleTypeBadge type={selectedDid.saleType} small />}</span> : <NotSet />}
+          {selectedDid ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: BEBAS, ...CRISP, fontSize: 17, letterSpacing: '0.05em' }}>{selectedDid.didCode}{selectedDid.saleType && <SaleTypeBadge type={selectedDid.saleType} small />}</span> : <NotSet />}
         </SummaryItem>
       )}
       <SummaryItem icon={ICONS.address} color={vColor} label="Address" grow>{address || <NotSet />}</SummaryItem>
@@ -371,7 +371,7 @@ export default function NewSalePage() {
           Reset
         </button>
         <button type="submit" form="new-sale-form" disabled={loading}
-          style={{ padding: '9px 26px', borderRadius: 10, border: 0, background: `linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`, color: '#fff', fontFamily: BEBAS, fontSize: 20, letterSpacing: '0.12em', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.65 : 1, boxShadow: '0 10px 22px -12px rgba(30,132,150,0.9)', whiteSpace: 'nowrap' }}>
+          style={{ padding: '9px 26px', borderRadius: 10, border: 0, background: `linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`, color: '#fff', fontFamily: BEBAS, ...CRISP, fontSize: 20, letterSpacing: '0.12em', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.65 : 1, boxShadow: '0 10px 22px -12px rgba(30,132,150,0.9)', whiteSpace: 'nowrap' }}>
           {loading ? 'Submitting...' : 'Record Sale'}
         </button>
       </div>

@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useLayout } from '@/components/layout/AppLayout'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { useVerticals, colorOf } from '@/lib/verticals'
-import { FONT, BEBAS, RAJDHANI, ETHNO, inputCls, withAlpha, ICONS, Field, SectionCard, SaleTypeBadge, SummaryItem, NotSet } from './saleUi'
+import { FONT, BEBAS, CRISP, RAJDHANI, ETHNO, inputCls, withAlpha, ICONS, Field, SectionCard, SaleTypeBadge, SummaryItem, NotSet } from './saleUi'
 import { apiGet, apiPost, apiPut, apiDelete, errMsg } from '@/lib/api'
 import { fmtWithPKT, fullName } from '@/lib/format'
 import { isFinalApprover as finalRole, isSaleReviewer } from '@/lib/roles'
@@ -405,7 +405,7 @@ export default function ApprovalsPage() {
                   <div style={{ padding: '10px 48px 10px 20px', minWidth: 210, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff',
                     background: `linear-gradient(90deg, ${vColor} 0%, ${vColor} 42%, ${withAlpha(vColor, 0.88)} 54%, ${withAlpha(vColor, 0.62)} 66%, ${withAlpha(vColor, 0.36)} 77%, ${withAlpha(vColor, 0.16)} 87%, ${withAlpha(vColor, 0.05)} 94%, ${withAlpha(vColor, 0)} 100%)` }}>
                     <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 10, letterSpacing: '0.05em', opacity: 0.9 }}>{stage}</p>
-                    <p style={{ margin: '3px 0 0', fontFamily: BEBAS, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 260 }}>{fullName(selected)}</p>
+                    <p style={{ margin: '3px 0 0', fontFamily: BEBAS, ...CRISP, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 260 }}>{fullName(selected)}</p>
                     <p style={{ margin: '1px 0 0', fontSize: 12, opacity: 0.85 }}>{selected.phone || 'No phone'}</p>
                   </div>
                   <SummaryItem icon={ICONS.tag} color={vColor} label="Vertical">
@@ -416,7 +416,7 @@ export default function ApprovalsPage() {
                   {!other && (
                     <SummaryItem icon={ICONS.phone} color={vColor} label="DID">
                       {selected.client?.didCode
-                        ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: BEBAS, fontSize: 17, letterSpacing: '0.05em', fontWeight: 400, fontSynthesis: 'none', WebkitFontSmoothing: 'antialiased' }}>{selected.client.didCode}{selected.client.saleType && <SaleTypeBadge type={selected.client.saleType} small />}</span>
+                        ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: BEBAS, ...CRISP, fontSize: 17, letterSpacing: '0.05em' }}>{selected.client.didCode}{selected.client.saleType && <SaleTypeBadge type={selected.client.saleType} small />}</span>
                         : <NotSet />}
                     </SummaryItem>
                   )}
@@ -646,10 +646,13 @@ export default function ApprovalsPage() {
           <Modal>
             <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 440, overflow: 'hidden', boxShadow: '0 30px 60px -20px rgba(19,46,87,0.45)', fontFamily: FONT }}>
               {/* Slim header: the colour fades out to the right, like the summary bar */}
-              <div style={{ padding: '9px 18px', display: 'flex', alignItems: 'baseline', gap: 10, color: '#fff',
+              <div style={{ padding: '11px 20px', color: '#fff',
                 background: `linear-gradient(90deg, ${hc} 0%, ${hc} 30%, ${withAlpha(hc, 0.78)} 55%, ${withAlpha(hc, 0.45)} 78%, ${withAlpha(hc, 0.18)} 100%)` }}>
-                <span style={{ fontFamily: BEBAS, fontSize: 18, letterSpacing: '0.06em', lineHeight: 1.1 }}>{approve ? 'Approve Sale' : 'Reject Sale'}</span>
-                {selected && <span style={{ fontSize: 12, opacity: 0.9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fullName(selected)}</span>}
+                <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 10, letterSpacing: '0.05em', opacity: 0.9 }}>MANAGER APPROVAL</p>
+                <p style={{ margin: '3px 0 0', display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
+                  <span style={{ fontFamily: BEBAS, ...CRISP, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05 }}>{approve ? 'Approve Sale' : 'Reject Sale'}</span>
+                  {selected && <span style={{ fontSize: 12, opacity: 0.9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fullName(selected)}</span>}
+                </p>
               </div>
               <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {approve ? (

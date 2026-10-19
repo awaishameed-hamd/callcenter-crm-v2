@@ -8,6 +8,8 @@ import { P } from '@/lib/palette'
 export const FONT      = "'Aptos', sans-serif"
 export const BEBAS     = "'Bebas Neue', Impact, sans-serif"
 export const RAJDHANI  = "'Rajdhani', sans-serif"
+/** Bebas Neue ships one weight only; this stops the browser faking a bold (which blurs it) */
+export const CRISP = { fontWeight: 400, fontSynthesis: 'none', WebkitFontSmoothing: 'antialiased' } as const
 export const ETHNO     = "'Ethnocentric Rg', sans-serif"
 export const inputCls  = 'w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 outline-none transition focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20'
 
