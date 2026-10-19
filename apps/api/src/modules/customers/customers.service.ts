@@ -181,7 +181,7 @@ export class CustomersService {
     assertSaleReviewer(actor)
     const c = await this.load(id)
     if (c.status !== CustomerStatus.PENDING) fail('Only pending customers can be approved.')
-    const qaComments = V.str(b.qaComments, 'QA comments', { required: true, max: 2000 })!
+    const qaComments = V.str(b.qaComments, 'QA comments', { max: 2000 }) ?? null  // optional
     await this.prisma.customer.update({
       where: { id },
       data:  { status: CustomerStatus.APPROVED, managerId: actor.id, approvedAt: new Date(), qaComments },
@@ -195,7 +195,7 @@ export class CustomersService {
     if (c.status !== CustomerStatus.PENDING) fail('Only pending customers can be rejected.')
     const reason      = V.oneOf(b.reason, 'Reason of cancellation', CANCEL_REASONS)
     const managerNote = V.str(b.managerNote, 'Manager note', { required: true, max: 255 })!
-    const qaComments  = V.str(b.qaComments, 'QA comments', { required: true, max: 2000 })!
+    const qaComments  = V.str(b.qaComments, 'QA comments', { max: 2000 }) ?? null  // optional
     await this.prisma.customer.update({
       where: { id },
       data: {

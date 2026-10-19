@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { CustomerStatus, CANCEL_REASONS } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
@@ -211,16 +211,8 @@ export default function ApprovalsPage() {
     }
   }
 
-  // The manager's QA comments are typed in the QA Comments card; approving or rejecting needs them
-  const qaRef = useRef<HTMLTextAreaElement>(null)
-  const openNote = (kind: 'approve' | 'reject') => {
-    if (!noteQa.trim()) {
-      setToast({ message: 'Write the QA comments first.', type: 'error' })
-      qaRef.current?.focus()
-      return
-    }
-    setNoteModal(kind)
-  }
+  // The manager's QA comments (optional) are typed in the QA Comments card and sent with the decision
+  const openNote = (kind: 'approve' | 'reject') => setNoteModal(kind)
 
   const closeModals = () => {
     setNoteModal(null); setConfirmModal(false); setRateModal(false)
@@ -461,7 +453,7 @@ export default function ApprovalsPage() {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gridAutoRows: '1fr', gap: 12 }}>
                   <SectionCard title="QA Comments" icon={ICONS.notes} done={0} total={0} complete={false}>
                     {isReviewer && pending ? (
-                      <textarea ref={qaRef} value={noteQa} onChange={e => setNoteQa(e.target.value)}
+                      <textarea value={noteQa} onChange={e => setNoteQa(e.target.value)}
                         className={`${inputCls} resize-none`} style={{ flex: 1, minHeight: 96 }} />
                     ) : (
                       <div style={INFO_GRID}>
@@ -659,7 +651,7 @@ export default function ApprovalsPage() {
               </div>
               <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {approve ? (
-                  <p style={{ margin: 0, fontSize: 13, color: P.slate, lineHeight: 1.55 }}>The sale goes to the director for final approval, with your QA comments.</p>
+                  <p style={{ margin: 0, fontSize: 13, color: P.slate, lineHeight: 1.55 }}>The sale goes to the director for final approval.</p>
                 ) : (
                   <>
                     <Field label="Reason of Cancellation" required>
