@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
-import { APP_REFRESH_EVENT } from '@/hooks/useAutoRefresh'
+import { APP_REFRESH_EVENT, pageHandlesRefresh } from '@/hooks/useAutoRefresh'
 
 // One floating button that refetches whatever page is showing. It fires the
 // page's existing refetch (via APP_REFRESH_EVENT) rather than reloading the
@@ -46,7 +46,9 @@ export default function RefreshButton({ compact }: { compact: boolean }) {
     return () => window.removeEventListener('resize', onResize)
   }, [clamp])
 
+  // Pages without a live refetch (settings and form screens) get a normal browser reload.
   const refresh = () => {
+    if (!pageHandlesRefresh()) { window.location.reload(); return }
     window.dispatchEvent(new Event(APP_REFRESH_EVENT))
     setSpinning(true)
     setTimeout(() => setSpinning(false), 700)

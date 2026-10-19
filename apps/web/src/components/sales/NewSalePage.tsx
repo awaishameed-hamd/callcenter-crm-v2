@@ -12,13 +12,14 @@
 //   - the pills are the active verticals from Verticals settings (name, colour, order); a vertical's
 //     DIDs are the DIDs whose campaign is that vertical, and the "Other" vertical needs none.
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { STANDARD_FIELD_KEYS, snakeToCamel } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
 import { useCompact } from '@/hooks/useMediaQuery'
 import { useVerticals, FALLBACK_COLOR, type Vertical } from '@/lib/verticals'
+import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { apiGet, apiPost, errMsg, errFields } from '@/lib/api'
 import { P } from '@/lib/palette'
 import type { FormField } from '@/types'
@@ -205,7 +206,7 @@ function ProgressRing({ done, total }: { done: number; total: number }) {
 
 export default function NewSalePage() {
   const compact = useCompact()
-  const { verticals } = useVerticals()
+  const { verticals, reload: reloadVerticals } = useVerticals()
   const [config, setConfig]           = useState<FormField[] | null>(null)
   const [form, setForm]               = useState<Form>({})
   const [dids, setDids]               = useState<DidOption[]>([])
@@ -229,17 +230,30 @@ export default function NewSalePage() {
   // A vertical's DIDs are the ones whose campaign is that vertical; "Other" has none
   const selectedVertical = verticals.find(v => v.name === form.vertical_type)
   const isOther = !!selectedVertical?.isOther
+  const campaign = form.vertical_type && !isOther ? form.vertical_type : ''
+  const campaignRef = useRef(campaign)
+  campaignRef.current = campaign  // a reply for a vertical the agent has since left is dropped
   useEffect(() => {
-    const campaign = form.vertical_type && !verticals.find(v => v.name === form.vertical_type)?.isOther ? form.vertical_type : ''
     setForm(p => ({ ...p, client_id: '' }))
     setDids([])
     if (!campaign) return
     setDidsLoading(true)
     apiGet<DidOption[]>('/clients/dropdown', { campaign })
-      .then(setDids)
+      .then(list => { if (campaignRef.current === campaign) setDids(list) })
       .catch(() => setDids([]))
       .finally(() => setDidsLoading(false))
-  }, [form.vertical_type, verticals])
+  }, [campaign])
+
+  // Live refresh keeps the vertical pills and DID tiles current while the agent types; the form and
+  // the picked DID stay, unless that DID has just been taken off the list.
+  useAutoRefresh(() => Promise.all([
+    reloadVerticals(),
+    campaign && apiGet<DidOption[]>('/clients/dropdown', { campaign }).then(list => {
+      if (campaignRef.current !== campaign) return
+      setDids(list)
+      setForm(p => (p.client_id && !list.some(d => String(d.id) === String(p.client_id)) ? { ...p, client_id: '' } : p))
+    }).catch(() => {}),
+  ]))
 
   const set = (e: React.ChangeEvent<any>) => {
     const { name, value } = e.target

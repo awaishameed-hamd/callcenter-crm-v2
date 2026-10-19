@@ -133,10 +133,7 @@ export default function AttendanceApprovalPage() {
 
   useEffect(() => { if (moduleTab === 'leaves') fetchLeaves() }, [moduleTab, fetchLeaves])
 
-  useAutoRefresh(() => {
-    fetchData(true)
-    if (moduleTab === 'leaves') fetchLeaves(true)
-  })
+  useAutoRefresh(() => Promise.all([fetchData(true), moduleTab === 'leaves' && fetchLeaves(true)]))
 
   // Client-side filter
   const filtered = useMemo(() => {

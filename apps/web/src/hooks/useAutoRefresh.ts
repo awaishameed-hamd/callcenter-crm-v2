@@ -1,33 +1,76 @@
 import { useEffect, useRef } from 'react'
 import { getSocket } from '@/lib/socket'
 
+// The floating Refresh button dispatches this. Every mounted useAutoRefresh listens, so one press
+// refetches whatever is on screen without reloading the browser.
 export const APP_REFRESH_EVENT = 'app:refresh'
 
-export function useAutoRefresh(refetch: () => void, intervalMs = 10000) {
+// How many mounted screens refetch on APP_REFRESH_EVENT (the sidebar counts are not one of them).
+// When none is, the Refresh button reloads the page instead, so it always does something.
+let pageRefreshers = 0
+export const pageHandlesRefresh = () => pageRefreshers > 0
+
+type Options = {
+  intervalMs?: number
+  /** false for always-mounted parts such as the sidebar counts, which are not the page itself */
+  page?: boolean
+}
+
+/**
+ * Keeps a screen live without a browser reload. `refetch` runs:
+ *   - every 10 s,
+ *   - when a notification or chat message arrives over the socket,
+ *   - when the tab or window comes back into view,
+ *   - when the Refresh button is pressed.
+ * A hidden tab does not poll (it catches up the moment it is shown again), and a refetch that
+ * returns a promise is never started twice at once: a push or a button press that lands while one
+ * is running queues a single follow-up, the timer simply skips that tick.
+ */
+export function useAutoRefresh(refetch: () => unknown, { intervalMs = 10000, page = true }: Options = {}) {
   const refetchRef = useRef(refetch)
   refetchRef.current = refetch
 
   useEffect(() => {
-    const run = () => refetchRef.current()
+    let busy = false
+    let again = false
 
-    const interval = setInterval(run, intervalMs)
+    const start = () => {
+      busy = true
+      Promise.resolve()
+        .then(() => refetchRef.current())
+        .catch(() => {})
+        .finally(() => {
+          busy = false
+          if (again) { again = false; start() }
+        })
+    }
+    // Timer, focus, tab shown: only if nothing is already loading.
+    const tick = () => { if (!document.hidden && !busy) start() }
+    // Something changed: make sure a fetch starts after it.
+    const changed = () => {
+      if (document.hidden) return
+      if (busy) again = true
+      else start()
+    }
+    const onVisible = () => { if (!document.hidden) tick() }
 
+    const interval = setInterval(tick, intervalMs)
     const socket = getSocket()
-    socket.on('notification', run)
-    socket.on('new_message', run)
-
-    const onVisible = () => { if (!document.hidden) run() }
+    socket.on('notification', changed)
+    socket.on('new_message', changed)
     document.addEventListener('visibilitychange', onVisible)
-    window.addEventListener('focus', run)
-    window.addEventListener(APP_REFRESH_EVENT, run)
+    window.addEventListener('focus', tick)
+    window.addEventListener(APP_REFRESH_EVENT, changed)
+    if (page) pageRefreshers++
 
     return () => {
       clearInterval(interval)
-      socket.off('notification', run)
-      socket.off('new_message', run)
+      socket.off('notification', changed)
+      socket.off('new_message', changed)
       document.removeEventListener('visibilitychange', onVisible)
-      window.removeEventListener('focus', run)
-      window.removeEventListener(APP_REFRESH_EVENT, run)
+      window.removeEventListener('focus', tick)
+      window.removeEventListener(APP_REFRESH_EVENT, changed)
+      if (page) pageRefreshers--
     }
-  }, [intervalMs])
+  }, [intervalMs, page])
 }

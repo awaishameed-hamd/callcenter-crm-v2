@@ -245,7 +245,7 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
     }).catch(() => {})
   }, [user])
   useEffect(() => { fetchCounts() }, [fetchCounts, pathname])
-  useAutoRefresh(fetchCounts)
+  useAutoRefresh(fetchCounts, { page: false })
 
   const navItems = user ? navFor(user).filter(i => i.key !== 'myAtt' || user.attendanceApplicable !== false) : []
   const attItems = navItems.filter(i => ATTENDANCE_KEYS.includes(i.key))

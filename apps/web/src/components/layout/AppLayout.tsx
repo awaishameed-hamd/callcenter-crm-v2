@@ -6,6 +6,7 @@ import Sidebar from './Sidebar'
 import RefreshButton from './RefreshButton'
 import { useCompact } from '@/hooks/useMediaQuery'
 import { useAuth } from '@/contexts/AuthContext'
+import { useIdleLogout } from '@/hooks/useIdleLogout'
 import { roleBase, roleHome, managerRedirect } from '@/lib/roles'
 
 interface LayoutCtx { sidebarCollapsed: boolean; setSidebarCollapsed: (v: boolean) => void }
@@ -18,6 +19,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router   = useRouter()
   const { user, isLoading } = useAuth()
+  useIdleLogout()
 
   useEffect(() => { setCollapsed(compact) }, [compact])
 

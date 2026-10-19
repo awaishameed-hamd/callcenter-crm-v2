@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth, type LoginResponse } from '@/contexts/AuthContext'
 import { roleHome } from '@/lib/roles'
@@ -28,6 +28,10 @@ export default function LoginPage() {
   const [loading,    setLoading]    = useState(false)
   const [result,     setResult]     = useState<LoginResponse | null>(null)
   const [stage,      setStage]      = useState<'form' | 'attendance' | 'workingDays'>('form')
+  const [idleOut,    setIdleOut]    = useState(false)
+
+  // Set by useIdleLogout when it signs someone out after 10 idle minutes
+  useEffect(() => { setIdleOut(new URLSearchParams(window.location.search).get('reason') === 'inactivity') }, [])
 
   const finish = (res: LoginResponse, goSetup = false) =>
     router.replace(goSetup ? '/manager/attendance/working-days' : roleHome(res.user))
@@ -124,6 +128,13 @@ export default function LoginPage() {
           <h1 style={{ fontFamily: "'Outfit', sans-serif", fontSize: 38, fontWeight: 700, letterSpacing: '-.02em', color: '#4a5a63', lineHeight: 1.05, margin: 0 }}>User Login</h1>
           <p style={{ marginTop: 16, fontSize: 13, letterSpacing: '.22em', textTransform: 'uppercase', color: '#8a9aa2', fontWeight: 700 }}>Welcome to Meta-Voice</p>
         </header>
+
+        {idleOut && !error && (
+          <div style={{ marginBottom: 14, background: 'rgba(93,111,120,0.08)', border: '1px solid #c4cdd3', borderRadius: 8, padding: '10px 14px', color: '#4a5a63', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>
+            <svg style={{ width: 16, height: 16, flexShrink: 0 }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><circle cx="12" cy="12" r="10" /><polyline points="12 6 12 12 16 14" /></svg>
+            You were signed out after 10 minutes of inactivity.
+          </div>
+        )}
 
         {error && (
           <div style={{ marginBottom: 14, background: 'rgba(214,40,40,0.08)', border: '1px solid #fca5a5', borderRadius: 8, padding: '10px 14px', color: '#b91c1c', fontSize: 13, display: 'flex', alignItems: 'center', gap: 8 }}>

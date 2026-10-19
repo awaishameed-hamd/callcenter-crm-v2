@@ -105,9 +105,8 @@ export default function ApprovalsPage() {
   const [searchInput, setSearchInput]   = useState('')
   const [counts, setCounts]             = useState<Record<string, number>>({})
 
-  const loadCounts = useCallback(() => {
-    apiGet<Record<string, number>>('/customers/counts').then(setCounts).catch(() => {})
-  }, [])
+  const loadCounts = useCallback(() =>
+    apiGet<Record<string, number>>('/customers/counts').then(setCounts).catch(() => {}), [])
   useEffect(() => { loadCounts() }, [loadCounts])
 
   // Same queues for managers and directors. Decided records (approved or rejected) are
@@ -133,7 +132,7 @@ export default function ApprovalsPage() {
   }, [page, statusFilter, search])
 
   useEffect(() => { load() }, [load])
-  useAutoRefresh(() => { load(true); loadCounts() })
+  useAutoRefresh(() => Promise.all([load(true), loadCounts()]))
   useEffect(() => () => setSidebarCollapsed(false), [setSidebarCollapsed])
 
   const handleTab = (key: string) => { setStatusFilter(key); setPage(1); setSelected(null); setSidebarCollapsed(false) }

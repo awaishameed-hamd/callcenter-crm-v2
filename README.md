@@ -79,7 +79,8 @@ Every route is under `/api` and needs a Bearer token, except `POST /api/auth/log
   - `components/layout/`: `AppLayout` (role routing), `Sidebar`, `RefreshButton`
   - `components/ui/`: shared building blocks: `PageChrome` (page title, teal filter bar, buttons, pager), `DataTable` (gold-header table), `StyledSelect`, `PillSelect`, `Toast`
 - `lib/`: `api.ts` (axios with token refresh), `roles.ts`, `format.tsx`, `palette.ts` (all colours), `socket.ts`
-- `hooks/useAutoRefresh.ts`: refetches a page every 10 s, on notifications, on tab focus and when the refresh button is pressed
+- `hooks/useAutoRefresh.ts`: refetches a page every 10 s, on notifications, on tab focus and when the refresh button is pressed; a hidden tab does not poll and catches up when shown. On screens without it (settings and forms) the refresh button reloads the page
+- `hooks/useIdleLogout.ts`: signs a tab out after 10 minutes without mouse, keyboard, scroll or touch activity
 
 ### UI conventions
 

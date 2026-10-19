@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react'
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import { apiGet, apiPost, errMsg } from '@/lib/api'
+import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { usd } from '@/lib/format'
 import { PageTitle } from '@/components/ui/PageChrome'
 
@@ -131,20 +132,21 @@ function RevenueTab() {
   const [rows, setRows] = useState<Record<'client' | 'agent' | 'vertical', RevenueRow[]>>({ client: [], agent: [], vertical: [] })
   const [loading, setLoading] = useState(false)
 
-  const fetchAll = useCallback(async () => {
+  const fetchAll = useCallback(async (silent = false) => {
     if (period === 'custom' && (!fromDate || !toDate)) return
-    setLoading(true)
+    if (!silent) setLoading(true)
     try {
       const base = { period, fromDate: fromDate || undefined, toDate: toDate || undefined }
       const [c, a, v] = await Promise.all((['client', 'agent', 'vertical'] as const).map(type =>
         apiGet<{ rows: RevenueRow[] }>('/invoicing/revenue-report', { ...base, type })))
       setRows({ client: c.rows ?? [], agent: a.rows ?? [], vertical: v.rows ?? [] })
     } catch {
-      setRows({ client: [], agent: [], vertical: [] })
-    } finally { setLoading(false) }
+      if (!silent) setRows({ client: [], agent: [], vertical: [] })
+    } finally { if (!silent) setLoading(false) }
   }, [period, fromDate, toDate])
 
   useEffect(() => { fetchAll() }, [fetchAll])
+  useAutoRefresh(() => fetchAll(true))
 
   return (
     <div className="space-y-4">
@@ -292,13 +294,14 @@ function PendingInvoicesTab({ setToast }: { setToast: (t: ToastState) => void })
   const [loading, setLoading] = useState(true)
   const [createModal, setCreateModal] = useState<Pending | null>(null)
 
-  const fetchPending = useCallback(async () => {
-    setLoading(true)
+  const fetchPending = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true)
     try { setPending((await apiGet<{ pending: Pending[] }>('/invoicing/pending-invoices')).pending ?? []) }
-    catch { setPending([]) } finally { setLoading(false) }
+    catch { if (!silent) setPending([]) } finally { if (!silent) setLoading(false) }
   }, [])
 
   useEffect(() => { fetchPending() }, [fetchPending])
+  useAutoRefresh(() => fetchPending(true))
 
   return (
     <div className="space-y-4">
@@ -367,16 +370,17 @@ function InvoicesTab({ setToast }: { setToast: (t: ToastState) => void }) {
   const [toDate, setToDate]     = useState('')
   const [receivedModal, setReceivedModal] = useState<Invoice | null>(null)
 
-  const fetchInvoices = useCallback(async () => {
+  const fetchInvoices = useCallback(async (silent = false) => {
     if (period === 'custom' && (!fromDate || !toDate)) return
-    setLoading(true)
+    if (!silent) setLoading(true)
     try {
       const r = await apiGet<{ invoices: Invoice[] }>('/invoicing/invoices', { status: statusFilter, period, fromDate: fromDate || undefined, toDate: toDate || undefined })
       setInvoices(r.invoices ?? [])
-    } catch { setInvoices([]) } finally { setLoading(false) }
+    } catch { if (!silent) setInvoices([]) } finally { if (!silent) setLoading(false) }
   }, [statusFilter, period, fromDate, toDate])
 
   useEffect(() => { fetchInvoices() }, [fetchInvoices])
+  useAutoRefresh(() => fetchInvoices(true))
 
   const markSent = async (inv: Invoice) => {
     try {
@@ -449,12 +453,14 @@ function BalancesTab() {
   const [balances, setBalances] = useState<Balance[]>([])
   const [loading, setLoading]   = useState(true)
 
-  useEffect(() => {
+  const fetchBalances = useCallback((silent = false) =>
     apiGet<{ balances: Balance[] }>('/invoicing/customer-balances')
       .then(r => setBalances(r.balances ?? []))
-      .catch(() => setBalances([]))
-      .finally(() => setLoading(false))
-  }, [])
+      .catch(() => { if (!silent) setBalances([]) })
+      .finally(() => setLoading(false)), [])
+
+  useEffect(() => { fetchBalances() }, [fetchBalances])
+  useAutoRefresh(() => fetchBalances(true))
 
   const totals = balances.reduce((a, b) => ({
     totalConfirmed: a.totalConfirmed + b.totalConfirmed, totalInvoiced: a.totalInvoiced + b.totalInvoiced, balanceDue: a.balanceDue + b.balanceDue,

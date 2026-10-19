@@ -2,11 +2,12 @@
 
 // User Access Level: change a user's role.
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import StyledSelect from '@/components/ui/StyledSelect'
 import { apiGet, apiPut, errMsg } from '@/lib/api'
 import type { User } from '@/types'
 import DataTable from '@/components/ui/DataTable'
+import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { P } from '@/lib/palette'
 import { TEAL, GRAD, SetToast } from './shared'
 // ════════════════════════════════════════════════════════════════════════════
@@ -24,12 +25,15 @@ export function UserAccessTab({ setToast }: { setToast: SetToast }) {
   const [pending, setPending] = useState<Record<string, string>>({})
   const [saving, setSaving]   = useState<Record<string, boolean>>({})
 
-  useEffect(() => {
+  // silent: background refresh, so a failed poll keeps the list and shows no error
+  const loadUsers = useCallback((silent = false) =>
     apiGet<User[]>('/users', { perPage: 'all' })
       .then(r => setUsers(Array.isArray(r) ? r : []))
-      .catch(() => setToast({ type: 'error', message: 'Failed to load users.' }))
-      .finally(() => setLoading(false))
-  }, [setToast])
+      .catch(() => { if (!silent) setToast({ type: 'error', message: 'Failed to load users.' }) })
+      .finally(() => setLoading(false)), [setToast])
+
+  useEffect(() => { loadUsers() }, [loadUsers])
+  useAutoRefresh(() => loadUsers(true))
 
   const save = async (user: User) => {
     const role = pending[user.id]

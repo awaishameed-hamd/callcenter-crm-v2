@@ -23,9 +23,8 @@ export const FALLBACK_COLOR = '#1E8496'
 /** Loads the list on mount; `reload` refetches it (after an edit). */
 export function useVerticals(withUsage = false) {
   const [verticals, setVerticals] = useState<Vertical[]>([])
-  const reload = useCallback(() => {
-    apiGet<Vertical[]>('/verticals', withUsage ? { usage: '1' } : undefined).then(setVerticals).catch(() => {})
-  }, [withUsage])
+  const reload = useCallback(() =>
+    apiGet<Vertical[]>('/verticals', withUsage ? { usage: '1' } : undefined).then(setVerticals).catch(() => {}), [withUsage])
   useEffect(() => { reload() }, [reload])
   return { verticals, reload }
 }
