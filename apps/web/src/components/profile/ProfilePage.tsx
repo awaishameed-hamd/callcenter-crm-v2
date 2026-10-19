@@ -1,8 +1,10 @@
 'use client'
 
-// My Profile, in the New Sale look: a summary bar (photo, name, role, contact) over gold-headed
-// cards that fill one screen. The cards come from CRM Management > User Form; read-only values
-// (joining date, department, salary) are set by HR. The photo is shared with the sidebar.
+// My Profile: a modern profile view on one screen. Header card with a cover banner, photo (shared
+// with the sidebar), name, role and quick facts; below it Contact, Salary, Identity & Address, a
+// bank-card style Bank Details and Security (change password). "Edit Profile" opens a side panel
+// with the form from CRM Management > User Form; HR-only values (joining date, department,
+// salary) stay read-only.
 
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { STANDARD_FIELD_KEYS, snakeToCamel } from '@crm/shared'
@@ -16,14 +18,28 @@ import { useAvatar, saveAvatar, removeAvatar } from '@/lib/avatar'
 import { fmtDay } from '@/lib/format'
 import { roleLabel } from '@/lib/roles'
 import { P } from '@/lib/palette'
-import { BEBAS, CRISP, ETHNO, RAJDHANI, FONT, inputCls, withAlpha, ICONS, Svg, Field, SectionCard, SummaryItem, NotSet, Info } from '@/components/sales/saleUi'
+import { inputCls, withAlpha, ICONS, Svg, Field } from '@/components/sales/saleUi'
 import type { FormField, User } from '@/types'
+
+const OUTFIT = "'Outfit', 'Aptos', sans-serif"
+const FONT   = "'Aptos', sans-serif"
+const GOLD   = '#C8902A'
 
 const CORE_KEYS     = new Set(['display_name', ...STANDARD_FIELD_KEYS.user])
 const READONLY_KEYS = new Set(['date_of_joining', 'department', 'basic_salary', 'punctuality_allowance', 'travelling_allowance', 'other_allowance'])
 const SALARY_KEYS   = ['basic_salary', 'punctuality_allowance', 'travelling_allowance', 'other_allowance']
+const SALARY_COLORS = [P.teal, '#F2AC18', P.navy, P.brick]
+const CONTACT_KEYS  = ['email', 'phone', 'date_of_birth', 'experience']
+const IDENTITY_KEYS = ['cnic', 'permanent_address', 'current_address']
+const BANK_KEYS     = ['bank', 'account_title', 'bank_account_no', 'iban_no']
+const HEADER_KEYS   = ['first_name', 'mid_name', 'last_name', 'date_of_joining', 'department']
+const PLACED        = new Set([...CONTACT_KEYS, ...IDENTITY_KEYS, ...BANK_KEYS, ...SALARY_KEYS, ...HEADER_KEYS])
 const COL_SPAN: Record<string, number> = { full: 6, two_thirds: 4, half: 3, third: 2 }
-const SHADE = P.teal
+
+const EXTRA_ICONS: Record<string, string> = {
+  email: ICONS.mail, phone: ICONS.phone, date_of_birth: ICONS.calendar, experience: ICONS.tag,
+  cnic: ICONS.id, permanent_address: ICONS.address, current_address: ICONS.address,
+}
 
 function formatCNIC(raw: string) {
   const d = raw.replace(/\D/g, '').slice(0, 13)
@@ -32,22 +48,79 @@ function formatCNIC(raw: string) {
   return `${d.slice(0, 5)}-${d.slice(5, 12)}-${d.slice(12)}`
 }
 const pkr = (v: number) => `PKR ${v.toLocaleString('en-PK')}`
-const sectionIcon = (name: string) =>
-  /salary/i.test(name) ? ICONS.cash : /bank/i.test(name) ? ICONS.bank : /cnic|address/i.test(name) ? ICONS.id : /personal/i.test(name) ? ICONS.person : ICONS.notes
 const valueOf = (u: User, key: string) => {
   const v = (u as unknown as Record<string, unknown>)[snakeToCamel(key)]
   return v === null || v === undefined ? '' : String(v).slice(0, key.startsWith('date_') ? 10 : undefined)
 }
+/** "2 yrs 3 mos" since the joining date. */
+function tenure(iso?: string | null) {
+  if (!iso) return null
+  const start = new Date(iso.slice(0, 10)), now = new Date()
+  let months = (now.getFullYear() - start.getFullYear()) * 12 + now.getMonth() - start.getMonth()
+  if (now.getDate() < start.getDate()) months--
+  if (months < 1) return 'New joiner'
+  const y = Math.floor(months / 12), m = months % 12
+  return [y && `${y} yr${y > 1 ? 's' : ''}`, m && `${m} mo${m > 1 ? 's' : ''}`].filter(Boolean).join(' ')
+}
+/** 0..4 for the strength meter. */
+function strength(pw: string) {
+  if (!pw) return 0
+  return [pw.length >= 8, /[A-Z]/.test(pw) && /[a-z]/.test(pw), /\d/.test(pw), /[^A-Za-z0-9]/.test(pw)].filter(Boolean).length
+}
 
-/** One form field in edit mode; Textarea fields fill the rest of their card. */
-function EditField({ field, value, onChange, error, fill }: { field: FormField; value: string; onChange: (k: string, v: string) => void; error?: string; fill?: boolean }) {
+// ── Building blocks ──────────────────────────────────────────────────────────
+
+function Card({ title, icon, action, children, style }: { title: string; icon: string; action?: React.ReactNode; children: React.ReactNode; style?: React.CSSProperties }) {
+  return (
+    <section style={{ flex: 1, background: '#fff', borderRadius: 18, border: `1px solid ${withAlpha(P.navy, 0.07)}`, boxShadow: '0 10px 30px -22px rgba(19,46,87,0.45)', padding: '16px 18px', display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, ...style }}>
+      <header style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexShrink: 0 }}>
+        <span style={{ width: 30, height: 30, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: withAlpha(P.teal, 0.1), color: P.teal }}>
+          <Svg d={icon} size={15} />
+        </span>
+        <h2 style={{ margin: 0, fontFamily: OUTFIT, fontSize: 15, fontWeight: 600, color: P.navy, letterSpacing: '-0.01em' }}>{title}</h2>
+        {action && <div style={{ marginLeft: 'auto' }}>{action}</div>}
+      </header>
+      <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>{children}</div>
+    </section>
+  )
+}
+
+const Empty = ({ text = 'Not added yet' }: { text?: string }) => <span style={{ color: '#A3ADBB', fontStyle: 'italic', fontWeight: 400 }}>{text}</span>
+
+/** Icon bubble, small label, value: one line of the Contact / Identity cards. */
+function InfoRow({ icon, label, children }: { icon: string; label: string; children: React.ReactNode }) {
+  return (
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '9px 0', borderBottom: `1px dashed ${withAlpha(P.navy, 0.08)}` }}>
+      <span style={{ width: 34, height: 34, borderRadius: 11, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F3F6F9', color: P.slate }}>
+        <Svg d={icon} size={15} />
+      </span>
+      <div style={{ minWidth: 0, flex: 1 }}>
+        <div style={{ fontSize: 11, fontWeight: 600, color: '#8A97AB', letterSpacing: '0.04em', textTransform: 'uppercase' }}>{label}</div>
+        <div style={{ marginTop: 1, fontSize: 13.5, fontWeight: 600, color: P.navy, wordBreak: 'break-word', lineHeight: 1.45 }}>{children}</div>
+      </div>
+    </div>
+  )
+}
+
+/** Quick fact in the header strip. */
+function Fact({ label, value }: { label: string; value: React.ReactNode }) {
+  return (
+    <div style={{ padding: '0 18px', borderLeft: `1px solid ${withAlpha(P.navy, 0.08)}`, minWidth: 0 }}>
+      <div style={{ fontSize: 11, fontWeight: 600, color: '#8A97AB', letterSpacing: '0.04em', textTransform: 'uppercase', whiteSpace: 'nowrap' }}>{label}</div>
+      <div style={{ marginTop: 2, fontFamily: OUTFIT, fontSize: 16, fontWeight: 600, color: P.navy, whiteSpace: 'nowrap' }}>{value}</div>
+    </div>
+  )
+}
+
+/** A form field inside the edit panel. */
+function EditField({ field, value, onChange, error }: { field: FormField; value: string; onChange: (k: string, v: string) => void; error?: string }) {
   const cls = `${inputCls} ${error ? 'border-red-400' : ''}`
   const handle = (e: React.ChangeEvent<any>) => onChange(field.fieldKey, e.target.value)
   let input: React.ReactNode
   switch (field.fieldType) {
     case 'date':     input = <DateInput value={value} onChange={handle} className={cls} />; break
     case 'number':   input = <input type="number" value={value} onChange={handle} placeholder={field.placeholder ?? ''} className={cls} />; break
-    case 'textarea': input = <textarea value={value} onChange={handle} placeholder={field.placeholder ?? ''} className={`${cls} resize-none`} style={fill ? { flex: 1, minHeight: 56 } : undefined} rows={fill ? undefined : 2} />; break
+    case 'textarea': input = <textarea value={value} onChange={handle} placeholder={field.placeholder ?? ''} rows={field.textareaRows || 2} className={`${cls} resize-none`} />; break
     case 'select':
       input = <StyledSelect value={value} onChange={v => onChange(field.fieldKey, v)} placeholder="Select" borderColor={error ? '#f87171' : undefined} options={(field.options ?? []).map(o => ({ value: o, label: o }))} />
       break
@@ -56,12 +129,10 @@ function EditField({ field, value, onChange, error, fill }: { field: FormField; 
         ? <input type="text" value={value} onChange={e => onChange(field.fieldKey, formatCNIC(e.target.value))} placeholder={field.placeholder ?? '00000-0000000-0'} maxLength={15} className={cls} />
         : <input type={field.fieldKey === 'email' ? 'email' : 'text'} value={value} onChange={handle} placeholder={field.placeholder ?? ''} className={cls} />
   }
-  return (
-    <div style={{ gridColumn: `span ${COL_SPAN[field.colSpan] ?? 2}`, minWidth: 0, ...(fill ? { display: 'flex', flexDirection: 'column', minHeight: 0 } : {}) }}>
-      <Field label={field.label} required={field.isRequired} error={error} fill={fill}>{input}</Field>
-    </div>
-  )
+  return <div style={{ gridColumn: `span ${COL_SPAN[field.colSpan] ?? 2}`, minWidth: 0 }}><Field label={field.label} required={field.isRequired} error={error}>{input}</Field></div>
 }
+
+// ── Page ─────────────────────────────────────────────────────────────────────
 
 export default function ProfilePage() {
   const { user: me, updateUser } = useAuth()
@@ -89,6 +160,7 @@ export default function ProfilePage() {
   useEffect(() => { apiGet<User>('/auth/me').then(load).catch(() => {}) }, [])
   useEffect(() => { apiGet<FormField[]>('/crm/form-fields/public', { formType: 'user' }).then(setFields).catch(() => {}) }, [])
 
+  const byKey    = useMemo(() => Object.fromEntries(fields.map(f => [f.fieldKey, f])), [fields])
   const sections = useMemo(() => {
     const order: string[] = [], grouped: Record<string, FormField[]> = {}
     fields.forEach(f => {
@@ -147,125 +219,177 @@ export default function ProfilePage() {
 
   if (!profile) {
     return (
-      <div style={{ padding: 16, display: 'grid', gridTemplateColumns: compact ? '1fr' : 'repeat(3, 1fr)', gap: 12 }}>
-        <div style={{ gridColumn: '1 / -1', height: 82, borderRadius: 14, background: '#fff', border: `1px solid ${P.border}` }} className="animate-pulse" />
-        {[1, 2, 3].map(i => <div key={i} style={{ height: 260, borderRadius: 12, background: '#fff', border: `1px solid ${P.border}` }} className="animate-pulse" />)}
+      <div style={{ padding: 16, display: 'grid', gap: 14 }}>
+        <div className="animate-pulse" style={{ height: 190, borderRadius: 18, background: '#fff' }} />
+        <div style={{ display: 'grid', gridTemplateColumns: compact ? '1fr' : 'repeat(3, 1fr)', gap: 14 }}>
+          {[1, 2, 3].map(i => <div key={i} className="animate-pulse" style={{ height: 300, borderRadius: 18, background: '#fff' }} />)}
+        </div>
       </div>
     )
   }
 
   const locked   = profile.profileLocked
   const roleType = profile.agentType ?? profile.managerType ?? null
+  const shows    = (k: string) => !!byKey[k]
+  const val      = (k: string) => (CORE_KEYS.has(k) ? valueOf(profile, k) : (extra[k] ?? ''))
+  const labelOf  = (k: string, fallback: string) => byKey[k]?.label ?? fallback
   const err      = (k: string) => errors[snakeToCamel(k)]?.[0]
-  const salary   = SALARY_KEYS.map(k => ({ key: k, value: parseFloat(valueOf(profile, k)) || 0 }))
+
+  const salary      = SALARY_KEYS.filter(shows).map((k, i) => ({ key: k, label: labelOf(k, k), value: parseFloat(valueOf(profile, k)) || 0, color: SALARY_COLORS[i % SALARY_COLORS.length] }))
   const salaryTotal = salary.reduce((s, x) => s + x.value, 0)
+  const moreFields  = fields.filter(f => !PLACED.has(f.fieldKey))
+  const pwScore     = strength(pw.newPassword)
+  const btnPrimary: React.CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 8, padding: '9px 18px', borderRadius: 12, border: 0, cursor: 'pointer', background: `linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`, color: '#fff', fontFamily: OUTFIT, fontSize: 13.5, fontWeight: 600, boxShadow: '0 10px 22px -12px rgba(30,132,150,0.9)', whiteSpace: 'nowrap' }
 
-  const btn = (bg: string, color = '#fff', border?: string): React.CSSProperties => ({
-    padding: '6px 14px', borderRadius: 8, border: border ? `1px solid ${border}` : 0, background: bg, color, cursor: 'pointer', whiteSpace: 'nowrap',
-    fontFamily: RAJDHANI, fontSize: 12.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
-  })
-  const TEAL_BTN = `linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`
-
-  // ── Summary bar: photo, name and the account at a glance ───────────────────
-  const summary = (
-    <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: compact ? 'wrap' : 'nowrap', background: '#fff', borderRadius: 14, overflow: 'hidden', flexShrink: 0, border: `1px solid ${P.border}`, boxShadow: '0 8px 22px -18px rgba(19,46,87,0.6)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '10px 70px 10px 16px', minWidth: 300, flexShrink: 0, color: '#fff',
-        background: `linear-gradient(90deg, ${SHADE} 0%, ${SHADE} 42%, ${withAlpha(SHADE, 0.88)} 54%, ${withAlpha(SHADE, 0.62)} 66%, ${withAlpha(SHADE, 0.36)} 77%, ${withAlpha(SHADE, 0.16)} 87%, ${withAlpha(SHADE, 0.05)} 94%, ${withAlpha(SHADE, 0)} 100%)` }}>
-        <input ref={fileRef} type="file" accept="image/*" onChange={pickPhoto} style={{ display: 'none' }} />
-        <button type="button" onClick={() => fileRef.current?.click()} title="Change profile photo"
-          style={{ position: 'relative', width: 58, height: 58, borderRadius: '50%', padding: 0, border: '2.5px solid rgba(255,255,255,0.9)', background: 'rgba(255,255,255,0.18)', cursor: 'pointer', flexShrink: 0, boxShadow: '0 6px 14px -6px rgba(0,0,0,0.35)' }}>
-          {avatar
-            // eslint-disable-next-line @next/next/no-img-element
-            ? <img src={avatar} alt="Profile" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover', display: 'block' }} />
-            : <span style={{ fontFamily: BEBAS, ...CRISP, fontSize: 26, color: '#fff' }}>{profile.displayName?.charAt(0) ?? '?'}</span>}
-          <span style={{ position: 'absolute', right: -3, bottom: -3, width: 22, height: 22, borderRadius: '50%', background: '#fff', color: SHADE, display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}>
-            <Svg d={ICONS.camera} size={12} />
-          </span>
-        </button>
-        <div style={{ minWidth: 0 }}>
-          <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 10, letterSpacing: '0.05em', opacity: 0.9 }}>MY PROFILE</p>
-          {editing && !locked ? (
-            <input value={form.display_name ?? ''} onChange={e => onField('display_name', e.target.value)} placeholder="Display name"
-              style={{ margin: '3px 0 1px', width: 200, padding: '2px 8px', borderRadius: 6, border: '1px solid rgba(255,255,255,0.7)', background: 'rgba(255,255,255,0.18)', color: '#fff', fontFamily: BEBAS, ...CRISP, fontSize: 20, letterSpacing: '0.05em', outline: 'none' }} />
+  // ── Header: cover banner, photo, name, quick facts ─────────────────────────
+  const header = (
+    <section style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', flexShrink: 0, border: `1px solid ${withAlpha(P.navy, 0.07)}`, boxShadow: '0 14px 34px -24px rgba(19,46,87,0.55)' }}>
+      <div style={{ position: 'relative', height: 104,
+        background: `radial-gradient(420px 160px at 88% 10%, ${withAlpha('#F2AC18', 0.38)}, transparent 70%), radial-gradient(520px 220px at 6% 120%, ${withAlpha('#2BB3C8', 0.55)}, transparent 70%), linear-gradient(120deg, ${P.navy} 0%, #1A4672 48%, ${P.teal} 100%)` }}>
+        {/* fine diagonal texture */}
+        <div style={{ position: 'absolute', inset: 0, opacity: 0.12, background: 'repeating-linear-gradient(135deg, #fff 0 1px, transparent 1px 14px)' }} />
+        <div style={{ position: 'absolute', right: 22, top: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+          {locked ? (
+            <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.35)', color: '#fff', fontFamily: OUTFIT, fontSize: 13, fontWeight: 600, backdropFilter: 'blur(6px)' }}>
+              <Svg d={ICONS.lock} size={14} /> Profile locked by admin
+            </span>
           ) : (
-            <p style={{ margin: '3px 0 0', fontFamily: BEBAS, ...CRISP, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 230 }}>{profile.displayName}</p>
+            <button type="button" onClick={() => { setErrors({}); setEditing(true) }}
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '8px 16px', borderRadius: 12, cursor: 'pointer', background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.4)', color: '#fff', fontFamily: OUTFIT, fontSize: 13.5, fontWeight: 600, backdropFilter: 'blur(6px)' }}>
+              <Svg d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Z" size={14} /> Edit Profile
+            </button>
           )}
-          <p style={{ margin: '1px 0 0', fontSize: 12, opacity: 0.88 }}>
-            {roleLabel(profile)}
-            {avatar && <button type="button" onClick={() => me && removeAvatar(me.id)} style={{ marginLeft: 8, padding: 0, border: 0, background: 'none', color: '#fff', opacity: 0.8, fontSize: 11, textDecoration: 'underline', cursor: 'pointer' }}>remove photo</button>}
-          </p>
         </div>
       </div>
-      <SummaryItem icon={ICONS.id} color={SHADE} label="User ID" compact>{profile.userCode}</SummaryItem>
-      {roleType && <SummaryItem icon={ICONS.tag} color={SHADE} label="Role Type" compact>{roleType}</SummaryItem>}
-      <SummaryItem icon={ICONS.mail} color={SHADE} label="Email" compact>{profile.email || <NotSet />}</SummaryItem>
-      <SummaryItem icon={ICONS.calendar} color={SHADE} label="Joined" compact>{profile.dateOfJoining ? fmtDay(profile.dateOfJoining.slice(0, 10)) : <NotSet />}</SummaryItem>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', marginLeft: 'auto', flexShrink: 0 }}>
-        {locked ? (
-          <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 8, background: '#FFFBEB', border: '1px solid #FDE68A', color: '#B45309', fontFamily: RAJDHANI, fontSize: 12.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
-            <Svg d={ICONS.lock} size={13} /> Profile locked
-          </span>
-        ) : editing ? (
-          <>
-            <button type="button" onClick={() => { setEditing(false); load(profile); setErrors({}) }} style={btn('#fff', P.navy, P.border)}>Cancel</button>
-            <button type="button" onClick={save} disabled={loading} style={{ ...btn(TEAL_BTN), opacity: loading ? 0.65 : 1 }}>{loading ? 'Saving...' : 'Save Changes'}</button>
-          </>
-        ) : (
-          <button type="button" onClick={() => setEditing(true)} style={btn(TEAL_BTN)}>Edit Profile</button>
-        )}
+
+      <div style={{ display: 'flex', alignItems: 'flex-end', flexWrap: compact ? 'wrap' : 'nowrap', gap: 16, padding: '0 22px 16px' }}>
+        <input ref={fileRef} type="file" accept="image/*" onChange={pickPhoto} style={{ display: 'none' }} />
+        <div style={{ position: 'relative', marginTop: -48, flexShrink: 0 }} className="group">
+          <button type="button" onClick={() => fileRef.current?.click()} title="Change profile photo"
+            style={{ width: 104, height: 104, borderRadius: '50%', padding: 0, cursor: 'pointer', border: '5px solid #fff', background: `linear-gradient(135deg, ${P.teal}, ${P.navy})`, boxShadow: '0 14px 28px -12px rgba(19,46,87,0.55)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            {avatar
+              // eslint-disable-next-line @next/next/no-img-element
+              ? <img src={avatar} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
+              : <span style={{ fontFamily: OUTFIT, fontSize: 40, fontWeight: 700, color: '#fff' }}>{profile.displayName?.charAt(0)?.toUpperCase() ?? '?'}</span>}
+          </button>
+          <button type="button" onClick={() => fileRef.current?.click()} title="Change profile photo"
+            style={{ position: 'absolute', right: 2, bottom: 4, width: 30, height: 30, borderRadius: '50%', border: '3px solid #fff', background: P.teal, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+            <Svg d={ICONS.camera} size={13} />
+          </button>
+        </div>
+
+        <div style={{ minWidth: 0, flex: '1 1 260px', paddingBottom: 2 }}>
+          <h1 style={{ margin: 0, fontFamily: OUTFIT, fontSize: 26, fontWeight: 700, color: P.navy, letterSpacing: '-0.02em', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.displayName}</h1>
+          <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
+            <span style={{ padding: '3px 11px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: withAlpha(P.teal, 0.12), color: '#0E6A79' }}>{roleLabel(profile)}</span>
+            {roleType && roleType !== roleLabel(profile) && <span style={{ padding: '3px 11px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: withAlpha('#F2AC18', 0.18), color: '#8A5A00' }}>{roleType}</span>}
+            <span style={{ padding: '3px 11px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: profile.isActive ? '#E8F7EE' : '#FDECEC', color: profile.isActive ? '#15803D' : '#B91C1C', display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor' }} />{profile.isActive ? 'Active' : 'Inactive'}
+            </span>
+            {avatar && <button type="button" onClick={() => me && removeAvatar(me.id)} style={{ marginLeft: 4, padding: 0, border: 0, background: 'none', color: '#8A97AB', fontSize: 12, textDecoration: 'underline', cursor: 'pointer' }}>Remove photo</button>}
+          </div>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', paddingBottom: 4, flexShrink: 0 }}>
+          <Fact label="User ID" value={profile.userCode} />
+          {shows('department') && <Fact label={labelOf('department', 'Department')} value={val('department') || <Empty text="Not set" />} />}
+          <Fact label="Joined" value={profile.dateOfJoining ? fmtDay(profile.dateOfJoining.slice(0, 10)) : <Empty text="Not set" />} />
+          {profile.dateOfJoining && <Fact label="With us" value={<span style={{ color: P.teal }}>{tenure(profile.dateOfJoining)}</span>} />}
+        </div>
       </div>
-    </div>
+    </section>
   )
 
   // ── Cards ──────────────────────────────────────────────────────────────────
-  const card = (name: string, list: FormField[]) => {
-    const isSalary   = /salary/i.test(name)
-    const isPersonal = /personal/i.test(name)
-    let body: React.ReactNode
-    if (isSalary) {
-      body = salaryTotal === 0 ? (
-        <p style={{ margin: 'auto', fontSize: 12.5, color: P.textMuted, textAlign: 'center' }}>Salary details not set yet. HR adds them.</p>
-      ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px 14px' }}>
-            {list.map(f => {
-              const v = parseFloat(valueOf(profile, f.fieldKey)) || 0
-              return <Info key={f.fieldKey} label={f.label}>{v > 0 ? <span style={{ color: '#AA7F56' }}>{pkr(v)}</span> : null}</Info>
-            })}
-          </div>
-          <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 12px', borderRadius: 10, background: withAlpha('#AA7F56', 0.08), border: `1px solid ${withAlpha('#AA7F56', 0.25)}` }}>
-            <span style={{ fontFamily: RAJDHANI, fontSize: 13, fontWeight: 700, color: '#5C6D82', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</span>
-            <span style={{ fontFamily: BEBAS, ...CRISP, fontSize: 20, letterSpacing: '0.04em', color: '#AA7F56' }}>{pkr(salaryTotal)}</span>
-          </div>
-        </div>
-      )
-    } else {
-      const fillKeys = new Set(list.filter(f => f.fieldType === 'textarea').map(f => f.fieldKey))
-      body = (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: '10px 12px', flex: 1, alignContent: 'start',
-          gridTemplateRows: fillKeys.size && editing ? `repeat(${Math.max(0, list.length - fillKeys.size)}, auto) repeat(${fillKeys.size}, 1fr)` : undefined }}>
-          {list.map(f => {
-            const ro = READONLY_KEYS.has(f.fieldKey) || locked
-            if (editing && !ro) {
-              return <EditField key={f.fieldKey} field={f} value={fieldValue(f.fieldKey)} onChange={onField} error={err(f.fieldKey)} fill={fillKeys.has(f.fieldKey)} />
-            }
-            const raw = CORE_KEYS.has(f.fieldKey) ? valueOf(profile, f.fieldKey) : (extra[f.fieldKey] ?? '')
-            const shown = raw && f.fieldType === 'date' ? fmtDay(raw.slice(0, 10)) : raw
-            return <Info key={f.fieldKey} label={f.label} span={COL_SPAN[f.colSpan] ?? 2}>{shown || null}</Info>
-          })}
-        </div>
-      )
-    }
-    return (
-      <SectionCard key={name} title={name} icon={sectionIcon(name)} done={0} total={0} complete={false}
-        style={{ gridColumn: isPersonal && !compact ? 'span 2' : undefined }}>
-        {body}
-      </SectionCard>
-    )
-  }
+  const contactCard = (
+    <Card title="Contact" icon={ICONS.person}>
+      <div style={{ overflowY: 'auto', minHeight: 0 }}>
+        {CONTACT_KEYS.filter(shows).map(k => {
+          const raw = val(k)
+          const shown = raw && k === 'date_of_birth' ? fmtDay(raw.slice(0, 10)) : raw
+          return <InfoRow key={k} icon={EXTRA_ICONS[k]} label={labelOf(k, k)}>{shown || <Empty />}</InfoRow>
+        })}
+        {moreFields.map(f => (
+          <InfoRow key={f.fieldKey} icon={ICONS.notes} label={f.label}>{(f.fieldType === 'date' && val(f.fieldKey) ? fmtDay(val(f.fieldKey).slice(0, 10)) : val(f.fieldKey)) || <Empty />}</InfoRow>
+        ))}
+      </div>
+    </Card>
+  )
 
-  const passwordCard = (
-    <SectionCard key="password" title="Change Password" icon={ICONS.lock} done={0} total={0} complete={false}>
+  const salaryCard = salary.length > 0 && (
+    <Card title="Monthly Salary" icon={ICONS.cash}>
+      {salaryTotal === 0 ? (
+        <div style={{ margin: 'auto', textAlign: 'center', color: '#8A97AB', fontSize: 13 }}>Salary details are not set yet.<br />HR adds them.</div>
+      ) : (
+        <>
+          <div style={{ fontFamily: OUTFIT, fontSize: 30, fontWeight: 700, color: P.navy, letterSpacing: '-0.02em', lineHeight: 1 }}>
+            <span style={{ fontSize: 15, fontWeight: 600, color: GOLD, marginRight: 6 }}>PKR</span>{salaryTotal.toLocaleString('en-PK')}
+          </div>
+          <div style={{ display: 'flex', height: 10, borderRadius: 99, overflow: 'hidden', margin: '14px 0 12px', background: '#EEF2F6' }}>
+            {salary.filter(s => s.value > 0).map(s => <div key={s.key} title={`${s.label}: ${pkr(s.value)}`} style={{ width: `${(s.value / salaryTotal) * 100}%`, background: s.color }} />)}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px 14px' }}>
+            {salary.map(s => (
+              <div key={s.key} style={{ display: 'flex', alignItems: 'flex-start', gap: 8, minWidth: 0 }}>
+                <span style={{ width: 9, height: 9, borderRadius: 3, background: s.color, marginTop: 4, flexShrink: 0 }} />
+                <div style={{ minWidth: 0 }}>
+                  <div style={{ fontSize: 11.5, color: '#8A97AB', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</div>
+                  <div style={{ fontSize: 13.5, fontWeight: 600, color: s.value ? P.navy : '#A3ADBB' }}>{s.value ? pkr(s.value) : 'None'}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+    </Card>
+  )
+
+  const identityCard = (
+    <Card title="Identity & Address" icon={ICONS.id}>
+      <div style={{ overflowY: 'auto', minHeight: 0 }}>
+        {IDENTITY_KEYS.filter(shows).map(k => (
+          <InfoRow key={k} icon={EXTRA_ICONS[k]} label={labelOf(k, k)}>
+            {val(k) ? (k === 'cnic' ? <span style={{ fontFamily: OUTFIT, letterSpacing: '0.06em' }}>{val(k)}</span> : val(k)) : <Empty />}
+          </InfoRow>
+        ))}
+      </div>
+    </Card>
+  )
+
+  const acct = val('bank_account_no').replace(/\s/g, '')
+  const bankCard = BANK_KEYS.some(shows) && (
+    <Card title="Bank Details" icon={ICONS.bank}>
+      <div style={{ position: 'relative', borderRadius: 16, padding: '16px 18px', color: '#fff', overflow: 'hidden', minHeight: 150, display: 'flex', flexDirection: 'column',
+        background: `radial-gradient(260px 140px at 100% 0%, ${withAlpha('#F2AC18', 0.35)}, transparent 70%), linear-gradient(135deg, ${P.navy} 0%, #1B4F7E 55%, ${P.teal} 100%)`, boxShadow: '0 18px 30px -20px rgba(19,46,87,0.9)' }}>
+        <div style={{ position: 'absolute', right: -40, bottom: -60, width: 180, height: 180, borderRadius: '50%', border: '24px solid rgba(255,255,255,0.06)' }} />
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <span style={{ fontFamily: OUTFIT, fontSize: 15, fontWeight: 600, letterSpacing: '0.02em' }}>{val('bank') || 'Bank not added'}</span>
+          {/* card chip */}
+          <span style={{ width: 34, height: 26, borderRadius: 6, background: 'linear-gradient(135deg, #F7D58B, #C8902A)', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }} />
+        </div>
+        <div style={{ marginTop: 'auto', fontFamily: OUTFIT, fontSize: 18, fontWeight: 500, letterSpacing: '0.14em' }}>
+          {acct ? `•••• •••• ${acct.slice(-4)}` : '•••• •••• ••••'}
+        </div>
+        <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginTop: 10 }}>
+          <div style={{ minWidth: 0 }}>
+            <div style={{ fontSize: 10, opacity: 0.7, letterSpacing: '0.08em', textTransform: 'uppercase' }}>{labelOf('account_title', 'Account Title')}</div>
+            <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{val('account_title') || 'Not added'}</div>
+          </div>
+        </div>
+      </div>
+      {shows('iban_no') && (
+        <div style={{ marginTop: 10, display: 'flex', alignItems: 'center', gap: 10, padding: '8px 12px', borderRadius: 12, background: '#F3F6F9' }}>
+          <span style={{ fontSize: 11, fontWeight: 700, color: '#8A97AB', letterSpacing: '0.06em' }}>IBAN</span>
+          <span style={{ fontFamily: OUTFIT, fontSize: 13, fontWeight: 500, color: P.navy, letterSpacing: '0.05em', wordBreak: 'break-all' }}>
+            {val('iban_no') ? val('iban_no').replace(/\s/g, '').replace(/(.{4})/g, '$1 ').trim() : <Empty />}
+          </span>
+        </div>
+      )}
+    </Card>
+  )
+
+  const securityCard = (
+    <Card title="Security" icon={ICONS.lock}>
       <form onSubmit={changePassword} style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
         <Field label="Current Password">
           <input type="password" value={pw.currentPassword} onChange={e => setPw(p => ({ ...p, currentPassword: e.target.value }))} placeholder="Current password" required className={inputCls} />
@@ -278,22 +402,81 @@ export default function ProfilePage() {
             <input type="password" value={pw.newPasswordConfirmation} onChange={e => setPw(p => ({ ...p, newPasswordConfirmation: e.target.value }))} placeholder="Repeat it" required className={inputCls} />
           </Field>
         </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ display: 'flex', gap: 4, flex: 1 }}>
+            {[1, 2, 3, 4].map(i => <span key={i} style={{ flex: 1, height: 5, borderRadius: 99, background: pwScore >= i ? ['#EF4444', '#F59E0B', '#22C55E', P.teal][pwScore - 1] : '#E5EAF0', transition: 'background .2s' }} />)}
+          </div>
+          <span style={{ fontSize: 11.5, fontWeight: 600, color: '#8A97AB', width: 52, textAlign: 'right' }}>{['', 'Weak', 'Fair', 'Good', 'Strong'][pwScore]}</span>
+        </div>
         {pwError && <p style={{ margin: 0, fontSize: 12, color: '#EF4444' }}>{pwError}</p>}
-        <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'flex-start' }}>
-          <button type="submit" disabled={pwLoading} style={{ ...btn(TEAL_BTN), opacity: pwLoading ? 0.65 : 1 }}>{pwLoading ? 'Updating...' : 'Change Password'}</button>
+        <div style={{ marginTop: 'auto' }}>
+          <button type="submit" disabled={pwLoading} style={{ ...btnPrimary, opacity: pwLoading ? 0.65 : 1 }}>
+            <Svg d={ICONS.lock} size={14} /> {pwLoading ? 'Updating...' : 'Update Password'}
+          </button>
         </div>
       </form>
-    </SectionCard>
+    </Card>
+  )
+
+  // ── Edit panel ─────────────────────────────────────────────────────────────
+  const editPanel = editing && (
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'flex-end' }}>
+      <div onClick={() => { setEditing(false); load(profile) }} style={{ position: 'absolute', inset: 0, background: 'rgba(19,46,87,0.35)', backdropFilter: 'blur(2px)' }} />
+      <aside style={{ position: 'relative', width: 'min(560px, 100%)', height: '100%', background: '#fff', boxShadow: '-20px 0 40px -20px rgba(19,46,87,0.5)', display: 'flex', flexDirection: 'column', fontFamily: FONT }}>
+        <div style={{ padding: '18px 22px', borderBottom: `1px solid ${withAlpha(P.navy, 0.08)}`, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <span style={{ width: 34, height: 34, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', background: withAlpha(P.teal, 0.1), color: P.teal }}>
+            <Svg d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Z" size={16} />
+          </span>
+          <div>
+            <h2 style={{ margin: 0, fontFamily: OUTFIT, fontSize: 18, fontWeight: 700, color: P.navy }}>Edit Profile</h2>
+            <p style={{ margin: 0, fontSize: 12, color: '#8A97AB' }}>Joining date, department and salary are managed by HR.</p>
+          </div>
+          <button type="button" onClick={() => { setEditing(false); load(profile) }} title="Close" style={{ marginLeft: 'auto', width: 32, height: 32, borderRadius: 10, border: 0, background: '#F3F6F9', color: P.slate, cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+        </div>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 18 }}>
+          <Field label="Display Name" required error={err('display_name')}>
+            <input value={form.display_name ?? ''} onChange={e => onField('display_name', e.target.value)} className={inputCls} />
+          </Field>
+          {sections.map(s => {
+            const list = s.list.filter(f => !READONLY_KEYS.has(f.fieldKey))
+            if (!list.length) return null
+            return (
+              <div key={s.name}>
+                <div style={{ fontFamily: OUTFIT, fontSize: 13, fontWeight: 600, color: P.teal, marginBottom: 8 }}>{s.name}</div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: '10px 12px' }}>
+                  {list.map(f => <EditField key={f.fieldKey} field={f} value={fieldValue(f.fieldKey)} onChange={onField} error={err(f.fieldKey)} />)}
+                </div>
+              </div>
+            )
+          })}
+        </div>
+        <div style={{ padding: '14px 22px', borderTop: `1px solid ${withAlpha(P.navy, 0.08)}`, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
+          <button type="button" onClick={() => { setEditing(false); load(profile); setErrors({}) }}
+            style={{ padding: '9px 18px', borderRadius: 12, border: `1px solid ${withAlpha(P.navy, 0.15)}`, background: '#fff', color: P.navy, fontFamily: OUTFIT, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
+          <button type="button" onClick={save} disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.65 : 1 }}>{loading ? 'Saving...' : 'Save Changes'}</button>
+        </div>
+      </aside>
+    </div>
   )
 
   return (
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      <div style={{ height: compact ? 'auto' : '100vh', display: 'flex', flexDirection: 'column', gap: 12, padding: '12px 16px 16px', overflowY: 'auto', fontFamily: FONT, background: P.bgMain }}>
-        {summary}
-        <div style={{ flex: 1, minHeight: 0, display: 'grid', gap: 12, gridTemplateColumns: compact ? '1fr' : 'repeat(3, minmax(0, 1fr))', gridAutoRows: 'minmax(min-content, 1fr)' }}>
-          {sections.map(s => card(s.name, s.list))}
-          {passwordCard}
+      {editPanel}
+      <div style={{ height: compact ? 'auto' : '100vh', display: 'flex', flexDirection: 'column', gap: 14, padding: '14px 18px 18px', overflowY: 'auto', fontFamily: FONT, background: P.bgMain }}>
+        {header}
+        <div style={{ flex: 1, minHeight: 0, display: 'grid', gap: 14, gridTemplateColumns: compact ? '1fr' : 'repeat(3, minmax(0, 1fr))' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
+            <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex' }}>{contactCard}</div>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
+            <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex' }}>{identityCard}</div>
+            {salaryCard && <div style={{ flexShrink: 0, display: 'flex' }}>{salaryCard}</div>}
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
+            {bankCard && <div style={{ flexShrink: 0, display: 'flex' }}>{bankCard}</div>}
+            <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex' }}>{securityCard}</div>
+          </div>
         </div>
       </div>
     </>
