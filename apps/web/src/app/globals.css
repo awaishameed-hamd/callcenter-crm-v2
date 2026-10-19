@@ -205,3 +205,8 @@ input[type="date"].date-input::-webkit-calendar-picker-indicator { opacity: 0; w
 
 .scrollbar-none { scrollbar-width: none; }
 .scrollbar-none::-webkit-scrollbar { display: none; }
+
+/* Approvals summary bar: drop the Agent block when the bar is too narrow to show it (laptop screens) */
+@container (max-width: 820px) {
+  .summary-agent { display: none !important; }
+}

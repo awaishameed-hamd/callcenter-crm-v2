@@ -76,9 +76,9 @@ export function SaleTypeBadge({ type, light, small }: { type: string; light?: bo
 }
 
 /** One block of the summary bar: a tinted icon bubble, then a small label above the value. */
-export function SummaryItem({ icon, color, label, grow, children }: { icon: string; color: string; label: string; grow?: boolean; children: React.ReactNode }) {
+export function SummaryItem({ icon, color, label, grow, compact, children }: { icon: string; color: string; label: string; grow?: boolean; compact?: boolean; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 16px', minWidth: 0, flex: grow ? '1 1 180px' : '0 0 auto' }}>
+    <div style={{ display: 'flex', alignItems: 'center', gap: compact ? 8 : 10, padding: compact ? '10px 10px' : '10px 16px', minWidth: 0, flex: grow ? '1 1 180px' : '0 0 auto', overflow: grow ? 'hidden' : undefined }}>
       <span style={{ width: 32, height: 32, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `${color}1A`, color }}>
         <Svg d={icon} size={15} />
       </span>

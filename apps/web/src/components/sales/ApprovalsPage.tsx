@@ -73,7 +73,7 @@ function CopyButton({ text }: { text: string }) {
 }
 
 // Smaller buttons so the whole summary bar stays on one line
-const barBtn = (bg: string, color?: string, border?: string): React.CSSProperties => ({ ...actionBtn(bg, color, border), padding: '5px 10px', fontSize: 12, borderRadius: 7 })
+const barBtn = (bg: string, color?: string, border?: string): React.CSSProperties => ({ ...actionBtn(bg, color, border), padding: '4px 9px', fontSize: 11.5, letterSpacing: '0.05em', borderRadius: 7 })
 
 const GREEN = 'linear-gradient(135deg, #16A34A 0%, #15803D 100%)'
 const RED   = 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)'
@@ -403,26 +403,27 @@ export default function ApprovalsPage() {
             return (
               <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* Summary bar: the customer shaded in the vertical's colour, as on New Sale */}
-                <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: 'nowrap', background: '#fff', borderRadius: 14, overflow: 'hidden', marginTop: 12, border: `1px solid ${P.border}`, boxShadow: '0 8px 22px -18px rgba(19,46,87,0.6)' }}>
-                  <div style={{ padding: '10px 48px 10px 20px', minWidth: 210, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff',
+                <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: 'nowrap', containerType: 'inline-size', background: '#fff', borderRadius: 14, overflow: 'hidden', marginTop: 12, border: `1px solid ${P.border}`, boxShadow: '0 8px 22px -18px rgba(19,46,87,0.6)' }}>
+                  <div style={{ padding: '10px 32px 10px 20px', minWidth: 200, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff',
                     background: `linear-gradient(90deg, ${vColor} 0%, ${vColor} 42%, ${withAlpha(vColor, 0.88)} 54%, ${withAlpha(vColor, 0.62)} 66%, ${withAlpha(vColor, 0.36)} 77%, ${withAlpha(vColor, 0.16)} 87%, ${withAlpha(vColor, 0.05)} 94%, ${withAlpha(vColor, 0)} 100%)` }}>
                     <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 10, letterSpacing: '0.05em', opacity: 0.9 }}>{stage}</p>
                     <p style={{ margin: '3px 0 0', fontFamily: BEBAS, ...CRISP, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 260 }}>{fullName(selected)}</p>
                     <p style={{ margin: '1px 0 0', fontSize: 12, opacity: 0.85 }}>{selected.phone || 'No phone'}</p>
                   </div>
-                  <SummaryItem icon={ICONS.tag} color={vColor} label="Vertical">
+                  <SummaryItem icon={ICONS.tag} color={vColor} label="Vertical" compact>
                     {selected.verticalType
                       ? <span style={{ padding: '1px 10px', borderRadius: 99, fontSize: 12, color: '#fff', background: vColor }}>{other && selected.verticalOther ? selected.verticalOther : selected.verticalType}</span>
                       : <NotSet />}
                   </SummaryItem>
                   {!other && (
-                    <SummaryItem icon={ICONS.phone} color={vColor} label="DID">
+                    <SummaryItem icon={ICONS.phone} color={vColor} label="DID" compact>
                       {selected.client?.didCode
                         ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: BEBAS, ...CRISP, fontSize: 17, letterSpacing: '0.05em' }}>{selected.client.didCode}{selected.client.saleType && <SaleTypeBadge type={selected.client.saleType} small />}</span>
                         : <NotSet />}
                     </SummaryItem>
                   )}
-                  <SummaryItem icon={ICONS.person} color={vColor} label="Agent" grow>{selected.agent?.displayName ?? selected.agent?.userCode ?? <NotSet />}</SummaryItem>
+                  {/* hidden by globals.css when the bar is too narrow to show it */}
+                  <div className="summary-agent" style={{ flex: '1 1 180px', minWidth: 0, display: 'flex' }}><SummaryItem icon={ICONS.person} color={vColor} label="Agent" grow compact>{selected.agent?.displayName ?? selected.agent?.userCode ?? <NotSet />}</SummaryItem></div>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '10px 12px', marginLeft: 'auto', flexShrink: 0 }}>
                     {!editing && isReviewer && pending && (
                       <>
@@ -434,9 +435,9 @@ export default function ApprovalsPage() {
                       <>
                         <button disabled={actionLoading} style={barBtn(GREEN)}
                           onClick={() => (selected.client?.rateType === 'variable' ? (setRateInput(''), setRateModal(true)) : doAction('final-approve'))}>
-                          Final Approve
+                          Approve
                         </button>
-                        <button onClick={() => setConfirmModal(true)} disabled={actionLoading} style={barBtn(RED)}>Final Reject</button>
+                        <button onClick={() => setConfirmModal(true)} disabled={actionLoading} style={barBtn(RED)}>Reject</button>
                       </>
                     )}
                     {!editing && <button onClick={() => { if (isReviewer && pending) setEditForm(p => ({ ...p, qaComments: noteQa })); setEditing(true) }} style={barBtn('#fff', P.navy, P.border)}>Edit</button>}
