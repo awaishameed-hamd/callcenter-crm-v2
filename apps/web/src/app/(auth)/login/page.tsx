@@ -137,7 +137,7 @@ export default function LoginPage() {
         <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: 14, marginTop: 8 }}>
           <div className="lfield" style={fieldStyle}>
             <svg style={iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
-            <input name="identifier" type="text" autoComplete="username" required value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="Username" style={inputStyle} />
+            <input name="identifier" type="text" autoComplete="username" required value={identifier} onChange={e => setIdentifier(e.target.value)} placeholder="Email or User ID" style={inputStyle} />
           </div>
 
           <div className="lfield" style={fieldStyle}>
@@ -151,6 +151,10 @@ export default function LoginPage() {
                   : <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" /><circle cx="12" cy="12" r="3" /></>}
               </svg>
             </button>
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -4 }}>
+            <a href="/forgot-password" style={{ fontSize: 13, color: '#8a9aa2', textDecoration: 'none', fontStyle: 'italic' }}>Forgot your password?</a>
           </div>
 
           <div style={{ height: 1, background: 'linear-gradient(90deg, transparent, #d4dade, transparent)', margin: '6px 0 4px' }} />

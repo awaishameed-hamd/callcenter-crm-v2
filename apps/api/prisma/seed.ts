@@ -45,7 +45,7 @@ const USER_FIELDS: Field[] = [
   { fieldKey: 'first_name',            label: 'First Name',            section: 'Personal Information', fieldType: 'text',       placeholder: 'First',  colSpan: 'third', isRequired: true, isCore: true, sortOrder: 1 },
   { fieldKey: 'mid_name',              label: 'Middle Name',           section: 'Personal Information', fieldType: 'text',       placeholder: 'Middle', colSpan: 'third', sortOrder: 2 },
   { fieldKey: 'last_name',             label: 'Last Name',             section: 'Personal Information', fieldType: 'text',       placeholder: 'Last',   colSpan: 'third', isRequired: true, sortOrder: 3 },
-  { fieldKey: 'email',                 label: 'Email',                 section: 'Personal Information', fieldType: 'text',       placeholder: 'email@example.com', colSpan: 'half', sortOrder: 4 },
+  { fieldKey: 'email',                 label: 'Email',                 section: 'Personal Information', fieldType: 'text',       placeholder: 'email@example.com', colSpan: 'half', sortOrder: 4, isRequired: true },
   { fieldKey: 'phone',                 label: 'Phone',                 section: 'Personal Information', fieldType: 'text',       placeholder: '+92 300 0000000', colSpan: 'half', sortOrder: 5 },
   { fieldKey: 'date_of_birth',         label: 'Date of Birth',         section: 'Personal Information', fieldType: 'date',       colSpan: 'third', sortOrder: 6 },
   { fieldKey: 'date_of_joining',       label: 'Date of Joining',       section: 'Personal Information', fieldType: 'date',       colSpan: 'third', isRequired: true, isCore: true, sortOrder: 7 },

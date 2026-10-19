@@ -10,5 +10,12 @@ export default () => ({
   },
 
   clientUrl:        process.env.CLIENT_URL         ?? 'http://localhost:3000',
+
+  // Password reset emails go through Resend (resend.com); without a key nothing is sent
+  resend: {
+    apiKey:    process.env.RESEND_API_KEY    ?? '',
+    fromEmail: process.env.RESEND_FROM_EMAIL ?? 'noreply@metavoice.cloud',
+    fromName:  process.env.RESEND_FROM_NAME  ?? 'Meta Voice',
+  },
   socketCorsOrigin: process.env.SOCKET_CORS_ORIGIN ?? 'http://localhost:3000',
 })

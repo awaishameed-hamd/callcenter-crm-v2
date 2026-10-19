@@ -9,6 +9,7 @@ import { UsersModule }         from './modules/users/users.module'
 import { ClientsModule }       from './modules/clients/clients.module'
 import { VerticalsModule }     from './modules/verticals/verticals.module'
 import { LiveModule }          from './modules/live/live.module'
+import { EmailModule }         from './modules/email/email.module'
 import { CustomersModule }     from './modules/customers/customers.module'
 import { DashboardModule }     from './modules/dashboard/dashboard.module'
 import { ReportsModule }       from './modules/reports/reports.module'
@@ -31,6 +32,7 @@ import { FilesModule }         from './modules/files/files.module'
     UsersModule,
     VerticalsModule,
     LiveModule,
+    EmailModule,
     ClientsModule,
     CustomersModule,
     DashboardModule,

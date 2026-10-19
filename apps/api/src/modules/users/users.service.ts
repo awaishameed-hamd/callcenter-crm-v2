@@ -118,7 +118,7 @@ export class UsersService {
       firstName:            V.str(b.firstName, 'First name', { required: creating, max: 100 }) ?? undefined,
       midName:              V.str(b.midName, 'Middle name', { max: 100 }),
       lastName:             V.str(b.lastName, 'Last name', { required: creating, max: 100 }) ?? undefined,
-      email:                V.email(b.email, 'Email'),
+      email:                V.email(b.email, 'Email', { required: creating }),  // sign-in and password reset use it
       phone:                V.str(b.phone, 'Phone', { max: 30 }),
       dateOfBirth:          this.toDate(V.date(b.dateOfBirth, 'Date of birth')),
       dateOfJoining:        this.toDate(V.date(b.dateOfJoining, 'Date of joining', { required: creating })),

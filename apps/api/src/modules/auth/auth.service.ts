@@ -1,12 +1,14 @@
-import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common'
+import { Injectable, UnauthorizedException, ForbiddenException, Logger } from '@nestjs/common'
 import { JwtService }    from '@nestjs/jwt'
 import { ConfigService } from '@nestjs/config'
 import { Prisma } from '@prisma/client'
 import * as bcrypt       from 'bcryptjs'
+import * as crypto       from 'crypto'
 import { v4 as uuidv4 }  from 'uuid'
 import { Role, ManagerType } from '@crm/shared'
 import { PrismaService } from '../prisma/prisma.service'
 import { AttendanceService } from '../attendance/attendance.service'
+import { EmailService } from '../email/email.service'
 import { USER_SELECT } from '../users/users.service'
 import { V, fail, defined } from '../../common/utils/validate'
 import { PKT_TZ, todayIn, monthStart, monthEnd, dateOnly, fmtLongDate } from '../../common/utils/time'
@@ -16,13 +18,21 @@ function clock12(hhmm: string) {
   return `${h % 12 === 0 ? 12 : h % 12}:${String(m).padStart(2, '0')} ${h < 12 ? 'AM' : 'PM'}`
 }
 
+// Password reset: long enough to find the mail, short enough that a stolen code goes stale fast
+const OTP_TTL_MIN   = 10
+const RESET_TTL_MIN = 15   // time to type the new password once the code is accepted
+const MAX_OTP_TRIES = 5
+
 @Injectable()
 export class AuthService {
+  private logger = new Logger(AuthService.name)
+
   constructor(
     private prisma:     PrismaService,
     private jwt:        JwtService,
     private config:     ConfigService,
     private attendance: AttendanceService,
+    private email:      EmailService,
   ) {}
 
   async login(identifier: string, password: string) {
@@ -128,6 +138,96 @@ export class AuthService {
     if (!(await bcrypt.compare(current, user.password))) fail('Current password is incorrect.')
     await this.prisma.user.update({ where: { id: userId }, data: { password: await bcrypt.hash(next, 12) } })
     return { message: 'Password updated successfully.' }
+  }
+
+  // ── Forgot password by emailed code (the argroup flow) ──────────────────────
+
+  /** Man****@****ample.com: enough for the owner to recognise, not enough for anyone else to learn. */
+  private maskEmail(email: string): string {
+    const at = email.lastIndexOf('@')
+    if (at < 1) return '****'
+    const local  = email.slice(0, at)
+    const domain = email.slice(at + 1)
+    const shown  = local.slice(0, Math.min(3, Math.max(1, local.length - 1)))
+    const hide   = Math.min(4, Math.max(1, Math.floor(domain.length / 2)))
+    return `${shown}****@****${domain.slice(hide)}`
+  }
+
+  /** Login takes an email or a User ID, so the reset does too. */
+  private findByIdentifier(identifier: unknown) {
+    const id = String(identifier ?? '').trim()
+    if (!id) return Promise.resolve(null)
+    return this.prisma.user.findUnique({ where: id.includes('@') ? { email: id.toLowerCase() } : { userCode: id.toUpperCase() } })
+  }
+
+  /** Step 0: confirms the account and shows only a masked address, so the user picks the right one. */
+  async lookupForReset(identifier: unknown) {
+    // Until RESEND_API_KEY is set on the server no code can be emailed, so say so up front
+    if (!this.email.enabled) fail('Password reset by email is not set up yet. Please ask your admin to reset your password.')
+    const user = await this.findByIdentifier(identifier)
+    if (!user) fail('No account found with that email or user ID.')
+    if (!user!.isActive) fail('That account is inactive. Please contact your admin.')
+    if (!user!.email) fail('That account has no email address on file. Please ask your admin to add one.')
+    return { maskedEmail: this.maskEmail(user!.email!), name: user!.displayName }
+  }
+
+  /** Step 1: emails a 6-digit code. Answers the same either way, so it cannot reveal who has an account. */
+  async forgotPassword(identifier: unknown) {
+    const generic = { message: 'If that account exists, a reset code has been sent to its email address.' }
+    const user = await this.findByIdentifier(identifier)
+    // Inactive accounts are a deliberate lockout; a reset must not undo it
+    if (!user || !user.isActive || !user.email) return generic
+
+    const otp = String(crypto.randomInt(100000, 1000000))
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetOtpHash: await bcrypt.hash(otp, 10), resetOtpExp: new Date(Date.now() + OTP_TTL_MIN * 60_000), resetOtpTries: 0,
+        resetToken: null, resetTokenExp: null,   // a fresh request voids any ticket already issued
+      },
+    })
+    try {
+      await this.email.sendPasswordResetOtp(user.email, user.displayName, otp, OTP_TTL_MIN)
+    } catch {
+      this.logger.error(`Failed to send reset code to user ${user.userCode}`)   // not surfaced: it would leak that the account exists
+    }
+    return generic
+  }
+
+  /** Step 2: a correct code buys a single-use ticket, so the new password never travels with the code. */
+  async verifyResetOtp(identifier: unknown, otpIn: unknown) {
+    const otp = V.str(otpIn, 'Code', { required: true })!
+    if (!/^\d{6}$/.test(otp)) fail('The code is 6 digits.')
+    const user = await this.findByIdentifier(identifier)
+    if (!user || !user.resetOtpHash || !user.resetOtpExp) fail('That code is not valid. Please check it and try again.')
+    if (user!.resetOtpExp! < new Date()) fail('That code has expired. Please request a new one.')
+    if (user!.resetOtpTries >= MAX_OTP_TRIES) fail('Too many incorrect attempts. Please request a new code.')
+    if (!(await bcrypt.compare(otp, user!.resetOtpHash!))) {
+      await this.prisma.user.update({ where: { id: user!.id }, data: { resetOtpTries: { increment: 1 } } })
+      fail('That code is not valid. Please check it and try again.')
+    }
+    const resetToken = uuidv4() + uuidv4()
+    await this.prisma.user.update({
+      where: { id: user!.id },
+      data: { resetToken, resetTokenExp: new Date(Date.now() + RESET_TTL_MIN * 60_000), resetOtpHash: null, resetOtpExp: null, resetOtpTries: 0 },
+    })
+    return { resetToken }
+  }
+
+  /** Step 3: sets the new password and signs every existing session out. */
+  async resetPassword(resetTokenIn: unknown, passwordIn: unknown) {
+    const resetToken = V.str(resetTokenIn, 'Reset ticket', { required: true })!
+    const password   = V.str(passwordIn, 'Password', { required: true, min: 8 })!
+    const user = await this.prisma.user.findUnique({ where: { resetToken } })
+    if (!user || !user.resetTokenExp || user.resetTokenExp < new Date()) fail('This reset has expired. Please start again.')
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: user!.id },
+        data: { password: await bcrypt.hash(password, 12), resetToken: null, resetTokenExp: null, resetOtpHash: null, resetOtpExp: null, resetOtpTries: 0 },
+      }),
+      this.prisma.refreshToken.deleteMany({ where: { userId: user!.id } }),
+    ])
+    return { message: 'Password updated. You can now sign in with your new password.' }
   }
 
   private async generateTokens(userId: string, email: string, role: string) {

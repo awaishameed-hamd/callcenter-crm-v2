@@ -64,7 +64,7 @@ enum CustomerStatus {
 
 model User {
   id          String  @id @default(cuid())
-  userCode    String  @unique // login username: ADMIN, D001, M001, A001
+  userCode    String  @unique // login username: ADMIN, D001, M001, A001 (an email works too)
   email       String? @unique
   phone       String?
   password    String

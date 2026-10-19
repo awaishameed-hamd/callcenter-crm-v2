@@ -22,6 +22,19 @@ export class AuthController {
   @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@CurrentUser() user: any) { return this.auth.me(user.id) }
+
+  // Forgot password: public by necessity (argroup flow: look up, email a code, check it, set password)
+  @Post('forgot-password/lookup')
+  lookupForReset(@Body('identifier') identifier: string) { return this.auth.lookupForReset(identifier) }
+
+  @Post('forgot-password')
+  forgotPassword(@Body('identifier') identifier: string) { return this.auth.forgotPassword(identifier) }
+
+  @Post('verify-reset-otp')
+  verifyResetOtp(@Body('identifier') identifier: string, @Body('otp') otp: string) { return this.auth.verifyResetOtp(identifier, otp) }
+
+  @Post('reset-password')
+  resetPassword(@Body('resetToken') resetToken: string, @Body('password') password: string) { return this.auth.resetPassword(resetToken, password) }
 }
 
 @UseGuards(JwtAuthGuard)

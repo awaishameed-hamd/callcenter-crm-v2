@@ -95,6 +95,7 @@ The app runs on the argroup VPS (`ssh argroup-vps`), next to argroup.cloud. Neve
 
 - Code: `/var/www/callcenter-crm-v2`, PM2 processes `metavoice-api` (port 4100) and `metavoice-web` (port 3100), behind nginx
 - Secrets: `apps/api/.env` and `apps/web/.env.production` on the server only
+- Email (forgot password codes) goes through Resend: set `RESEND_API_KEY` in `apps/api/.env` (optional `RESEND_FROM_EMAIL`, default noreply@metavoice.cloud, and `RESEND_FROM_NAME`), then `pm2 restart metavoice-api`. The sending domain must be verified in Resend. Without a key the forgot password page says it is not set up
 
 To deploy, push to `main`, then on the server:
 
