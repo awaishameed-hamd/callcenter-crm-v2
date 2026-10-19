@@ -12,7 +12,7 @@ import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { useVerticals, colorOf } from '@/lib/verticals'
 import { FONT, BEBAS, RAJDHANI, ETHNO, inputCls, withAlpha, ICONS, Field, SectionCard, SaleTypeBadge, SummaryItem, NotSet } from './saleUi'
 import { apiGet, apiPost, apiPut, apiDelete, errMsg } from '@/lib/api'
-import { StatusBadge, fmtWithPKT, fullName } from '@/lib/format'
+import { fmtWithPKT, fullName } from '@/lib/format'
 import { isFinalApprover as finalRole, isSaleReviewer } from '@/lib/roles'
 import { P } from '@/lib/palette'
 import type { Customer, Page } from '@/types'
@@ -42,6 +42,9 @@ function Info({ label, span = 1, children }: { label: string; span?: number; chi
   )
 }
 const INFO_GRID: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px 14px' }
+
+// Smaller buttons so the whole summary bar stays on one line
+const barBtn = (bg: string, color?: string, border?: string): React.CSSProperties => ({ ...actionBtn(bg, color, border), padding: '5px 10px', fontSize: 12, borderRadius: 7 })
 
 const GREEN = 'linear-gradient(135deg, #16A34A 0%, #15803D 100%)'
 const RED   = 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)'
@@ -377,8 +380,8 @@ export default function ApprovalsPage() {
             return (
               <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* Summary bar: the customer shaded in the vertical's colour, as on New Sale */}
-                <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: 'wrap', background: '#fff', borderRadius: 14, overflow: 'hidden', marginTop: 12, border: `1px solid ${P.border}`, boxShadow: '0 8px 22px -18px rgba(19,46,87,0.6)' }}>
-                  <div style={{ padding: '10px 80px 10px 20px', minWidth: 230, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff',
+                <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: 'nowrap', background: '#fff', borderRadius: 14, overflow: 'hidden', marginTop: 12, border: `1px solid ${P.border}`, boxShadow: '0 8px 22px -18px rgba(19,46,87,0.6)' }}>
+                  <div style={{ padding: '10px 48px 10px 20px', minWidth: 210, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff',
                     background: `linear-gradient(90deg, ${vColor} 0%, ${vColor} 42%, ${withAlpha(vColor, 0.88)} 54%, ${withAlpha(vColor, 0.62)} 66%, ${withAlpha(vColor, 0.36)} 77%, ${withAlpha(vColor, 0.16)} 87%, ${withAlpha(vColor, 0.05)} 94%, ${withAlpha(vColor, 0)} 100%)` }}>
                     <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 10, letterSpacing: '0.05em', opacity: 0.9 }}>{stage}</p>
                     <p style={{ margin: '3px 0 0', fontFamily: BEBAS, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 260 }}>{fullName(selected)}</p>
@@ -396,38 +399,33 @@ export default function ApprovalsPage() {
                         : <NotSet />}
                     </SummaryItem>
                   )}
-                  <SummaryItem icon={ICONS.person} color={vColor} label="Agent">{selected.agent?.displayName ?? selected.agent?.userCode ?? <NotSet />}</SummaryItem>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', marginLeft: 'auto', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                  <SummaryItem icon={ICONS.person} color={vColor} label="Agent" grow>{selected.agent?.displayName ?? selected.agent?.userCode ?? <NotSet />}</SummaryItem>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, padding: '10px 12px', marginLeft: 'auto', flexShrink: 0 }}>
                     {!editing && isReviewer && pending && (
                       <>
-                        <button onClick={() => openNote('approve')} disabled={actionLoading} style={actionBtn(GREEN)}>Approve</button>
-                        <button onClick={() => openNote('reject')} disabled={actionLoading} style={actionBtn(RED)}>Reject</button>
+                        <button onClick={() => openNote('approve')} disabled={actionLoading} style={barBtn(GREEN)}>Approve</button>
+                        <button onClick={() => openNote('reject')} disabled={actionLoading} style={barBtn(RED)}>Reject</button>
                       </>
                     )}
                     {!editing && isFinalApprover && approved && (
                       <>
-                        <button disabled={actionLoading} style={actionBtn(GREEN)}
+                        <button disabled={actionLoading} style={barBtn(GREEN)}
                           onClick={() => (selected.client?.rateType === 'variable' ? (setRateInput(''), setRateModal(true)) : doAction('final-approve'))}>
                           Final Approve
                         </button>
-                        <button onClick={() => setConfirmModal(true)} disabled={actionLoading} style={actionBtn(RED)}>Final Reject</button>
+                        <button onClick={() => setConfirmModal(true)} disabled={actionLoading} style={barBtn(RED)}>Final Reject</button>
                       </>
                     )}
-                    {!editing && <button onClick={() => setEditing(true)} style={actionBtn('#fff', P.navy, P.border)}>Edit</button>}
+                    {!editing && <button onClick={() => setEditing(true)} style={barBtn('#fff', P.navy, P.border)}>Edit</button>}
                     {!editing && isFinalApprover && (
-                      <button onClick={() => setDeleteModal(true)} disabled={actionLoading} style={actionBtn(withAlpha('#DC2626', 0.08), '#DC2626', withAlpha('#DC2626', 0.3))}>Delete</button>
+                      <button onClick={() => setDeleteModal(true)} disabled={actionLoading} style={barBtn(withAlpha('#DC2626', 0.08), '#DC2626', withAlpha('#DC2626', 0.3))}>Delete</button>
                     )}
                     {editing && (
                       <>
-                        <button onClick={saveEdit} disabled={actionLoading} style={actionBtn(`linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`)}>{actionLoading ? 'Saving' : 'Save'}</button>
-                        <button onClick={() => { setEditing(false); setEditForm(toEditForm(selected)) }} style={actionBtn('#fff', P.navy, P.border)}>Cancel</button>
+                        <button onClick={saveEdit} disabled={actionLoading} style={barBtn(`linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`)}>{actionLoading ? 'Saving' : 'Save'}</button>
+                        <button onClick={() => { setEditing(false); setEditForm(toEditForm(selected)) }} style={barBtn('#fff', P.navy, P.border)}>Cancel</button>
                       </>
                     )}
-                    <StatusBadge status={selected.status} />
-                    <button onClick={() => setSelected(null)} title="Close"
-                      className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-                    </button>
                   </div>
                 </div>
 
