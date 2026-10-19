@@ -62,6 +62,7 @@ function tenure(iso?: string | null) {
   const y = Math.floor(months / 12), m = months % 12
   return [y && `${y} yr${y > 1 ? 's' : ''}`, m && `${m} mo${m > 1 ? 's' : ''}`].filter(Boolean).join(' ')
 }
+const greeting = () => { const h = new Date().getHours(); return h < 12 ? 'Good morning' : h < 17 ? 'Good afternoon' : 'Good evening' }
 /** 0..4 for the strength meter. */
 function strength(pw: string) {
   if (!pw) return 0
@@ -72,8 +73,8 @@ function strength(pw: string) {
 
 function Card({ title, icon, action, children, style }: { title: string; icon: string; action?: React.ReactNode; children: React.ReactNode; style?: React.CSSProperties }) {
   return (
-    <section style={{ flex: 1, background: '#fff', borderRadius: 18, border: `1px solid ${withAlpha(P.navy, 0.07)}`, boxShadow: '0 10px 30px -22px rgba(19,46,87,0.45)', padding: '16px 18px', display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, ...style }}>
-      <header style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12, flexShrink: 0 }}>
+    <section className="mv-card" style={{ flex: 1, background: '#fff', borderRadius: 18, border: `1px solid ${withAlpha(P.navy, 0.07)}`, boxShadow: '0 10px 30px -22px rgba(19,46,87,0.45)', padding: '13px 16px', display: 'flex', flexDirection: 'column', minHeight: 0, minWidth: 0, ...style }}>
+      <header style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexShrink: 0 }}>
         <span style={{ width: 30, height: 30, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: withAlpha(P.teal, 0.1), color: P.teal }}>
           <Svg d={icon} size={15} />
         </span>
@@ -90,8 +91,8 @@ const Empty = ({ text = 'Not added yet' }: { text?: string }) => <span style={{ 
 /** Icon bubble, small label, value: one line of the Contact / Identity cards. */
 function InfoRow({ icon, label, children }: { icon: string; label: string; children: React.ReactNode }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '9px 0', borderBottom: `1px dashed ${withAlpha(P.navy, 0.08)}` }}>
-      <span style={{ width: 34, height: 34, borderRadius: 11, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F3F6F9', color: P.slate }}>
+    <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, padding: '7px 0', borderBottom: `1px dashed ${withAlpha(P.navy, 0.08)}` }}>
+      <span style={{ width: 30, height: 30, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#F3F6F9', color: P.slate }}>
         <Svg d={icon} size={15} />
       </span>
       <div style={{ minWidth: 0, flex: 1 }}>
@@ -244,11 +245,11 @@ export default function ProfilePage() {
   // ── Header: cover banner, photo, name, quick facts ─────────────────────────
   const header = (
     <section style={{ background: '#fff', borderRadius: 20, overflow: 'hidden', flexShrink: 0, border: `1px solid ${withAlpha(P.navy, 0.07)}`, boxShadow: '0 14px 34px -24px rgba(19,46,87,0.55)' }}>
-      <div style={{ position: 'relative', height: 104,
-        background: `radial-gradient(420px 160px at 88% 10%, ${withAlpha('#F2AC18', 0.38)}, transparent 70%), radial-gradient(520px 220px at 6% 120%, ${withAlpha('#2BB3C8', 0.55)}, transparent 70%), linear-gradient(120deg, ${P.navy} 0%, #1A4672 48%, ${P.teal} 100%)` }}>
+      <div className="mv-cover" style={{ position: 'relative', height: 84,
+        background: `radial-gradient(420px 160px at 88% 10%, ${withAlpha('#F2AC18', 0.38)}, transparent 70%), radial-gradient(520px 220px at 6% 120%, ${withAlpha('#2BB3C8', 0.55)}, transparent 70%), linear-gradient(120deg, ${P.navy} 0%, #1A4672 30%, ${P.teal} 60%, #1A4672 80%, ${P.navy} 100%)`, backgroundSize: '100% 100%, 100% 100%, 220% 100%' }}>
         {/* fine diagonal texture */}
         <div style={{ position: 'absolute', inset: 0, opacity: 0.12, background: 'repeating-linear-gradient(135deg, #fff 0 1px, transparent 1px 14px)' }} />
-        <div style={{ position: 'absolute', right: 22, top: 18, display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ position: 'absolute', right: 20, top: 14, display: 'flex', alignItems: 'center', gap: 8 }}>
           {locked ? (
             <span style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 14px', borderRadius: 12, background: 'rgba(255,255,255,0.16)', border: '1px solid rgba(255,255,255,0.35)', color: '#fff', fontFamily: OUTFIT, fontSize: 13, fontWeight: 600, backdropFilter: 'blur(6px)' }}>
               <Svg d={ICONS.lock} size={14} /> Profile locked by admin
@@ -262,24 +263,25 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'flex-end', flexWrap: compact ? 'wrap' : 'nowrap', gap: 16, padding: '0 22px 16px' }}>
+      <div style={{ display: 'flex', alignItems: 'flex-end', flexWrap: compact ? 'wrap' : 'nowrap', gap: 16, padding: '0 22px 12px' }}>
         <input ref={fileRef} type="file" accept="image/*" onChange={pickPhoto} style={{ display: 'none' }} />
-        <div style={{ position: 'relative', marginTop: -48, flexShrink: 0 }} className="group">
+        <div style={{ position: 'relative', marginTop: -44, flexShrink: 0, padding: 3, borderRadius: '50%', background: `conic-gradient(from 210deg, ${P.teal}, #F2AC18, ${P.teal}, #2BB3C8, ${P.teal})`, boxShadow: '0 14px 28px -12px rgba(19,46,87,0.55)' }}>
           <button type="button" onClick={() => fileRef.current?.click()} title="Change profile photo"
-            style={{ width: 104, height: 104, borderRadius: '50%', padding: 0, cursor: 'pointer', border: '5px solid #fff', background: `linear-gradient(135deg, ${P.teal}, ${P.navy})`, boxShadow: '0 14px 28px -12px rgba(19,46,87,0.55)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+            style={{ width: 88, height: 88, borderRadius: '50%', padding: 0, cursor: 'pointer', border: '4px solid #fff', background: `linear-gradient(135deg, ${P.teal}, ${P.navy})`, boxShadow: '0 14px 28px -12px rgba(19,46,87,0.55)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             {avatar
               // eslint-disable-next-line @next/next/no-img-element
               ? <img src={avatar} alt="Profile" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} />
               : <span style={{ fontFamily: OUTFIT, fontSize: 40, fontWeight: 700, color: '#fff' }}>{profile.displayName?.charAt(0)?.toUpperCase() ?? '?'}</span>}
           </button>
           <button type="button" onClick={() => fileRef.current?.click()} title="Change profile photo"
-            style={{ position: 'absolute', right: 2, bottom: 4, width: 30, height: 30, borderRadius: '50%', border: '3px solid #fff', background: P.teal, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
+            style={{ position: 'absolute', right: 0, bottom: 2, width: 28, height: 28, borderRadius: '50%', border: '3px solid #fff', background: P.teal, color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.2)' }}>
             <Svg d={ICONS.camera} size={13} />
           </button>
         </div>
 
         <div style={{ minWidth: 0, flex: '1 1 260px', paddingBottom: 2 }}>
-          <h1 style={{ margin: 0, fontFamily: OUTFIT, fontSize: 26, fontWeight: 700, color: P.navy, letterSpacing: '-0.02em', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.displayName}</h1>
+          <div style={{ fontSize: 12.5, fontWeight: 600, color: '#8A97AB' }}>{greeting()},</div>
+          <h1 style={{ margin: 0, fontFamily: OUTFIT, fontSize: 25, fontWeight: 700, color: P.navy, letterSpacing: '-0.02em', lineHeight: 1.15, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{profile.displayName}</h1>
           <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: 6, marginTop: 6 }}>
             <span style={{ padding: '3px 11px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: withAlpha(P.teal, 0.12), color: '#0E6A79' }}>{roleLabel(profile)}</span>
             {roleType && roleType !== roleLabel(profile) && <span style={{ padding: '3px 11px', borderRadius: 99, fontSize: 12, fontWeight: 600, background: withAlpha('#F2AC18', 0.18), color: '#8A5A00' }}>{roleType}</span>}
@@ -325,7 +327,7 @@ export default function ProfilePage() {
           <div style={{ fontFamily: OUTFIT, fontSize: 30, fontWeight: 700, color: P.navy, letterSpacing: '-0.02em', lineHeight: 1 }}>
             <span style={{ fontSize: 15, fontWeight: 600, color: GOLD, marginRight: 6 }}>PKR</span>{salaryTotal.toLocaleString('en-PK')}
           </div>
-          <div style={{ display: 'flex', height: 10, borderRadius: 99, overflow: 'hidden', margin: '14px 0 12px', background: '#EEF2F6' }}>
+          <div className="mv-grow" style={{ display: 'flex', height: 10, borderRadius: 99, overflow: 'hidden', margin: '12px 0 10px', background: '#EEF2F6' }}>
             {salary.filter(s => s.value > 0).map(s => <div key={s.key} title={`${s.label}: ${pkr(s.value)}`} style={{ width: `${(s.value / salaryTotal) * 100}%`, background: s.color }} />)}
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px 14px' }}>
@@ -389,14 +391,18 @@ export default function ProfilePage() {
   )
 
   const securityCard = (
-    <Card title="Security" icon={ICONS.lock}>
-      <form onSubmit={changePassword} style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1 }}>
-        <Field label="Current Password">
-          <input type="password" value={pw.currentPassword} onChange={e => setPw(p => ({ ...p, currentPassword: e.target.value }))} placeholder="Current password" required className={inputCls} />
-        </Field>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 10 }}>
-          <Field label="New Password">
-            <input type="password" value={pw.newPassword} onChange={e => setPw(p => ({ ...p, newPassword: e.target.value }))} placeholder="Min 8 characters" minLength={8} required className={inputCls} />
+    <Card title="Security" icon={ICONS.lock} action={
+      <button type="submit" form="mv-password" disabled={pwLoading} style={{ ...btnPrimary, padding: '6px 14px', fontSize: 12.5, borderRadius: 10, opacity: pwLoading ? 0.65 : 1 }}>
+        <Svg d={ICONS.lock} size={13} /> {pwLoading ? 'Updating...' : 'Update Password'}
+      </button>
+    }>
+      <form id="mv-password" onSubmit={changePassword} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 8 }}>
+          <Field label="Current">
+            <input type="password" value={pw.currentPassword} onChange={e => setPw(p => ({ ...p, currentPassword: e.target.value }))} placeholder="Current" required className={inputCls} />
+          </Field>
+          <Field label="New">
+            <input type="password" value={pw.newPassword} onChange={e => setPw(p => ({ ...p, newPassword: e.target.value }))} placeholder="Min 8 chars" minLength={8} required className={inputCls} />
           </Field>
           <Field label="Confirm">
             <input type="password" value={pw.newPasswordConfirmation} onChange={e => setPw(p => ({ ...p, newPasswordConfirmation: e.target.value }))} placeholder="Repeat it" required className={inputCls} />
@@ -406,15 +412,50 @@ export default function ProfilePage() {
           <div style={{ display: 'flex', gap: 4, flex: 1 }}>
             {[1, 2, 3, 4].map(i => <span key={i} style={{ flex: 1, height: 5, borderRadius: 99, background: pwScore >= i ? ['#EF4444', '#F59E0B', '#22C55E', P.teal][pwScore - 1] : '#E5EAF0', transition: 'background .2s' }} />)}
           </div>
-          <span style={{ fontSize: 11.5, fontWeight: 600, color: '#8A97AB', width: 52, textAlign: 'right' }}>{['', 'Weak', 'Fair', 'Good', 'Strong'][pwScore]}</span>
+          <span style={{ fontSize: 11.5, fontWeight: 600, color: '#8A97AB', width: 60, textAlign: 'right', whiteSpace: 'nowrap' }}>{pwScore ? ['', 'Weak', 'Fair', 'Good', 'Strong'][pwScore] : 'Strength'}</span>
         </div>
         {pwError && <p style={{ margin: 0, fontSize: 12, color: '#EF4444' }}>{pwError}</p>}
-        <div style={{ marginTop: 'auto' }}>
-          <button type="submit" disabled={pwLoading} style={{ ...btnPrimary, opacity: pwLoading ? 0.65 : 1 }}>
-            <Svg d={ICONS.lock} size={14} /> {pwLoading ? 'Updating...' : 'Update Password'}
-          </button>
-        </div>
       </form>
+    </Card>
+  )
+
+  // ── Profile strength: how complete the profile is, with one-click fixes ────
+  const checks = [
+    ...fields.filter(f => !READONLY_KEYS.has(f.fieldKey) && !SALARY_KEYS.includes(f.fieldKey)).map(f => ({ key: f.fieldKey, label: f.label, done: !!val(f.fieldKey) })),
+    { key: 'photo', label: 'Profile photo', done: !!avatar },
+  ]
+  const doneCount = checks.filter(c => c.done).length
+  const pct = checks.length ? Math.round((doneCount / checks.length) * 100) : 100
+  const missing = checks.filter(c => !c.done)
+  const ringColor = pct >= 90 ? '#22C55E' : pct >= 60 ? P.teal : '#F2AC18'
+  const strengthCard = (
+    <Card title="Profile Strength" icon={ICONS.tag}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+        <div className="mv-ring" style={{ width: 84, height: 84, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `conic-gradient(${ringColor} ${pct * 3.6}deg, #EEF2F6 0deg)` }}>
+          <div style={{ width: 66, height: 66, borderRadius: '50%', background: '#fff', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
+            <span style={{ fontFamily: OUTFIT, fontSize: 21, fontWeight: 700, color: P.navy, lineHeight: 1 }}>{pct}%</span>
+            <span style={{ fontSize: 10, color: '#8A97AB', marginTop: 2 }}>complete</span>
+          </div>
+        </div>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ fontFamily: OUTFIT, fontSize: 15, fontWeight: 600, color: P.navy }}>
+            {pct === 100 ? 'All set, looking great!' : pct >= 60 ? 'Almost there' : 'Let us fill it in'}
+          </div>
+          <div style={{ fontSize: 12.5, color: '#8A97AB', marginTop: 2 }}>{doneCount} of {checks.length} details added</div>
+        </div>
+      </div>
+      {missing.length > 0 && (
+        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6, marginTop: 12, overflow: 'hidden' }}>
+          {missing.slice(0, 6).map(m => (
+            <button key={m.key} type="button" disabled={locked}
+              onClick={() => (m.key === 'photo' ? fileRef.current?.click() : (setErrors({}), setEditing(true)))}
+              style={{ padding: '4px 10px', borderRadius: 99, border: `1px dashed ${withAlpha(P.teal, 0.5)}`, background: withAlpha(P.teal, 0.06), color: '#0E6A79', fontSize: 12, fontWeight: 600, cursor: locked ? 'default' : 'pointer' }}>
+              + {m.label}
+            </button>
+          ))}
+          {missing.length > 6 && <span style={{ padding: '4px 6px', fontSize: 12, color: '#8A97AB' }}>and {missing.length - 6} more</span>}
+        </div>
+      )}
     </Card>
   )
 
@@ -463,11 +504,23 @@ export default function ProfilePage() {
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
       {editPanel}
-      <div style={{ height: compact ? 'auto' : '100vh', display: 'flex', flexDirection: 'column', gap: 14, padding: '14px 18px 18px', overflowY: 'auto', fontFamily: FONT, background: P.bgMain }}>
+      <style>{`
+        @keyframes mvDrift { from { background-position: 0 0, 0 0, 0% 0 } to { background-position: 0 0, 0 0, 100% 0 } }
+        @keyframes mvGrow  { from { transform: scaleX(0) } to { transform: scaleX(1) } }
+        @keyframes mvPop   { from { transform: scale(.85); opacity: 0 } to { transform: scale(1); opacity: 1 } }
+        .mv-cover { animation: mvDrift 14s ease-in-out infinite alternate }
+        .mv-grow  { transform-origin: left; animation: mvGrow .9s cubic-bezier(.2,.8,.2,1) both }
+        .mv-ring  { animation: mvPop .6s cubic-bezier(.2,.8,.2,1) both }
+        .mv-card  { transition: transform .18s ease, box-shadow .18s ease }
+        .mv-card:hover { transform: translateY(-2px); box-shadow: 0 18px 36px -24px rgba(19,46,87,0.55) !important }
+        @media (prefers-reduced-motion: reduce) { .mv-cover, .mv-grow, .mv-ring { animation: none } .mv-card:hover { transform: none } }
+      `}</style>
+      <div style={{ height: compact ? 'auto' : '100vh', display: 'flex', flexDirection: 'column', gap: 14, padding: '12px 18px 14px', overflowY: 'auto', fontFamily: FONT, background: P.bgMain }}>
         {header}
         <div style={{ flex: 1, minHeight: 0, display: 'grid', gap: 14, gridTemplateColumns: compact ? '1fr' : 'repeat(3, minmax(0, 1fr))' }}>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
             <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex' }}>{contactCard}</div>
+            <div style={{ flexShrink: 0, display: 'flex' }}>{securityCard}</div>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
             <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex' }}>{identityCard}</div>
@@ -475,7 +528,7 @@ export default function ProfilePage() {
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14, minHeight: 0 }}>
             {bankCard && <div style={{ flexShrink: 0, display: 'flex' }}>{bankCard}</div>}
-            <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex' }}>{securityCard}</div>
+            <div style={{ flex: '1 1 0', minHeight: 0, display: 'flex' }}>{strengthCard}</div>
           </div>
         </div>
       </div>
