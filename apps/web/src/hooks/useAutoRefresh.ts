@@ -15,7 +15,7 @@ type Options = {
   intervalMs?: number
   /** false for always-mounted parts such as the sidebar counts, which are not the page itself */
   page?: boolean
-  /** also refetch the moment any sale changes (server-sent events): dashboards, reports, approvals */
+  /** also refetch the moment any sale changes (socket push): dashboards, reports, approvals */
   sales?: boolean
 }
 
@@ -23,7 +23,7 @@ type Options = {
  * Keeps a screen live without a browser reload. `refetch` runs:
  *   - every 10 s,
  *   - when a notification or chat message arrives over the socket,
- *   - with `sales: true`, the moment any sale changes (server-sent events, lib/live.ts),
+ *   - with `sales: true`, the moment any sale changes (pushed over the socket, lib/live.ts),
  *   - when the tab or window comes back into view,
  *   - when the Refresh button is pressed.
  * A hidden tab does not poll (it catches up the moment it is shown again), and a refetch that

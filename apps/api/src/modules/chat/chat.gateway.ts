@@ -6,6 +6,7 @@ import {
   ConnectedSocket,
   OnGatewayConnection,
   OnGatewayDisconnect,
+  OnGatewayInit,
   WsException,
 } from '@nestjs/websockets'
 import { Server, Socket } from 'socket.io'
@@ -14,6 +15,7 @@ import { ConfigService } from '@nestjs/config'
 import { ChatService } from './chat.service'
 import { PresenceService } from './presence.service'
 import { NotificationsService } from '../notifications/notifications.service'
+import { salesChanged$ } from '../live/sales-events'
 
 interface AuthenticatedSocket extends Socket {
   userId: string
@@ -27,7 +29,7 @@ interface AuthenticatedSocket extends Socket {
   },
   namespace: '/chat',
 })
-export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server: Server
 
   constructor(
@@ -37,6 +39,13 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     private presence:      PresenceService,
     private notifications: NotificationsService,
   ) {}
+
+  // Live dashboards and reports: every sale write ticks here (at most once a second) and each open
+  // tab refetches what it may see. It rides this websocket on purpose: a separate stream per tab
+  // (SSE) took one of the browser's 6 connections per site on HTTP/1.1 and stalled page loads.
+  afterInit() {
+    salesChanged$.subscribe(() => this.server.emit('sales_changed'))
+  }
 
   async handleConnection(client: AuthenticatedSocket) {
     try {
