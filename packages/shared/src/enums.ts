@@ -76,7 +76,7 @@ export const STANDARD_FIELD_KEYS: Record<FormType, string[]> = {
     'opening_balance', 'cycle_of_day', 'billing_start_after_days', 'notes',
   ],
   user: [
-    'first_name', 'mid_name', 'last_name', 'email', 'phone', 'date_of_birth', 'date_of_joining',
+    'first_name', 'mid_name', 'last_name', 'father_name', 'email', 'phone', 'date_of_birth', 'date_of_joining',
     'department', 'experience', 'cnic', 'permanent_address', 'current_address',
     'basic_salary', 'punctuality_allowance', 'travelling_allowance', 'other_allowance',
     'bank', 'account_title', 'bank_account_no', 'iban_no',

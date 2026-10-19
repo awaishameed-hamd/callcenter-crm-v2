@@ -8,6 +8,7 @@ export interface User {
   firstName:     string
   midName?:      string | null
   lastName:      string
+  fatherName?:   string | null
   email?:        string | null
   phone?:        string | null
   dateOfBirth?:  string | null

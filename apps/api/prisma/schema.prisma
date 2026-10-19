@@ -74,6 +74,7 @@ model User {
   firstName        String    @default("")
   midName          String?
   lastName         String    @default("")
+  fatherName       String?
   dateOfBirth      DateTime? @db.Date
   dateOfJoining    DateTime? @db.Date
   address          String?   @db.Text

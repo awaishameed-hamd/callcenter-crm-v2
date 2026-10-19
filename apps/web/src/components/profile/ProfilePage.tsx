@@ -32,7 +32,7 @@ const SALARY_COLORS = [P.teal, '#F2AC18', P.navy, P.brick]
 const CONTACT_KEYS  = ['email', 'phone', 'date_of_birth', 'experience']
 const IDENTITY_KEYS = ['cnic', 'permanent_address', 'current_address']
 const BANK_KEYS     = ['bank', 'account_title', 'bank_account_no', 'iban_no']
-const HEADER_KEYS   = ['first_name', 'mid_name', 'last_name', 'date_of_joining', 'department']
+const HEADER_KEYS   = ['first_name', 'mid_name', 'last_name', 'father_name', 'date_of_joining', 'department']
 const PLACED        = new Set([...CONTACT_KEYS, ...IDENTITY_KEYS, ...BANK_KEYS, ...SALARY_KEYS, ...HEADER_KEYS])
 const COL_SPAN: Record<string, number> = { full: 6, two_thirds: 4, half: 3, third: 2 }
 
@@ -315,6 +315,12 @@ export default function ProfilePage() {
         <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, background: `linear-gradient(180deg, ${P.teal}, ${P.navy})` }} />
         <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6B8A86', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Name</div>
         <div style={{ fontFamily: OUTFIT, fontSize: 19, fontWeight: 700, color: P.navy, letterSpacing: '-0.01em', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fullName}</div>
+        {shows('father_name') && (
+          <div style={{ marginTop: 8 }}>
+            <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6B8A86', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{labelOf('father_name', 'Father Name')}</div>
+            <div style={{ fontSize: 15, fontWeight: 600, color: P.navy, marginTop: 1 }}>{val('father_name') || <Empty />}</div>
+          </div>
+        )}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px 16px', marginTop: 12 }}>
           {personalRows.map(r => (
             <div key={r.key} style={{ gridColumn: r.wide ? '1 / -1' : undefined, minWidth: 0 }}>

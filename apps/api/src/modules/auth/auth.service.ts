@@ -115,6 +115,7 @@ export class AuthService {
       firstName:        V.str(b.firstName, 'First name', { max: 100 }) ?? undefined,
       midName:          V.str(b.midName, 'Middle name', { max: 100 }),
       lastName:         V.str(b.lastName, 'Last name', { max: 100 }) ?? undefined,
+      fatherName:       V.str(b.fatherName, 'Father name', { max: 100 }),
       email,
       phone:            V.str(b.phone, 'Phone', { max: 30 }),
       dateOfBirth:      dob === undefined ? undefined : dob === null ? null : dateOnly(dob),

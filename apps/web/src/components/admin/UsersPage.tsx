@@ -97,7 +97,7 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
   )
 }
 
-function DynamicField({ field, value, onChange, error }: { field: FormField; value: string; onChange: (k: string, v: string) => void; error?: string }) {
+function DynamicField({ field, value, onChange, error, plain }: { field: FormField; value: string; onChange: (k: string, v: string) => void; error?: string; plain?: boolean }) {
   const err = error ? 'border-red-400' : ''
   const handle = (e: React.ChangeEvent<any>) => onChange(field.fieldKey, e.target.value)
   let input: React.ReactNode
@@ -132,7 +132,7 @@ function DynamicField({ field, value, onChange, error }: { field: FormField; val
     input = <input type={t} value={value} onChange={handle} placeholder={field.placeholder ?? ''} className={`${inputCls} ${err}`} />
   }
   return (
-    <div style={{ gridColumn: `span ${COL_SPAN[field.colSpan] ?? 2}` }}>
+    <div style={plain ? undefined : { gridColumn: `span ${COL_SPAN[field.colSpan] ?? 2}` }}>
       <Field label={field.label} required={field.isRequired} error={error}>{input}</Field>
     </div>
   )
@@ -153,6 +153,9 @@ function toForm(u?: User): { form: Form; extra: Form } {
   for (const [k, v] of Object.entries(u.extraFields ?? {})) extra[k] = v === null ? '' : String(v)
   return { form, extra }
 }
+
+// Shown in the Account block instead of their User Form section
+const ACCOUNT_FIELD_KEYS = new Set(['department', 'email'])
 
 function UserForm({ initial, allowedRoles, onSubmit, onCancel, loading, errors }: {
   initial?: User; allowedRoles: Role[]; onSubmit: (payload: Record<string, unknown>) => void; onCancel: () => void; loading: boolean; errors: Record<string, string[]>
@@ -180,6 +183,7 @@ function UserForm({ initial, allowedRoles, onSubmit, onCancel, loading, errors }
   const { order, grouped } = useMemo(() => {
     const order: string[] = [], grouped: Record<string, FormField[]> = {}
     fields.forEach(f => {
+      if (ACCOUNT_FIELD_KEYS.has(f.fieldKey)) return
       const s = CORE_KEYS.has(f.fieldKey) ? (f.section || 'General') : 'Additional Fields'
       if (!grouped[s]) { grouped[s] = []; order.push(s) }
       grouped[s].push(f)
@@ -218,6 +222,21 @@ function UserForm({ initial, allowedRoles, onSubmit, onCancel, loading, errors }
     onSubmit(payload)
   }
 
+  const byKey = Object.fromEntries(fields.map(f => [f.fieldKey, f]))
+  const accountField = (key: string) => byKey[key]
+    ? <DynamicField plain field={byKey[key]} value={form[key] ?? ''} onChange={handleField} error={err(key)} />
+    : <div />
+  const displayNameInput = (
+    <div key="display_name" style={{ gridColumn: 'span 2' }}>
+      <label style={labelStyle}>Display Name<span style={{ color: '#D62828' }}> *</span></label>
+      <input style={iStyle} value={form.displayName} onChange={e => setAccount('displayName', e.target.value)} placeholder="e.g. John Smith" required />
+      {err('displayName') && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#EF4444' }}>{err('displayName')}</p>}
+    </div>
+  )
+  // Display Name goes right after Father Name (or Last Name), else at the end of the first section
+  const displayAfter = byKey.father_name ? 'father_name' : 'last_name'
+  const displaySection = order.find(sec => (grouped[sec] ?? []).some(f => f.fieldKey === displayAfter)) ?? order[0]
+
   const fieldError = (k: string) => err(k) && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#EF4444' }}>{err(k)}</p>
   const req = <span style={{ color: '#D62828' }}> *</span>
 
@@ -225,7 +244,7 @@ function UserForm({ initial, allowedRoles, onSubmit, onCancel, loading, errors }
     <form onSubmit={submit}>
       <div style={{ padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
         <SectionCard title="Account">
-          {/* Fixed layout for every role: Role, Type, User Code, then Display Name and Password */}
+          {/* Same for every role: Role, Type, Department, then User Code, Email, Password */}
           <div className="grid grid-cols-3 gap-4 mb-4">
             <div>
               <label style={labelStyle}>Role{!isEdit && req}</label>
@@ -249,17 +268,14 @@ function UserForm({ initial, allowedRoles, onSubmit, onCancel, loading, errors }
                 <div style={{ ...iStyle, background: '#F8FAFC', color: P.textMuted }}>Not applicable</div>
               )}
             </div>
+            {accountField('department')}
+          </div>
+          <div className="grid grid-cols-3 gap-4">
             <div>
               <label style={labelStyle}>{isEdit ? 'User Code' : 'User Code (Auto)'}</label>
-              <div style={readOnlyStyle}>{codeLoading ? 'Loading...' : form.userCode || ' '}</div>
+              <div style={readOnlyStyle}>{codeLoading ? 'Loading...' : form.userCode || ' '}</div>
             </div>
-          </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label style={labelStyle}>Display Name{req}</label>
-              <input style={iStyle} value={form.displayName} onChange={e => setAccount('displayName', e.target.value)} placeholder="e.g. John Smith" required />
-              {fieldError('displayName')}
-            </div>
+            {accountField('email')}
             <div>
               <label style={labelStyle}>Password{!isEdit && req}</label>
               <input style={iStyle} type="text" value={form.password} onChange={e => setAccount('password', e.target.value)} required={!isEdit} minLength={8}
@@ -275,9 +291,11 @@ function UserForm({ initial, allowedRoles, onSubmit, onCancel, loading, errors }
           return (
             <SectionCard key={section} title={section}>
               <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
-                {list.map(f => (
-                  <DynamicField key={f.fieldKey} field={f} value={(CORE_KEYS.has(f.fieldKey) ? form[f.fieldKey] : extra[f.fieldKey]) ?? ''} onChange={handleField} error={err(f.fieldKey)} />
-                ))}
+                {list.flatMap(f => {
+                  const el = <DynamicField key={f.fieldKey} field={f} value={(CORE_KEYS.has(f.fieldKey) ? form[f.fieldKey] : extra[f.fieldKey]) ?? ''} onChange={handleField} error={err(f.fieldKey)} />
+                  return f.fieldKey === displayAfter ? [el, displayNameInput] : [el]
+                })}
+                {section === displaySection && !list.some(f => f.fieldKey === displayAfter) && displayNameInput}
               </div>
               {salary && total > 0 && (
                 <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">

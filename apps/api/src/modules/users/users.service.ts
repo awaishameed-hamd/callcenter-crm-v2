@@ -12,7 +12,7 @@ const CNIC_RE = /^\d{5}-\d{7}-\d{1}$/
 
 export const USER_SELECT = {
   id: true, userCode: true, role: true, displayName: true,
-  firstName: true, midName: true, lastName: true,
+  firstName: true, midName: true, lastName: true, fatherName: true,
   email: true, phone: true, dateOfBirth: true, dateOfJoining: true,
   department: true, agentType: true, managerType: true, experience: true,
   cnic: true, permanentAddress: true, currentAddress: true, address: true,
@@ -85,7 +85,7 @@ export class UsersService {
   private exportCsv(users: Prisma.UserGetPayload<{ select: typeof USER_SELECT }>[]) {
     const lines = [csvRow([
       'User ID', 'Role', 'Role Type', 'Display Name', 'Status', 'Inactive Since',
-      'First Name', 'Middle Name', 'Last Name', 'Email', 'Phone', 'Date of Birth', 'Date of Joining',
+      'First Name', 'Middle Name', 'Last Name', 'Father Name', 'Email', 'Phone', 'Date of Birth', 'Date of Joining',
       'Department', 'Experience', 'CNIC', 'Permanent Address', 'Current Address',
       'Bank', 'Account Title', 'Account No.', 'IBAN No.',
       'Basic Salary', 'Punctuality Allowance', 'Travelling Allowance', 'Other Allowance', 'Total Package',
@@ -96,7 +96,7 @@ export class UsersService {
       lines.push(csvRow([
         u.userCode, u.role.charAt(0) + u.role.slice(1).toLowerCase(), u.agentType ?? u.managerType ?? '',
         u.displayName, u.isActive ? 'Active' : 'Inactive', fmtDateOnly(u.inactiveSince) ?? '',
-        u.firstName, u.midName ?? '', u.lastName, u.email ?? '', u.phone ?? '',
+        u.firstName, u.midName ?? '', u.lastName, u.fatherName ?? '', u.email ?? '', u.phone ?? '',
         fmtDateOnly(u.dateOfBirth) ?? '', fmtDateOnly(u.dateOfJoining) ?? '',
         u.department ?? '', u.experience ?? '', u.cnic ?? '', u.permanentAddress ?? '', u.currentAddress ?? '',
         u.bank ?? '', u.accountTitle ?? '', u.bankAccountNo ?? '', u.ibanNo ?? '',
@@ -118,6 +118,7 @@ export class UsersService {
       firstName:            V.str(b.firstName, 'First name', { required: creating, max: 100 }) ?? undefined,
       midName:              V.str(b.midName, 'Middle name', { max: 100 }),
       lastName:             V.str(b.lastName, 'Last name', { required: creating, max: 100 }) ?? undefined,
+      fatherName:           V.str(b.fatherName, 'Father name', { max: 100 }),
       email:                V.email(b.email, 'Email', { required: creating }),  // sign-in and password reset use it
       phone:                V.str(b.phone, 'Phone', { max: 30 }),
       dateOfBirth:          this.toDate(V.date(b.dateOfBirth, 'Date of birth')),
