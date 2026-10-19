@@ -10,7 +10,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useLayout } from '@/components/layout/AppLayout'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { useVerticals, colorOf } from '@/lib/verticals'
-import { FONT, BEBAS, CRISP, RAJDHANI, ETHNO, inputCls, withAlpha, ICONS, Field, SectionCard, SaleTypeBadge, SummaryItem, NotSet } from './saleUi'
+import { FONT, BEBAS, CRISP, RAJDHANI, ETHNO, inputCls, withAlpha, ICONS, Field, SectionCard, SaleTypeBadge, SummaryItem, NotSet, Info, INFO_GRID } from './saleUi'
 import { apiGet, apiPost, apiPut, apiDelete, errMsg } from '@/lib/api'
 import { fmtWithPKT, fullName } from '@/lib/format'
 import { isFinalApprover as finalRole, isSaleReviewer } from '@/lib/roles'
@@ -31,17 +31,6 @@ const STATUS_COLOR: Record<string, string> = {
 type EditForm = Record<string, string>
 type DidOption = { id: string; didCode: string; saleType: string | null }
 
-// Read-only value in a card: Rajdhani label over the value, as the New Sale fields look
-function Info({ label, span = 1, children }: { label: string; span?: number; children?: React.ReactNode }) {
-  const empty = children === null || children === undefined || children === '' || children === false
-  return (
-    <div style={{ gridColumn: `span ${span}`, minWidth: 0 }}>
-      <div style={{ fontFamily: RAJDHANI, fontSize: 12.5, fontWeight: 700, color: '#5C6D82', textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 2 }}>{label}</div>
-      <div style={{ fontSize: 13.5, fontWeight: 600, color: P.navy, wordBreak: 'break-word' }}>{empty ? <NotSet /> : children}</div>
-    </div>
-  )
-}
-const INFO_GRID: React.CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '12px 14px' }
 
 // Small copy icon next to a value; turns into a tick for a moment once copied
 function CopyButton({ text }: { text: string }) {

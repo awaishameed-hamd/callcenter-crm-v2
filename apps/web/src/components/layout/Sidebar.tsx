@@ -8,6 +8,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import api from '@/lib/api'
 import { getSocket } from '@/lib/socket'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
+import { useAvatar, saveAvatar } from '@/lib/avatar'
 import { isHrManager, isAccountant, isFinalApprover, isSaleReviewer, roleLabel } from '@/lib/roles'
 
 const C = {
@@ -124,7 +125,6 @@ function navFor(user: NonNullable<ReturnType<typeof useAuth>['user']>): NavItem[
 }
 
 const ATTENDANCE_KEYS = ['attApproval', 'myAtt', 'myLeaves', 'attReport', 'dailyAtt', 'workingDays']
-const AVATAR_KEY_PREFIX = 'metavoice_avatar_'
 
 function Badge({ n, active }: { n: number; active?: boolean }) {
   if (n <= 0) return null
@@ -154,9 +154,7 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
   const router   = useRouter()
   const fileRef = useRef<HTMLInputElement>(null)
 
-  const avatarKey = `${AVATAR_KEY_PREFIX}${user?.id ?? ''}`
-  const [avatar, setAvatar] = useState<string | null>(null)
-  useEffect(() => { try { setAvatar(localStorage.getItem(avatarKey)) } catch { /* private mode */ } }, [avatarKey])
+  const avatar = useAvatar(user?.id)   // shared with the Profile page (lib/avatar.ts)
 
   // ── Attendance flyout ──
   const triggerRef = useRef<HTMLDivElement>(null)
@@ -295,14 +293,7 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = () => {
-      const b64 = reader.result as string
-      try { localStorage.setItem(avatarKey, b64) } catch { /* quota */ }
-      setAvatar(b64)
-    }
-    reader.readAsDataURL(file)
+    if (file && user) saveAvatar(user.id, file).catch(() => {})
     e.target.value = ''
   }
 
