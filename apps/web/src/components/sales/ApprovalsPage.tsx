@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { CustomerStatus, CANCEL_REASONS } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
@@ -46,8 +46,8 @@ const INFO_GRID: React.CSSProperties = { display: 'grid', gridTemplateColumns: '
 const GREEN = 'linear-gradient(135deg, #16A34A 0%, #15803D 100%)'
 const RED   = 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)'
 const actionBtn = (bg: string, color = '#fff', border?: string): React.CSSProperties => ({
-  padding: '8px 18px', borderRadius: 10, border: border ? `1px solid ${border}` : 0, background: bg, color, cursor: 'pointer', whiteSpace: 'nowrap',
-  fontFamily: RAJDHANI, fontSize: 14, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
+  padding: '6px 13px', borderRadius: 8, border: border ? `1px solid ${border}` : 0, background: bg, color, cursor: 'pointer', whiteSpace: 'nowrap',
+  fontFamily: RAJDHANI, fontSize: 12.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase',
 })
 
 function Modal({ children, dark }: { children: React.ReactNode; dark?: boolean }) {
@@ -133,6 +133,7 @@ export default function ApprovalsPage() {
   const handleTab = (key: string) => { setStatusFilter(key); setPage(1); setSelected(null) }
 
   const selectCustomer = (c: Customer) => {
+    setNoteQa('')
     setSelected(c)
     setEditing(false)
     setEditDids([])
@@ -178,9 +179,20 @@ export default function ApprovalsPage() {
     }
   }
 
+  // The manager's QA comments are typed in the QA Comments card; approving or rejecting needs them
+  const qaRef = useRef<HTMLTextAreaElement>(null)
+  const openNote = (kind: 'approve' | 'reject') => {
+    if (!noteQa.trim()) {
+      setToast({ message: 'Write the QA comments first.', type: 'error' })
+      qaRef.current?.focus()
+      return
+    }
+    setNoteModal(kind)
+  }
+
   const closeModals = () => {
     setNoteModal(null); setConfirmModal(false); setRateModal(false)
-    setNoteText(''); setNoteReason(''); setNoteQa(''); setRateInput('')
+    setNoteText(''); setNoteReason(''); setRateInput('')
   }
 
   const doAction = async (action: 'approve' | 'reject' | 'final-approve' | 'final-reject', extra: Record<string, unknown> = {}) => {
@@ -192,6 +204,7 @@ export default function ApprovalsPage() {
       if (action === 'reject') body = { reason: noteReason, managerNote: noteReason + (noteText.trim() ? `: ${noteText.trim()}` : ''), qaComments: noteQa }
       const { customer } = await apiPost<{ customer: Customer }>(`/customers/${selected.id}/${action}`, body)
       replaceRow(customer)
+      setNoteQa('')
       loadCounts()
       setToast({ message: 'Action completed successfully.', type: 'success' })
     } catch (e) {
@@ -352,16 +365,10 @@ export default function ApprovalsPage() {
 
           {selected && (() => {
             const vColor   = colorOf(verticals, selected.verticalType)
-            const qColor   = tabColor(selected.status)
             const other    = isOtherVertical(selected.verticalType)
             const pending  = selected.status === CustomerStatus.PENDING
             const approved = selected.status === CustomerStatus.APPROVED
             const stage    = pending ? 'MANAGER APPROVAL' : approved ? 'FINAL APPROVAL' : 'SALE RECORD'
-            const notice   = pending
-              ? (isReviewer ? ['Awaiting your approval', 'After you approve, it goes to the director for final approval.'] : ['Awaiting manager approval', 'A QA Manager or Floor Manager approves or rejects it first.'])
-              : approved
-                ? (isFinalApprover ? ['Awaiting your final approval', 'Approved by the manager. Final approve or reject it here.'] : ['Awaiting final approval', 'Approved by the manager. The director gives the final approval.'])
-                : ['Decided', 'This sale has left the approval queues; see it in the Sales Report.']
             const times = ([
               ['Sale Time (PKT)', selected.submittedAtPak], ['Sale Time (EST)', selected.submittedAtEst],
               ['Approved At', fmtWithPKT(selected.approvedAt)], ['Disapproved At', fmtWithPKT(selected.disapprovedAt)],
@@ -371,7 +378,7 @@ export default function ApprovalsPage() {
               <div style={{ padding: '0 20px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {/* Summary bar: the customer shaded in the vertical's colour, as on New Sale */}
                 <div style={{ display: 'flex', alignItems: 'stretch', flexWrap: 'wrap', background: '#fff', borderRadius: 14, overflow: 'hidden', marginTop: 12, border: `1px solid ${P.border}`, boxShadow: '0 8px 22px -18px rgba(19,46,87,0.6)' }}>
-                  <div style={{ padding: '10px 110px 10px 20px', minWidth: 250, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff',
+                  <div style={{ padding: '10px 80px 10px 20px', minWidth: 230, flexShrink: 0, display: 'flex', flexDirection: 'column', justifyContent: 'center', color: '#fff',
                     background: `linear-gradient(90deg, ${vColor} 0%, ${vColor} 42%, ${withAlpha(vColor, 0.88)} 54%, ${withAlpha(vColor, 0.62)} 66%, ${withAlpha(vColor, 0.36)} 77%, ${withAlpha(vColor, 0.16)} 87%, ${withAlpha(vColor, 0.05)} 94%, ${withAlpha(vColor, 0)} 100%)` }}>
                     <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 10, letterSpacing: '0.05em', opacity: 0.9 }}>{stage}</p>
                     <p style={{ margin: '3px 0 0', fontFamily: BEBAS, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 260 }}>{fullName(selected)}</p>
@@ -389,8 +396,33 @@ export default function ApprovalsPage() {
                         : <NotSet />}
                     </SummaryItem>
                   )}
-                  <SummaryItem icon={ICONS.person} color={vColor} label="Agent" grow>{selected.agent?.displayName ?? selected.agent?.userCode ?? <NotSet />}</SummaryItem>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 14px', marginLeft: 'auto', flexShrink: 0 }}>
+                  <SummaryItem icon={ICONS.person} color={vColor} label="Agent">{selected.agent?.displayName ?? selected.agent?.userCode ?? <NotSet />}</SummaryItem>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '10px 14px', marginLeft: 'auto', flexShrink: 0, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+                    {!editing && isReviewer && pending && (
+                      <>
+                        <button onClick={() => openNote('approve')} disabled={actionLoading} style={actionBtn(GREEN)}>Approve</button>
+                        <button onClick={() => openNote('reject')} disabled={actionLoading} style={actionBtn(RED)}>Reject</button>
+                      </>
+                    )}
+                    {!editing && isFinalApprover && approved && (
+                      <>
+                        <button disabled={actionLoading} style={actionBtn(GREEN)}
+                          onClick={() => (selected.client?.rateType === 'variable' ? (setRateInput(''), setRateModal(true)) : doAction('final-approve'))}>
+                          Final Approve
+                        </button>
+                        <button onClick={() => setConfirmModal(true)} disabled={actionLoading} style={actionBtn(RED)}>Final Reject</button>
+                      </>
+                    )}
+                    {!editing && <button onClick={() => setEditing(true)} style={actionBtn('#fff', P.navy, P.border)}>Edit</button>}
+                    {!editing && isFinalApprover && (
+                      <button onClick={() => setDeleteModal(true)} disabled={actionLoading} style={actionBtn(withAlpha('#DC2626', 0.08), '#DC2626', withAlpha('#DC2626', 0.3))}>Delete</button>
+                    )}
+                    {editing && (
+                      <>
+                        <button onClick={saveEdit} disabled={actionLoading} style={actionBtn(`linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`)}>{actionLoading ? 'Saving' : 'Save'}</button>
+                        <button onClick={() => { setEditing(false); setEditForm(toEditForm(selected)) }} style={actionBtn('#fff', P.navy, P.border)}>Cancel</button>
+                      </>
+                    )}
                     <StatusBadge status={selected.status} />
                     <button onClick={() => setSelected(null)} title="Close"
                       className="flex items-center justify-center w-7 h-7 rounded-lg text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors">
@@ -399,40 +431,20 @@ export default function ApprovalsPage() {
                   </div>
                 </div>
 
-                {/* Where the sale stands, and what this user can do with it */}
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', background: '#fff', border: `1px solid ${P.border}`, borderLeft: `4px solid ${qColor}`, borderRadius: 12, padding: '10px 14px' }}>
-                  <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-                    <p style={{ margin: 0, fontFamily: RAJDHANI, fontSize: 14, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: qColor }}>{notice[0]}</p>
-                    <p style={{ margin: '1px 0 0', fontSize: 12, color: P.textMuted }}>{notice[1]}</p>
-                  </div>
-                  {!editing && isReviewer && pending && (
-                    <>
-                      <button onClick={() => setNoteModal('approve')} disabled={actionLoading} style={actionBtn(GREEN)}>Approve</button>
-                      <button onClick={() => setNoteModal('reject')} disabled={actionLoading} style={actionBtn(RED)}>Reject</button>
-                    </>
-                  )}
-                  {!editing && isFinalApprover && approved && (
-                    <>
-                      <button disabled={actionLoading} style={actionBtn(GREEN)}
-                        onClick={() => (selected.client?.rateType === 'variable' ? (setRateInput(''), setRateModal(true)) : doAction('final-approve'))}>
-                        Final Approve
-                      </button>
-                      <button onClick={() => setConfirmModal(true)} disabled={actionLoading} style={actionBtn(RED)}>Final Reject</button>
-                    </>
-                  )}
-                  {!editing && <button onClick={() => setEditing(true)} style={actionBtn('#fff', P.navy, P.border)}>Edit</button>}
-                  {!editing && isFinalApprover && (
-                    <button onClick={() => setDeleteModal(true)} disabled={actionLoading} style={actionBtn(withAlpha('#DC2626', 0.08), '#DC2626', withAlpha('#DC2626', 0.3))}>Delete</button>
-                  )}
-                  {editing && (
-                    <>
-                      <button onClick={saveEdit} disabled={actionLoading} style={actionBtn(`linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`)}>{actionLoading ? 'Saving' : 'Save Changes'}</button>
-                      <button onClick={() => { setEditing(false); setEditForm(toEditForm(selected)) }} style={actionBtn('#fff', P.navy, P.border)}>Cancel</button>
-                    </>
-                  )}
-                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gridAutoRows: '1fr', gap: 12 }}>
+                  <SectionCard title="QA Comments" icon={ICONS.notes} done={0} total={0} complete={false}>
+                    {isReviewer && pending ? (
+                      <textarea ref={qaRef} value={noteQa} onChange={e => setNoteQa(e.target.value)} placeholder="Write the QA review here. It is saved when you approve or reject."
+                        className={`${inputCls} resize-none`} style={{ flex: 1, minHeight: 96 }} />
+                    ) : (
+                      <div style={INFO_GRID}>
+                        <Info label="QA Comments" span={3}>{selected.qaComments && <span style={{ whiteSpace: 'pre-wrap' }}>{selected.qaComments}</span>}</Info>
+                        {selected.managerNote && <Info label="Manager Note" span={3}>{selected.managerNote}</Info>}
+                        {selected.finalNote && <Info label="Final Note" span={3}>{selected.finalNote}</Info>}
+                      </div>
+                    )}
+                  </SectionCard>
 
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: 12, alignItems: 'start' }}>
                   <SectionCard title="Personal Information" icon={ICONS.person} done={0} total={0} complete={false}>
                     {editing ? (
                       <div style={INFO_GRID}>
@@ -533,16 +545,6 @@ export default function ApprovalsPage() {
                     )}
                   </SectionCard>
 
-                  {(selected.qaComments || selected.managerNote || selected.finalNote) && (
-                    <SectionCard title="QA Comments and Notes" icon={ICONS.notes} done={0} total={0} complete={false}>
-                      <div style={INFO_GRID}>
-                        {selected.qaComments && <Info label="QA Comments" span={3}><span style={{ whiteSpace: 'pre-wrap' }}>{selected.qaComments}</span></Info>}
-                        {selected.managerNote && <Info label="Manager Note" span={3}>{selected.managerNote}</Info>}
-                        {selected.finalNote && <Info label="Final Note" span={3}>{selected.finalNote}</Info>}
-                      </div>
-                    </SectionCard>
-                  )}
-
                   {(times.length > 0 || (isFinalApprover && selected.saleRateAmount != null)) && (
                     <SectionCard title="Timeline" icon={ICONS.notes} done={0} total={0} complete={false}>
                       <div style={INFO_GRID}>
@@ -618,39 +620,41 @@ export default function ApprovalsPage() {
         </Modal>
       )}
 
-      {noteModal && (
-        <Modal>
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
-            <h3 className="text-base font-bold text-gray-800">{noteModal === 'approve' ? 'Approve Customer' : 'Reject Customer'}</h3>
-            {noteModal === 'reject' && (
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Reason of Cancellation <span className="text-red-500">*</span></label>
-                <StyledSelect value={noteReason} onChange={setNoteReason} placeholder="Select reason"
-                  options={CANCEL_REASONS.map(r => ({ value: r, label: r }))} />
+      {noteModal && (() => {
+        const approve = noteModal === 'approve'
+        return (
+          <Modal>
+            <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 440, overflow: 'hidden', boxShadow: '0 30px 60px -20px rgba(19,46,87,0.45)', fontFamily: FONT }}>
+              <div style={{ padding: '14px 20px', background: approve ? GREEN : RED, color: '#fff' }}>
+                <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 10, letterSpacing: '0.05em', opacity: 0.9 }}>MANAGER APPROVAL</p>
+                <p style={{ margin: '3px 0 0', fontFamily: BEBAS, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05 }}>{approve ? 'Approve Sale' : 'Reject Sale'}</p>
+                {selected && <p style={{ margin: '2px 0 0', fontSize: 12, opacity: 0.85 }}>{fullName(selected)}</p>}
               </div>
-            )}
-            <div>
-              <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">QA Comments <span className="text-red-500">*</span></label>
-              <textarea value={noteQa} onChange={e => setNoteQa(e.target.value)} rows={4} placeholder="Enter QA review comments"
-                className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 resize-none" />
-            </div>
-            {noteModal === 'reject' && (
-              <div>
-                <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1">Additional Note <span className="text-gray-400 font-normal">(optional)</span></label>
-                <textarea value={noteText} onChange={e => setNoteText(e.target.value)} rows={2} placeholder="Extra note"
-                  className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none focus:border-red-400 focus:ring-2 focus:ring-red-400/20 resize-none" />
+              <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
+                {approve ? (
+                  <p style={{ margin: 0, fontSize: 13, color: P.slate, lineHeight: 1.55 }}>The sale goes to the director for final approval, with your QA comments.</p>
+                ) : (
+                  <>
+                    <Field label="Reason of Cancellation" required>
+                      <StyledSelect value={noteReason} onChange={setNoteReason} placeholder="Select reason" options={CANCEL_REASONS.map(r => ({ value: r, label: r }))} />
+                    </Field>
+                    <Field label="Additional Note (optional)">
+                      <textarea value={noteText} onChange={e => setNoteText(e.target.value)} rows={3} placeholder="Extra note" className={`${inputCls} resize-none`} />
+                    </Field>
+                  </>
+                )}
+                <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, paddingTop: 4 }}>
+                  <button onClick={closeModals} style={actionBtn('#fff', P.navy, P.border)}>Cancel</button>
+                  <button onClick={() => doAction(noteModal)} disabled={actionLoading || (!approve && !noteReason)}
+                    style={{ ...actionBtn(approve ? GREEN : RED), opacity: actionLoading || (!approve && !noteReason) ? 0.55 : 1 }}>
+                    {actionLoading ? 'Processing' : approve ? 'Confirm Approve' : 'Confirm Reject'}
+                  </button>
+                </div>
               </div>
-            )}
-            <div className="flex justify-end gap-3">
-              <button onClick={closeModals} className="px-4 py-2 rounded-lg border border-gray-300 text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors">Cancel</button>
-              <button onClick={() => doAction(noteModal)} disabled={actionLoading || !noteQa.trim() || (noteModal === 'reject' && !noteReason)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold text-white transition-colors disabled:opacity-60 ${noteModal === 'approve' ? 'bg-green-600 hover:bg-green-700' : 'bg-red-600 hover:bg-red-700'}`}>
-                {actionLoading ? 'Processing' : noteModal === 'approve' ? 'Confirm Approve' : 'Confirm Reject'}
-              </button>
             </div>
-          </div>
-        </Modal>
-      )}
+          </Modal>
+        )
+      })()}
     </>
   )
 }
