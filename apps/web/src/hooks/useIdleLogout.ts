@@ -28,7 +28,7 @@ export function useIdleLogout() {
     const check = () => {
       if (signingOut || Date.now() - lastActivity < IDLE_LIMIT_MS) return
       signingOut = true
-      logout().finally(() => { window.location.href = '/login?reason=inactivity' })
+      logout().finally(() => { window.location.href = '/login' })
     }
 
     const timer = setInterval(check, CHECK_EVERY_MS)
