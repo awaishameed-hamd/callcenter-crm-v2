@@ -416,7 +416,7 @@ export default function ApprovalsPage() {
                   {!other && (
                     <SummaryItem icon={ICONS.phone} color={vColor} label="DID">
                       {selected.client?.didCode
-                        ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: BEBAS, fontSize: 17, letterSpacing: '0.05em' }}>{selected.client.didCode}{selected.client.saleType && <SaleTypeBadge type={selected.client.saleType} small />}</span>
+                        ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: BEBAS, fontSize: 17, letterSpacing: '0.05em', fontWeight: 400, fontSynthesis: 'none', WebkitFontSmoothing: 'antialiased' }}>{selected.client.didCode}{selected.client.saleType && <SaleTypeBadge type={selected.client.saleType} small />}</span>
                         : <NotSet />}
                     </SummaryItem>
                   )}

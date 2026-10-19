@@ -354,7 +354,7 @@ export default function NewSalePage() {
       </SummaryItem>
       {!isOther && (
         <SummaryItem icon={ICONS.phone} color={vColor} label="DID">
-          {selectedDid ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: BEBAS, fontSize: 17, letterSpacing: '0.05em' }}>{selectedDid.didCode}{selectedDid.saleType && <SaleTypeBadge type={selectedDid.saleType} small />}</span> : <NotSet />}
+          {selectedDid ? <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontFamily: BEBAS, fontSize: 17, letterSpacing: '0.05em', fontWeight: 400, fontSynthesis: 'none', WebkitFontSmoothing: 'antialiased' }}>{selectedDid.didCode}{selectedDid.saleType && <SaleTypeBadge type={selectedDid.saleType} small />}</span> : <NotSet />}
         </SummaryItem>
       )}
       <SummaryItem icon={ICONS.address} color={vColor} label="Address" grow>{address || <NotSet />}</SummaryItem>
