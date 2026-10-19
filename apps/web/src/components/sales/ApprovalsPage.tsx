@@ -641,13 +641,15 @@ export default function ApprovalsPage() {
 
       {noteModal && (() => {
         const approve = noteModal === 'approve'
+        const hc = approve ? '#16A34A' : '#DC2626'  // header colour
         return (
           <Modal>
             <div style={{ background: '#fff', borderRadius: 16, width: '100%', maxWidth: 440, overflow: 'hidden', boxShadow: '0 30px 60px -20px rgba(19,46,87,0.45)', fontFamily: FONT }}>
-              <div style={{ padding: '14px 20px', background: approve ? GREEN : RED, color: '#fff' }}>
-                <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 10, letterSpacing: '0.05em', opacity: 0.9 }}>MANAGER APPROVAL</p>
-                <p style={{ margin: '3px 0 0', fontFamily: BEBAS, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05 }}>{approve ? 'Approve Sale' : 'Reject Sale'}</p>
-                {selected && <p style={{ margin: '2px 0 0', fontSize: 12, opacity: 0.85 }}>{fullName(selected)}</p>}
+              {/* Slim header: the colour fades out to the right, like the summary bar */}
+              <div style={{ padding: '9px 18px', display: 'flex', alignItems: 'baseline', gap: 10, color: '#fff',
+                background: `linear-gradient(90deg, ${hc} 0%, ${hc} 30%, ${withAlpha(hc, 0.78)} 55%, ${withAlpha(hc, 0.45)} 78%, ${withAlpha(hc, 0.18)} 100%)` }}>
+                <span style={{ fontFamily: BEBAS, fontSize: 18, letterSpacing: '0.06em', lineHeight: 1.1 }}>{approve ? 'Approve Sale' : 'Reject Sale'}</span>
+                {selected && <span style={{ fontSize: 12, opacity: 0.9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fullName(selected)}</span>}
               </div>
               <div style={{ padding: '16px 20px', display: 'flex', flexDirection: 'column', gap: 12 }}>
                 {approve ? (
