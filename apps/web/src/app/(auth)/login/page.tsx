@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth, type LoginResponse } from '@/contexts/AuthContext'
 import { roleHome } from '@/lib/roles'
@@ -17,17 +17,35 @@ const iconStyle: React.CSSProperties = { width: 18, height: 18, color: '#8a9aa2'
 const BG = 'radial-gradient(1200px 700px at 20% 10%, #f3f6f8 0%, transparent 60%), radial-gradient(900px 600px at 90% 90%, #d9e0e4 0%, transparent 55%), linear-gradient(135deg, #eef1f3 0%, #dde3e7 50%, #cdd5da 100%)'
 const D = { slate: '#3F4753', steel: '#5C6D82', muted: '#9FA7B2', peach: '#FBDCB4', brown: '#AA7F56', dark: '#49311E' }
 
+const REMEMBER_KEY = 'mv_login_identifier'
+
 export default function LoginPage() {
   const { login } = useAuth()
   const router = useRouter()
 
   const [identifier, setIdentifier] = useState('')
+  const [rememberMe, setRememberMe] = useState(true)
   const [password,   setPassword]   = useState('')
   const [showPw,     setShowPw]     = useState(false)
   const [error,      setError]      = useState('')
   const [loading,    setLoading]    = useState(false)
   const [result,     setResult]     = useState<LoginResponse | null>(null)
   const [stage,      setStage]      = useState<'form' | 'attendance' | 'workingDays'>('form')
+
+  // Remember me keeps the Email / User ID on this computer (never the password); the session itself
+  // stays per tab with the 10 minute idle sign-out
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem(REMEMBER_KEY)
+      if (saved) setIdentifier(saved)
+    } catch { /* storage blocked */ }
+  }, [])
+  const remember = () => {
+    try {
+      if (rememberMe) localStorage.setItem(REMEMBER_KEY, identifier.trim())
+      else localStorage.removeItem(REMEMBER_KEY)
+    } catch { /* storage blocked */ }
+  }
 
   const finish = (res: LoginResponse, goSetup = false) =>
     router.replace(goSetup ? '/manager/attendance/working-days' : roleHome(res.user))
@@ -38,6 +56,7 @@ export default function LoginPage() {
     setLoading(true)
     try {
       const res = await login(identifier, password)
+      remember()
       setResult(res)
       if (res.attendanceMarked && res.attendanceInfo) setStage('attendance')
       else if (res.showWorkingDaysPopup) setStage('workingDays')
@@ -153,7 +172,18 @@ export default function LoginPage() {
             </button>
           </div>
 
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: -4 }}>
+          {/* Remember me + Forgot (argroup layout) */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: 2, padding: '0 4px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', userSelect: 'none', fontSize: 13, color: '#5d6f78' }}
+              onClick={() => setRememberMe(v => !v)}>
+              <span style={{ width: 18, height: 18, borderRadius: 5, border: rememberMe ? 'none' : '1.5px solid #8a9aa2', background: rememberMe ? '#5d6f78' : '#fff',
+                display: 'inline-flex', alignItems: 'center', justifyContent: 'center', transition: 'all .2s', flexShrink: 0 }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={3} strokeLinecap="round" strokeLinejoin="round" style={{ width: 12, height: 12, opacity: rememberMe ? 1 : 0 }}>
+                  <polyline points="20 6 9 17 4 12" />
+                </svg>
+              </span>
+              Remember me
+            </label>
             <a href="/forgot-password" style={{ fontSize: 13, color: '#8a9aa2', textDecoration: 'none', fontStyle: 'italic' }}>Forgot your password?</a>
           </div>
 
