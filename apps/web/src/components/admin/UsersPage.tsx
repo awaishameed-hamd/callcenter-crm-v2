@@ -32,7 +32,7 @@ const ALL_COLUMNS = [
 ]
 const ALL_COL_KEYS = ALL_COLUMNS.map(c => c.key)
 const COL_WIDTH: Record<string, number> = { userId: 85, name: 160, role: 95, roleType: 165, department: 110, contact: 140, joined: 95, salary: 110, status: 100 }
-const LS_COLS = 'mv_users_cols_v3', LS_ROLE = 'mv_users_role', LS_STATUS = 'mv_users_status'
+const LS_COLS = 'mv_users_cols_v3'
 const DEFAULT_PASSWORD = '12345678'
 const CORE_KEYS = new Set(STANDARD_FIELD_KEYS.user)
 const SALARY_KEYS = ['basic_salary', 'punctuality_allowance', 'travelling_allowance', 'other_allowance']
@@ -341,14 +341,14 @@ export default function UsersPage() {
   const [toast, setToast]     = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [visibleCols, setVisibleCols] = useState<string[]>(ALL_COL_KEYS)
 
+  // Filters always start at Active / all roles, as on argroup. (They used to be restored from the
+  // browser after the first load, which fired a second request; whichever answered last won, so the
+  // list showed and then vanished.) Only the chosen columns are remembered.
   useEffect(() => {
     setVisibleCols(lsGet(LS_COLS, ALL_COL_KEYS))
-    setRoleFilter(lsGet(LS_ROLE, ''))
-    setStatusFilter(lsGet(LS_STATUS, 'active'))
+    try { localStorage.removeItem('mv_users_role'); localStorage.removeItem('mv_users_status') } catch { /* ignore */ }
   }, [])
   useEffect(() => { lsSet(LS_COLS, visibleCols) }, [visibleCols])
-  useEffect(() => { lsSet(LS_ROLE, roleFilter) }, [roleFilter])
-  useEffect(() => { lsSet(LS_STATUS, statusFilter) }, [statusFilter])
 
   const fetchUsers = useCallback(async (silent = false) => {
     if (!silent) setLoading(true)
