@@ -97,6 +97,7 @@ const toEditForm = (c: Customer): EditForm => ({
   verticalType: c.verticalType ?? '', verticalOther: c.verticalOther ?? '', clientId: c.clientId ?? '',
   didComments: c.didComments ?? '', transferredFrom: c.transferredFrom ?? '',
   verifiersPart: c.verifiersPart ?? '', leadIdTimestamp: c.leadIdTimestamp ?? '', reason: c.reason ?? '',
+  qaComments: c.qaComments ?? '',
 })
 
 export default function ApprovalsPage() {
@@ -165,7 +166,7 @@ export default function ApprovalsPage() {
   const handleTab = (key: string) => { setStatusFilter(key); setPage(1); setSelected(null) }
 
   const selectCustomer = (c: Customer) => {
-    setNoteQa('')
+    setNoteQa(c.qaComments ?? '')
     setSelected(c)
     setEditing(false)
     setEditDids([])
@@ -202,6 +203,7 @@ export default function ApprovalsPage() {
       const payload = Object.fromEntries(Object.entries(editForm).map(([k, v]) => [k, v === '' ? null : v]))
       const { customer } = await apiPut<{ customer: Customer }>(`/customers/${selected.id}`, payload)
       replaceRow(customer)
+      setNoteQa(customer.qaComments ?? '')
       setEditing(false)
       setToast({ message: 'Customer updated.', type: 'success' })
     } catch (e) {
@@ -437,7 +439,7 @@ export default function ApprovalsPage() {
                         <button onClick={() => setConfirmModal(true)} disabled={actionLoading} style={barBtn(RED)}>Final Reject</button>
                       </>
                     )}
-                    {!editing && <button onClick={() => setEditing(true)} style={barBtn('#fff', P.navy, P.border)}>Edit</button>}
+                    {!editing && <button onClick={() => { if (isReviewer && pending) setEditForm(p => ({ ...p, qaComments: noteQa })); setEditing(true) }} style={barBtn('#fff', P.navy, P.border)}>Edit</button>}
                     {!editing && isFinalApprover && (
                       <button onClick={() => setDeleteModal(true)} disabled={actionLoading} style={barBtn(withAlpha('#DC2626', 0.08), '#DC2626', withAlpha('#DC2626', 0.3))}>Delete</button>
                     )}
@@ -452,7 +454,10 @@ export default function ApprovalsPage() {
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gridAutoRows: '1fr', gap: 12 }}>
                   <SectionCard title="QA Comments" icon={ICONS.notes} done={0} total={0} complete={false}>
-                    {isReviewer && pending ? (
+                    {editing ? (
+                      <textarea name="qaComments" value={editForm.qaComments ?? ''} onChange={handleEditChange}
+                        className={`${inputCls} resize-none`} style={{ flex: 1, minHeight: 96 }} />
+                    ) : isReviewer && pending ? (
                       <textarea value={noteQa} onChange={e => setNoteQa(e.target.value)}
                         className={`${inputCls} resize-none`} style={{ flex: 1, minHeight: 96 }} />
                     ) : (

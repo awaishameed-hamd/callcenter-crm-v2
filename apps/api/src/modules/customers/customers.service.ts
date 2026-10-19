@@ -172,6 +172,7 @@ export class CustomersService {
       verifiersPart:   V.str(b.verifiersPart, 'Verifiers part', { max: 255 }),
       leadIdTimestamp: V.str(b.leadIdTimestamp, 'Lead ID timestamp', { max: 255 }),
       reason:          V.str(b.reason, 'Reason', { max: 50 }),
+      qaComments:      V.str(b.qaComments, 'QA comments', { max: 2000 }),
     })
     await this.prisma.customer.update({ where: { id }, data: data as Prisma.CustomerUncheckedUpdateInput })
     return this.respond(id, actor.role)
