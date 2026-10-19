@@ -309,35 +309,25 @@ export default function ProfilePage() {
   const personalCard = (
     <Card title="Personal Information" icon={ICONS.person}>
       {/* Laid out like a national ID card: soft tinted card, fine pattern, name on top, number at the foot */}
-      <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', padding: '14px 18px 12px 22px',
+      <div style={{ position: 'relative', borderRadius: 14, overflow: 'hidden', padding: '11px 16px 12px 20px',
         background: `repeating-radial-gradient(circle at 88% 18%, ${withAlpha(P.teal, 0.055)} 0 1px, transparent 1px 9px), linear-gradient(135deg, #EDF7F4 0%, #F8FCFB 55%, #E4F2EE 100%)`,
         border: `1px solid ${withAlpha(P.teal, 0.22)}`, boxShadow: '0 16px 28px -24px rgba(19,46,87,0.6)' }}>
         <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 5, background: `linear-gradient(180deg, ${P.teal}, ${P.navy})` }} />
         <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6B8A86', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Name</div>
         <div style={{ fontFamily: OUTFIT, fontSize: 19, fontWeight: 700, color: P.navy, letterSpacing: '-0.01em', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{fullName}</div>
         {shows('father_name') && (
-          <div style={{ marginTop: 8 }}>
+          <div style={{ marginTop: 6 }}>
             <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6B8A86', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{labelOf('father_name', 'Father Name')}</div>
             <div style={{ fontSize: 15, fontWeight: 600, color: P.navy, marginTop: 1 }}>{val('father_name') || <Empty />}</div>
           </div>
         )}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '10px 16px', marginTop: 12 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '8px 16px', marginTop: 8 }}>
           {personalRows.map(r => (
             <div key={r.key} style={{ gridColumn: r.wide ? '1 / -1' : undefined, minWidth: 0 }}>
               <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6B8A86', letterSpacing: '0.08em', textTransform: 'uppercase' }}>{r.label}</div>
               <div style={{ marginTop: 1, fontSize: 14, fontWeight: 600, color: P.navy, wordBreak: 'break-word' }}>{r.value || <Empty />}</div>
             </div>
           ))}
-        </div>
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', gap: 12, marginTop: 12, paddingTop: 10, borderTop: `1px dashed ${withAlpha(P.teal, 0.3)}` }}>
-          <div>
-            <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6B8A86', letterSpacing: '0.08em', textTransform: 'uppercase' }}>User ID</div>
-            <div style={{ fontFamily: OUTFIT, fontSize: 16, fontWeight: 600, color: P.navy, letterSpacing: '0.12em' }}>{profile.userCode}</div>
-          </div>
-          <div style={{ textAlign: 'right', minWidth: 0 }}>
-            <div style={{ fontSize: 10.5, fontWeight: 700, color: '#6B8A86', letterSpacing: '0.08em', textTransform: 'uppercase' }}>Role</div>
-            <div style={{ fontSize: 13.5, fontWeight: 600, color: P.navy, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{roleLabel(profile)}{roleType && roleType !== roleLabel(profile) ? ` · ${roleType}` : ''}</div>
-          </div>
         </div>
       </div>
     </Card>
