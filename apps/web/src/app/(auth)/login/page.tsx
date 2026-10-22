@@ -15,7 +15,6 @@ const inputStyle: React.CSSProperties = {
 }
 const iconStyle: React.CSSProperties = { width: 18, height: 18, color: '#8a9aa2', flexShrink: 0 }
 const BG = 'radial-gradient(1200px 700px at 20% 10%, #f3f6f8 0%, transparent 60%), radial-gradient(900px 600px at 90% 90%, #d9e0e4 0%, transparent 55%), linear-gradient(135deg, #eef1f3 0%, #dde3e7 50%, #cdd5da 100%)'
-const D = { slate: '#3F4753', steel: '#5C6D82', muted: '#9FA7B2', peach: '#FBDCB4', brown: '#AA7F56', dark: '#49311E' }
 
 const REMEMBER_KEY = 'mv_login_identifier'
 
@@ -30,7 +29,7 @@ export default function LoginPage() {
   const [error,      setError]      = useState('')
   const [loading,    setLoading]    = useState(false)
   const [result,     setResult]     = useState<LoginResponse | null>(null)
-  const [stage,      setStage]      = useState<'form' | 'attendance' | 'workingDays'>('form')
+  const [stage,      setStage]      = useState<'form' | 'attendance'>('form')
 
   // Remember me keeps the Email / User ID on this computer (never the password); the session itself
   // stays per tab with the 10 minute idle sign-out
@@ -47,8 +46,7 @@ export default function LoginPage() {
     } catch { /* storage blocked */ }
   }
 
-  const finish = (res: LoginResponse, goSetup = false) =>
-    router.replace(goSetup ? '/manager/attendance/working-days' : roleHome(res.user))
+  const finish = (res: LoginResponse) => router.replace(roleHome(res.user))
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -59,44 +57,12 @@ export default function LoginPage() {
       remember()
       setResult(res)
       if (res.attendanceMarked && res.attendanceInfo) setStage('attendance')
-      else if (res.showWorkingDaysPopup) setStage('workingDays')
       else finish(res)
     } catch (err: any) {
       setError(err?.response?.data?.message ?? 'An error occurred. Please try again.')
     } finally {
       setLoading(false)
     }
-  }
-
-  if (stage === 'workingDays' && result) {
-    const now = new Date()
-    const month = now.toLocaleString('en-US', { month: 'long', timeZone: 'Asia/Karachi' })
-    const year  = now.toLocaleString('en-US', { year: 'numeric', timeZone: 'Asia/Karachi' })
-    return (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(6,19,33,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }}>
-        <div style={{ background: D.slate, border: `1px solid ${D.steel}`, borderRadius: 16, padding: '2.5rem 2rem', textAlign: 'center', maxWidth: 400, width: '90%', boxShadow: '0 25px 60px rgba(0,0,0,0.6)' }}>
-          <div style={{ height: 4, background: `linear-gradient(90deg, ${D.dark}, ${D.brown}, ${D.dark})`, borderRadius: '4px 4px 0 0', margin: '-2.5rem -2rem 2rem' }} />
-          <svg viewBox="0 0 24 24" fill="none" stroke={D.peach} strokeWidth={1.6} style={{ width: 48, height: 48, margin: '0 auto 12px' }}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-          </svg>
-          <h2 style={{ color: D.peach, fontFamily: "'Rajdhani',sans-serif", fontSize: '1rem', fontWeight: 700, margin: '0 0 6px', letterSpacing: '0.05em' }}>New Month Detected</h2>
-          <p style={{ color: D.brown, fontSize: '1.05rem', fontWeight: 700, margin: '0 0 12px', fontFamily: "'Rajdhani',sans-serif", letterSpacing: '0.05em' }}>{month} {year}</p>
-          <p style={{ color: D.muted, fontSize: '0.85rem', margin: '0 0 28px', lineHeight: 1.6 }}>
-            Working days for this month have not been configured yet. Please set up the monthly calendar before employees start logging in.
-          </p>
-          <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
-            <button onClick={() => finish(result)}
-              style={{ background: 'transparent', color: D.muted, border: `1px solid ${D.steel}`, borderRadius: 8, padding: '9px 20px', fontSize: '0.9rem', fontFamily: "'Rajdhani',sans-serif", fontWeight: 600, cursor: 'pointer', letterSpacing: '0.04em' }}>
-              Remind Me Later
-            </button>
-            <button onClick={() => finish(result, true)}
-              style={{ background: `linear-gradient(135deg, ${D.dark}, #6b4527)`, color: D.peach, border: 'none', borderRadius: 8, padding: '9px 24px', fontSize: '0.9rem', fontFamily: "'Rajdhani',sans-serif", fontWeight: 700, letterSpacing: '0.06em', cursor: 'pointer', boxShadow: '0 4px 15px rgba(73,49,30,0.5)' }}>
-              Setup Now
-            </button>
-          </div>
-        </div>
-      </div>
-    )
   }
 
   if (stage === 'attendance' && result?.attendanceInfo) {
@@ -120,7 +86,7 @@ export default function LoginPage() {
               LATE +{a.lateMinutes} min
             </div>
           )}
-          <button onClick={() => (result.showWorkingDaysPopup ? setStage('workingDays') : finish(result))}
+          <button onClick={() => finish(result)}
             style={{ width: '100%', padding: '13px 0', border: 0, borderRadius: 12, background: 'linear-gradient(180deg, #5d6f78 0%, #4a5a63 100%)', color: '#fff', fontFamily: "'Outfit', sans-serif", fontSize: '0.95rem', fontWeight: 600, letterSpacing: '.18em', textTransform: 'uppercase', cursor: 'pointer', boxShadow: '0 8px 20px -8px rgba(74,90,99,.55), inset 0 1px 0 rgba(255,255,255,.18)' }}>
             OK, GOT IT
           </button>

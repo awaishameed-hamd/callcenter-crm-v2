@@ -1,8 +1,15 @@
 import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common'
+import { Role } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { PresenceService } from './presence.service'
 
 const CONTACT_SELECT = { id: true, displayName: true, role: true, managerType: true, agentType: true, avatar: true, lastSeenAt: true }
+
+// Who may start a chat with whom: Admin, Director and Manager with anyone; Agents only with
+// Managers and other Agents. Someone an Agent cannot reach may still start a chat with the Agent,
+// and the Agent can reply there.
+const AGENT_REACH: Role[] = [Role.MANAGER, Role.AGENT]
+const canReach = (from: Role, to: Role) => from !== Role.AGENT || AGENT_REACH.includes(to)
 
 @Injectable()
 export class ChatService {
@@ -15,10 +22,24 @@ export class ChatService {
     return { ...u, isOnline: this.presence.isOnline(u.id) }
   }
 
+  private async roleOf(userId: string) {
+    const u = await this.prisma.user.findUnique({ where: { id: userId }, select: { role: true } })
+    if (!u) throw new NotFoundException('User not found')
+    return u.role
+  }
+
+  /** Agents may only add Managers and Agents to a group. */
+  private async assertCanAdd(actorId: string, memberIds: string[]) {
+    if (!memberIds.length || (await this.roleOf(actorId)) !== Role.AGENT) return
+    const blocked = await this.prisma.user.count({ where: { id: { in: memberIds }, role: { notIn: AGENT_REACH } } })
+    if (blocked) throw new ForbiddenException('Agents can only add managers and agents to a group')
+  }
+
   async getContacts(userId: string) {
-    // All roles see all active users except themselves
+    // Everyone the user may start a chat with
+    const role = await this.roleOf(userId)
     const contacts = await this.prisma.user.findMany({
-      where:   { id: { not: userId }, isActive: true },
+      where:   { id: { not: userId }, isActive: true, ...(role === Role.AGENT ? { role: { in: AGENT_REACH } } : {}) },
       select:  CONTACT_SELECT,
       orderBy: { displayName: 'asc' },
     })
@@ -39,6 +60,9 @@ export class ChatService {
 
     if (existing && existing.participants.length === 2) return existing
 
+    const [from, to] = await Promise.all([this.roleOf(userIdA), this.roleOf(userIdB)])
+    if (!canReach(from, to)) throw new ForbiddenException('Agents can only message managers and other agents')
+
     return this.prisma.conversation.create({
       data: {
         participants: { create: [{ userId: userIdA }, { userId: userIdB }] },
@@ -57,6 +81,7 @@ export class ChatService {
 
   async createGroup(creatorId: string, name: string, memberIds: string[]) {
     const members = Array.from(new Set((memberIds ?? []).filter(id => id && id !== creatorId)))
+    await this.assertCanAdd(creatorId, members)
     return this.prisma.conversation.create({
       data: {
         isGroup:       true,
@@ -90,6 +115,7 @@ export class ChatService {
     })
     const have  = new Set(existing.map(e => e.userId))
     const toAdd = Array.from(new Set(memberIds ?? [])).filter(id => id && !have.has(id))
+    await this.assertCanAdd(userId, toAdd)
     if (toAdd.length) {
       await this.prisma.conversationParticipant.createMany({
         data: toAdd.map(id => ({ conversationId, userId: id })),
@@ -188,6 +214,11 @@ export class ChatService {
     attachmentUrl?: string,
     replyToId?: string,
   ) {
+    const member = await this.prisma.conversationParticipant.findUnique({
+      where: { conversationId_userId: { conversationId, userId: senderId } }, select: { userId: true },
+    })
+    if (!member) throw new ForbiddenException('You are not part of this conversation')
+
     const msg = await this.prisma.message.create({
       data: { conversationId, senderId, content, type: type as any, attachmentUrl, replyToId },
       include: {
