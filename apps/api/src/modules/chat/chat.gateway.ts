@@ -16,6 +16,7 @@ import { ChatService } from './chat.service'
 import { PresenceService } from './presence.service'
 import { NotificationsService } from '../notifications/notifications.service'
 import { salesChanged$ } from '../live/sales-events'
+import { userEvents$ } from '../live/user-events'
 
 interface AuthenticatedSocket extends Socket {
   userId: string
@@ -45,6 +46,8 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
   // (SSE) took one of the browser's 6 connections per site on HTTP/1.1 and stalled page loads.
   afterInit() {
     salesChanged$.subscribe(() => this.server.emit('sales_changed'))
+    // Pushes meant for one user from other modules (e.g. the 30 minute interview reminder)
+    userEvents$.subscribe(e => this.emitToUser(e.userId, e.event, e.data))
   }
 
   async handleConnection(client: AuthenticatedSocket) {

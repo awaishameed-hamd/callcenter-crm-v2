@@ -53,7 +53,7 @@ export function roleLabel(u: U) {
 /** Manager sub-type restrictions carried over from the Laravel routes. */
 export function managerRedirect(u: U, pathname: string): string | null {
   if (u?.role !== Role.MANAGER) return null
-  const hrOnly = ['/manager/attendance/working-days', '/manager/attendance/report', '/manager/attendance/daily']
+  const hrOnly = ['/manager/attendance/working-days', '/manager/attendance/report', '/manager/attendance/daily', '/manager/interviews']
   const noHr   = ['/manager/dashboard', '/manager/approvals', '/manager/reports']
   const accountantOnly = ['/manager/accounting']
   // Accountants have no attendance, leave or sale-approval duties in the call center.
