@@ -1,6 +1,7 @@
 'use client'
 
 import { io, type Socket } from 'socket.io-client'
+import { refreshAccessToken } from './api'
 
 // One shared Socket.IO connection per browser tab, used by chat, the sidebar
 // badges and useAutoRefresh.
@@ -16,6 +17,18 @@ export function getSocket(): Socket {
       auth:         cb => cb({ token: sessionStorage.getItem('access_token') }),
       transports:   ['websocket'],
       reconnection: true,
+    })
+    // The server drops a connection whose login token has expired (after an API restart or a
+    // long quiet spell), and socket.io does not retry a server-side drop by itself. Without this
+    // the chat stayed dead and new messages never left the browser; now the token is renewed and
+    // the same connection comes back, sending anything typed meanwhile.
+    let renewing = false
+    socket.on('disconnect', async reason => {
+      if (reason !== 'io server disconnect' || renewing) return
+      renewing = true
+      try {
+        if (await refreshAccessToken()) setTimeout(() => socket?.connect(), 300)
+      } finally { renewing = false }
     })
   }
   return socket

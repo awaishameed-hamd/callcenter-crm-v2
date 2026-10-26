@@ -25,7 +25,7 @@ function clearSessionAndRedirect() {
 
 let refreshPromise: Promise<string | null> | null = null
 
-async function refreshAccessToken(): Promise<string | null> {
+export async function refreshAccessToken(): Promise<string | null> {
   if (!refreshPromise) {
     refreshPromise = (async () => {
       const refreshToken = sessionStorage.getItem('refresh_token')

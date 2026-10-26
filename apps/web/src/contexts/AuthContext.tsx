@@ -18,7 +18,6 @@ export interface LoginResponse {
   user:                 User
   attendanceMarked:     boolean
   attendanceInfo:       { time: string; date: string; isLate: boolean; lateMinutes: number | null } | null
-  showWorkingDaysPopup: boolean
 }
 
 interface AuthContextValue extends AuthState {

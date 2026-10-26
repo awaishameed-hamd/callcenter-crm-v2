@@ -14,7 +14,7 @@ import { EmailService } from '../email/email.service'
 import { uploadRoot, AVATAR_RE } from '../files/files.controller'
 import { USER_SELECT } from '../users/users.service'
 import { V, fail, defined } from '../../common/utils/validate'
-import { PKT_TZ, todayIn, monthStart, monthEnd, dateOnly, fmtLongDate } from '../../common/utils/time'
+import { dateOnly, fmtLongDate } from '../../common/utils/time'
 
 function clock12(hhmm: string) {
   const [h, m] = hhmm.split(':').map(Number)
@@ -56,22 +56,12 @@ export class AuthService {
       ? { time: clock12(marked.loginTime), date: fmtLongDate(marked.date), isLate: marked.isLate, lateMinutes: marked.lateMinutes }
       : null
 
-    let showWorkingDaysPopup = false
-    if (user.role === Role.MANAGER && user.managerType === ManagerType.HR) {
-      const today = todayIn(PKT_TZ)
-      const configured = await this.prisma.workingDay.count({
-        where: { date: { gte: dateOnly(monthStart(today)), lte: dateOnly(monthEnd(today)) } },
-      })
-      showWorkingDaysPopup = configured === 0
-    }
-
     return {
       accessToken:  tokens.accessToken,
       refreshToken: tokens.refreshToken,
       user:         await this.me(user.id),
       attendanceMarked: !!attendanceInfo,
       attendanceInfo,
-      showWorkingDaysPopup,
     }
   }
 

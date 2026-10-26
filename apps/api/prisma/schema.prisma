@@ -137,6 +137,10 @@ model User {
   invoicesCreated Invoice[] @relation("InvoiceCreator")
   vouchersCreated Voucher[] @relation("VoucherCreator")
 
+  interviewsTaken   Interview[]      @relation("InterviewInterviewer")
+  interviewsCreated Interview[]      @relation("InterviewCreator")
+  interviewEvents   InterviewEvent[] @relation("InterviewEventActor")
+
   @@index([role])
   @@index([isActive])
   @@map("users")
@@ -758,4 +762,114 @@ model Project {
   updatedAt   DateTime  @updatedAt
 
   @@map("projects")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HR: interviews (candidates, scheduled and walk-in interviews, forms, full trail)
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Candidate {
+  id              String    @id @default(cuid())
+  fullName        String
+  fatherName      String?
+  email           String?
+  phone           String
+  altPhone        String?
+  cnic            String?
+  gender          String?
+  dateOfBirth     DateTime? @db.Date
+  city            String?
+  address         String?
+  education       String?
+  experienceYears Decimal?  @db.Decimal(4, 1)
+  callCenterYears Decimal?  @db.Decimal(4, 1)
+  lastCompany     String?
+  lastDesignation String?
+  currentSalary   Int?
+  expectedSalary  Int?
+  preferredShift  String?
+  availableFrom   DateTime? @db.Date
+  source          String?
+  referredBy      String?
+  cvKey           String? // uploaded file key, chat/misc style: cv/<uuid>.pdf
+  cvName          String?
+  notes           String?   @db.Text
+  createdById     String?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  interviews Interview[]
+
+  @@index([phone])
+  @@index([email])
+  @@map("candidates")
+}
+
+/// Question list HR edits in Interviews > Forms. questions: [{ id, label, type, options?, required? }]
+model InterviewForm {
+  id          String   @id @default(cuid())
+  name        String
+  kind        String   @default("SCHEDULED") // SCHEDULED | WALK_IN
+  description String?
+  questions   Json
+  isActive    Boolean  @default(true)
+  sortOrder   Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  interviews Interview[]
+
+  @@map("interview_forms")
+}
+
+model Interview {
+  id              String         @id @default(cuid())
+  candidateId     String
+  candidate       Candidate      @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  position        String
+  kind            String         @default("SCHEDULED") // SCHEDULED | WALK_IN
+  formId          String?
+  form            InterviewForm? @relation(fields: [formId], references: [id], onDelete: SetNull)
+  scheduledAt     DateTime?
+  durationMin     Int            @default(30)
+  mode            String         @default("In person") // In person | Phone | Video
+  location        String?
+  interviewerId   String?
+  interviewer     User?          @relation("InterviewInterviewer", fields: [interviewerId], references: [id], onDelete: SetNull)
+  status          String         @default("SCHEDULED") // SCHEDULED | ARRIVED | COMPLETED | NO_SHOW | CANCELLED
+  result          String         @default("PENDING") // PENDING | SELECTED | REJECTED | ON_HOLD
+  rescheduleCount Int            @default(0)
+  arrivedAt       DateTime?
+  completedAt     DateTime?
+  formSnapshot    Json? // the questions as they were when answered
+  answers         Json?
+  rating          Int?
+  remarks         String?        @db.Text
+  reminderSentAt  DateTime?
+  createdById     String?
+  createdBy       User?          @relation("InterviewCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  events InterviewEvent[]
+
+  @@index([status, scheduledAt])
+  @@index([candidateId])
+  @@map("interviews")
+}
+
+/// The trail: every step of an interview, with who did it and when.
+model InterviewEvent {
+  id          String    @id @default(cuid())
+  interviewId String
+  interview   Interview @relation(fields: [interviewId], references: [id], onDelete: Cascade)
+  type        String // SCHEDULED, WALK_IN, EMAIL_SENT, EMAIL_FAILED, RESCHEDULED, REMINDER, CALLED, ARRIVED, EVALUATION_SAVED, COMPLETED, NO_SHOW, CANCELLED, CANDIDATE_UPDATED, NOTE
+  note        String?   @db.Text
+  data        Json?
+  actorId     String?
+  actor       User?     @relation("InterviewEventActor", fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+
+  @@index([interviewId, createdAt])
+  @@map("interview_events")
 }

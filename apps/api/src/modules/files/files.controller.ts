@@ -9,9 +9,9 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 
-const FOLDERS = ['chat', 'misc'] as const
+const FOLDERS = ['chat', 'misc', 'cv'] as const   // cv: candidate CVs for HR > Interviews
 const MAX_BYTES = 25 * 1024 * 1024
-const KEY_RE = /^(chat|misc)\/[0-9a-f-]{36}(\.[a-z0-9]{1,8})?$/
+const KEY_RE = /^(chat|misc|cv)\/[0-9a-f-]{36}(\.[a-z0-9]{1,8})?$/
 export const AVATAR_RE = /^[0-9a-f-]{36}\.(jpg|png|webp)$/
 
 export const uploadRoot = () => path.resolve(process.env.UPLOAD_DIR ?? 'uploads')

@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import Sidebar from './Sidebar'
 import RefreshButton from './RefreshButton'
+import InterviewReminder from '@/components/interviews/InterviewReminder'
 import { useCompact } from '@/hooks/useMediaQuery'
 import { useAuth } from '@/contexts/AuthContext'
 import { useIdleLogout } from '@/hooks/useIdleLogout'
@@ -73,6 +74,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
         {/* Sits above every page, so one control refreshes whichever is showing. */}
         {allowed && <RefreshButton compact={compact} />}
+        {/* HR desk: "interview in 30 minutes, call the candidate" */}
+        {allowed && <InterviewReminder />}
       </div>
     </LayoutContext.Provider>
   )
