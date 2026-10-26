@@ -1,6 +1,6 @@
 'use client'
 
-// The 30 minute heads-up for the HR desk: "X's interview for Y is in 25 minutes, please call
+// The 30 minute heads-up for HR managers: "X's interview for Y is in 25 minutes, please call
 // them". Pushed over the socket the minute it is due, and fetched on load so a reminder that
 // arrived while the tab was closed still shows. It stays until HR marks it called or dismisses it.
 
@@ -10,7 +10,7 @@ import { P } from '@/lib/palette'
 import { apiGet, apiPost } from '@/lib/api'
 import { getSocket } from '@/lib/socket'
 import { useAuth } from '@/contexts/AuthContext'
-import { hasHrDesk, roleBase } from '@/lib/roles'
+import { isHrManager, roleBase } from '@/lib/roles'
 import { Svg, withAlpha } from '@/components/sales/saleUi'
 import { OUTFIT, FONT, IC, CopyBtn, WhatsAppIcon, OPEN_INTERVIEW_EVENT, INTERVIEWS_CHANGED_EVENT, fmtTime, relTime, useNow, waNumber } from './shared'
 
@@ -22,7 +22,7 @@ export default function InterviewReminder() {
   const now = useNow(15_000)
   const [list, setList] = useState<Reminder[]>([])
   const [busy, setBusy] = useState('')
-  const enabled = hasHrDesk(user)
+  const enabled = isHrManager(user)   // HR managers only, not Admin or Director
 
   const fetchList = useCallback(() => {
     apiGet<Reminder[]>('/interviews/reminders').then(r => setList(Array.isArray(r) ? r : [])).catch(() => {})

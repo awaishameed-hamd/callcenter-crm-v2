@@ -9,8 +9,8 @@ import { fmtWhen } from './interviews.service'
 const LEAD_MINUTES = 30
 
 /**
- * 30 minutes before a scheduled interview, the HR managers (and whoever scheduled it) get a
- * popup and a bell notification asking them to call the candidate. Runs every minute; each
+ * 30 minutes before a scheduled interview, the HR managers (only them, not Admin or Director)
+ * get a popup and a bell notification asking them to call the candidate. Runs every minute; each
  * interview is reminded once (a reschedule clears it so the new time is reminded again).
  */
 @Injectable()
@@ -36,7 +36,7 @@ export class InterviewRemindersService {
       const minutes = Math.max(1, Math.round((iv.scheduledAt!.getTime() - now.getTime()) / 60_000))
       const title = `Interview in ${minutes} minutes`
       const body = `${iv.candidate.fullName} (${iv.candidate.phone}) for ${iv.position} at ${fmtWhen(iv.scheduledAt!).split(' at ')[1]}. Please call to confirm.`
-      const recipients = Array.from(new Set([...hr.map(h => h.id), ...(iv.createdById ? [iv.createdById] : [])]))
+      const recipients = hr.map(h => h.id)
       for (const userId of recipients) {
         await this.notifications.create({ userId, title, body, type: 'SYSTEM', data: { kind: 'interview_reminder', interviewId: iv.id } }).catch(() => {})
         pushToUser(userId, 'interview_reminder', { id: iv.id, position: iv.position, scheduledAt: iv.scheduledAt, mode: iv.mode, candidate: iv.candidate })

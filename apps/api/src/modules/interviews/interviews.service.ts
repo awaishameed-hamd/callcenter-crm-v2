@@ -3,7 +3,7 @@ import { Prisma } from '@prisma/client'
 import { randomUUID } from 'crypto'
 import { PrismaService } from '../prisma/prisma.service'
 import { EmailService } from '../email/email.service'
-import { Actor, assertHrDesk } from '../../common/utils/staff-policy'
+import { Actor, assertHrDesk, isHrManager } from '../../common/utils/staff-policy'
 import { V, fail, pageArgs, toPage } from '../../common/utils/validate'
 import { PKT_TZ, todayIn, isYmd, parseYmd, zonedToUtc, dayRangeUtc, monthStart, addDays, dateOnly } from '../../common/utils/time'
 
@@ -388,9 +388,10 @@ export class InterviewsService {
 
   // ── Reminders (30 minutes before) ───────────────────────────────────────────
 
-  /** Reminders this user still has to see: sent, interview not started yet, not acknowledged by them. */
+  /** Reminders this HR manager still has to see: sent, interview not started yet, not acknowledged by them. */
   async pendingReminders(actor: Actor) {
     assertHrDesk(actor)
+    if (!isHrManager(actor)) return []   // the 30 minute reminder is for HR managers only
     const rows = await this.prisma.interview.findMany({
       where: {
         status: 'SCHEDULED', reminderSentAt: { not: null },
