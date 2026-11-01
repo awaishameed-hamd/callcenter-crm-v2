@@ -12,28 +12,29 @@ import { Svg, withAlpha, RAJDHANI } from '@/components/sales/saleUi'
 import CandidateModal from './CandidateModal'
 import ActionModal, { type Action } from './ActionModal'
 import {
-  OUTFIT, FONT, IC, STATUS, RESULT, Btn, Panel, Detail, Segmented, StatusPill, ResultPill, CopyBtn, WhatsAppIcon, ErrorBox,
+  FONT, SLATE, IC, STATUS, RESULT, Btn, Panel, Detail, Segmented, StatusPill, ResultPill, CopyBtn, WhatsAppIcon, ErrorBox, labelStyle,
   fmtStamp, fmtDay, fmtTime, fmtDob, relTime, money, years, waNumber, useNow,
   type InterviewFull, type Meta, type FormFull, type Question, type Result, type InterviewEvent,
 } from './shared'
 
 const cls = 'w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[13px] text-gray-800 placeholder-gray-400 outline-none transition focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20'
 
+// Palette and Attendance Report status shades
 const EVENT: Record<string, { label: string; icon: string; color: string }> = {
-  SCHEDULED:         { label: 'Interview scheduled', icon: IC.calendar, color: '#2563EB' },
+  SCHEDULED:         { label: 'Interview scheduled', icon: IC.calendar, color: P.navy },
   WALK_IN:           { label: 'Walked in',           icon: IC.walk,     color: '#D97706' },
   EMAIL_SENT:        { label: 'Email sent',          icon: IC.mail,     color: P.teal },
-  EMAIL_FAILED:      { label: 'Email not sent',      icon: IC.mail,     color: '#B91C1C' },
+  EMAIL_FAILED:      { label: 'Email not sent',      icon: IC.mail,     color: '#DC2626' },
   REMINDER:          { label: '30 minute reminder sent to HR', icon: IC.bell, color: '#7C3AED' },
-  REMINDER_SEEN:     { label: 'Reminder seen',       icon: IC.bell,     color: '#6B7280' },
+  REMINDER_SEEN:     { label: 'Reminder seen',       icon: IC.bell,     color: SLATE },
   CALLED:            { label: 'Called the candidate', icon: IC.phone,   color: P.teal },
-  RESCHEDULED:       { label: 'Rescheduled',         icon: IC.refresh,  color: '#B45309' },
+  RESCHEDULED:       { label: 'Rescheduled',         icon: IC.refresh,  color: P.brick },
   ARRIVED:           { label: 'Arrived',             icon: IC.check,    color: '#D97706' },
-  NO_SHOW:           { label: 'Did not come',        icon: IC.x,        color: '#B91C1C' },
-  CANCELLED:         { label: 'Cancelled',           icon: IC.x,        color: '#6B7280' },
+  NO_SHOW:           { label: 'Did not come',        icon: IC.x,        color: '#DC2626' },
+  CANCELLED:         { label: 'Cancelled',           icon: IC.x,        color: SLATE },
   EVALUATION_SAVED:  { label: 'Answers saved',       icon: IC.form,     color: P.navy },
-  COMPLETED:         { label: 'Interview completed', icon: IC.star,     color: '#15803D' },
-  CANDIDATE_UPDATED: { label: 'Candidate details updated', icon: IC.user, color: '#6B7280' },
+  COMPLETED:         { label: 'Interview completed', icon: IC.star,     color: '#16A34A' },
+  CANDIDATE_UPDATED: { label: 'Candidate details updated', icon: IC.user, color: SLATE },
   NOTE:              { label: 'Note',                icon: IC.note,     color: P.navy },
 }
 
@@ -47,11 +48,12 @@ function eventText(e: InterviewEvent) {
 
 // ── One question ────────────────────────────────────────────────────────────
 
+// Same buttons as the Attendance Report's status picker: solid colour when chosen
 function Chip({ on, onClick, children, color = P.teal, disabled }: { on: boolean; onClick: () => void; children: React.ReactNode; color?: string; disabled?: boolean }) {
   return (
     <button type="button" onClick={onClick} disabled={disabled}
-      style={{ minWidth: 38, padding: '5px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 700, fontFamily: FONT, cursor: disabled ? 'default' : 'pointer',
-        border: `1.5px solid ${on ? color : '#E2E8F0'}`, background: on ? withAlpha(color, 0.1) : '#fff', color: on ? color : '#5C6D82' }}>
+      style={{ minWidth: 38, padding: '6px 14px', borderRadius: 8, fontSize: 12, fontWeight: 700, fontFamily: FONT, cursor: disabled ? 'default' : 'pointer', transition: 'all 0.15s',
+        border: `1.5px solid ${on ? color : P.border}`, background: on ? color : '#F8FAFC', color: on ? '#fff' : P.textMuted, boxShadow: on ? `0 2px 8px ${color}40` : 'none' }}>
       {children}
     </button>
   )
@@ -61,18 +63,18 @@ function Answer({ q, value, onChange, readOnly }: { q: Question; value: any; onC
   switch (q.type) {
     case 'rating': return (
       <div style={{ display: 'flex', gap: 6 }}>
-        {[1, 2, 3, 4, 5].map(n => <Chip key={n} on={Number(value) === n} disabled={readOnly} onClick={() => onChange(Number(value) === n ? '' : n)} color={n <= 2 ? '#B91C1C' : n === 3 ? '#B45309' : '#15803D'}>{n}</Chip>)}
-        <span style={{ alignSelf: 'center', fontSize: 11.5, color: '#8A97AB', marginLeft: 4 }}>1 poor, 5 excellent</span>
+        {[1, 2, 3, 4, 5].map(n => <Chip key={n} on={Number(value) === n} disabled={readOnly} onClick={() => onChange(Number(value) === n ? '' : n)} color={n <= 2 ? '#DC2626' : n === 3 ? '#D97706' : P.teal}>{n}</Chip>)}
+        <span style={{ alignSelf: 'center', fontSize: 11.5, color: P.textMuted, marginLeft: 4 }}>1 poor, 5 excellent</span>
       </div>
     )
     case 'yesno': return (
       <div style={{ display: 'flex', gap: 6 }}>
-        <Chip on={value === 'yes'} disabled={readOnly} onClick={() => onChange(value === 'yes' ? '' : 'yes')} color="#15803D">Yes</Chip>
-        <Chip on={value === 'no'} disabled={readOnly} onClick={() => onChange(value === 'no' ? '' : 'no')} color="#B91C1C">No</Chip>
+        <Chip on={value === 'yes'} disabled={readOnly} onClick={() => onChange(value === 'yes' ? '' : 'yes')} color={P.teal}>Yes</Chip>
+        <Chip on={value === 'no'} disabled={readOnly} onClick={() => onChange(value === 'no' ? '' : 'no')} color="#DC2626">No</Chip>
       </div>
     )
     case 'choice': return (q.options ?? []).length <= 5
-      ? <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(q.options ?? []).map(o => <Chip key={o} on={value === o} disabled={readOnly} onClick={() => onChange(value === o ? '' : o)}>{o}</Chip>)}</div>
+      ? <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>{(q.options ?? []).map(o => <Chip key={o} on={value === o} disabled={readOnly} color={P.navy} onClick={() => onChange(value === o ? '' : o)}>{o}</Chip>)}</div>
       : <StyledSelect value={value ?? ''} onChange={onChange} disabled={readOnly} placeholder="Choose" options={(q.options ?? []).map(o => ({ value: o, label: o }))} />
     case 'number': return <input type="number" className={cls} style={{ maxWidth: 200 }} value={value ?? ''} readOnly={readOnly} onChange={e => onChange(e.target.value)} />
     case 'textarea': return <textarea className={`${cls} resize-none`} rows={2} value={value ?? ''} readOnly={readOnly} onChange={e => onChange(e.target.value)} />
@@ -81,6 +83,9 @@ function Answer({ q, value, onChange, readOnly }: { q: Question; value: any; onC
 }
 
 const answered = (v: any) => v !== undefined && v !== null && v !== ''
+
+const headPill: React.CSSProperties = { fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700, fontFamily: FONT, whiteSpace: 'nowrap', flexShrink: 0 }
+const notice: React.CSSProperties = { marginBottom: 10, padding: '9px 12px', borderRadius: 8, fontSize: 12.5, fontWeight: 600 }
 
 // ── Drawer ──────────────────────────────────────────────────────────────────
 
@@ -181,31 +186,29 @@ export default function InterviewDrawer({ id, meta, forms, onClose, onChanged, o
 
   return (
     <>
-      <div onClick={close} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(19,46,87,0.35)' }} />
-      <aside style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 1001, width: 'min(1240px, calc(100vw - 24px))', background: '#F2F4F7', display: 'flex', flexDirection: 'column', boxShadow: '-20px 0 50px -20px rgba(19,46,87,0.45)', fontFamily: FONT }}>
-        {/* Head */}
-        <div style={{ background: `linear-gradient(120deg, ${P.navy} 0%, #1A4A73 55%, ${P.teal} 100%)`, color: '#fff', padding: '14px 20px 12px', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 14 }}>
-            <div style={{ width: 46, height: 46, borderRadius: 14, background: 'rgba(255,255,255,0.14)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontFamily: OUTFIT, fontSize: 19, fontWeight: 600, flexShrink: 0 }}>
-              {(c?.fullName ?? '?').split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()}
-            </div>
-            <div style={{ minWidth: 0, flex: 1 }}>
-              <div style={{ fontFamily: OUTFIT, fontSize: 21, fontWeight: 600, letterSpacing: '-0.01em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{c?.fullName ?? (loadError ? 'Interview' : 'Loading...')}</div>
-              {iv && (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 3, fontSize: 12.5, color: 'rgba(255,255,255,0.85)', flexWrap: 'wrap' }}>
-                  <span style={{ fontWeight: 700, color: '#fff' }}>{iv.position}</span>
-                  {iv.kind === 'WALK_IN' && <><span>·</span><span>Walk-in</span></>}
-                  {iv.scheduledAt && <><span>·</span><span>{fmtDay(iv.scheduledAt)}, {fmtTime(iv.scheduledAt)}{upcoming ? ` (${relTime(iv.scheduledAt, now)})` : ''}</span></>}
-                  <span style={{ padding: '2px 9px', borderRadius: 99, background: '#fff', color: STATUS[iv.status].color, fontWeight: 800, fontSize: 11 }}>{STATUS[iv.status].label}</span>
-                  {iv.result !== 'PENDING' && <span style={{ padding: '2px 9px', borderRadius: 99, background: RESULT[iv.result].color, color: '#fff', fontWeight: 800, fontSize: 11 }}>{RESULT[iv.result].label}</span>}
-                  {iv.rescheduleCount > 0 && <span style={{ fontSize: 11.5, color: '#FDE68A', fontWeight: 700 }}>Rescheduled {iv.rescheduleCount}x</span>}
-                </div>
-              )}
-            </div>
-            <button type="button" onClick={close} aria-label="Close" style={{ width: 34, height: 34, borderRadius: 10, border: 0, background: 'rgba(255,255,255,0.15)', color: '#fff', cursor: 'pointer', fontSize: 20, lineHeight: 1, flexShrink: 0 }}>×</button>
-          </div>
-          {iv && (
-            <div style={{ display: 'flex', alignItems: 'center', gap: 7, marginTop: 12, flexWrap: 'wrap' }}>
+      <div onClick={close} style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)' }} />
+      <aside style={{ position: 'fixed', top: 0, right: 0, bottom: 0, zIndex: 1001, width: 'min(1240px, calc(100vw - 24px))', background: P.bgMain, display: 'flex', flexDirection: 'column', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', fontFamily: FONT }}>
+        {/* Head: the Attendance Report detail header (slate band, name, light pills, Back) */}
+        <div style={{ background: SLATE, padding: '10px 20px', display: 'flex', alignItems: 'center', gap: 12, flexShrink: 0, minHeight: 52, boxSizing: 'border-box' }}>
+          <h2 style={{ margin: 0, fontFamily: FONT, fontSize: 22, fontWeight: 800, color: '#F1F5F9', letterSpacing: '0.04em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+            {c?.fullName ?? (loadError ? 'Interview' : 'Loading...')}
+          </h2>
+          {iv && <>
+            <span style={headPill}>{iv.position}</span>
+            {iv.kind === 'WALK_IN' && <span style={headPill}>Walk-in</span>}
+            {iv.scheduledAt && <span style={headPill}>{fmtDay(iv.scheduledAt)}, {fmtTime(iv.scheduledAt)}{upcoming ? ` (${relTime(iv.scheduledAt, now)})` : ''}</span>}
+            <span style={{ ...headPill, background: STATUS[iv.status].bg, color: STATUS[iv.status].text }}>{STATUS[iv.status].label}</span>
+            {iv.result !== 'PENDING' && <span style={{ ...headPill, background: RESULT[iv.result].bg, color: RESULT[iv.result].text }}>{RESULT[iv.result].label}</span>}
+            {iv.rescheduleCount > 0 && <span style={{ ...headPill, border: '1px solid rgba(255,255,255,0.25)' }}>Rescheduled {iv.rescheduleCount}x</span>}
+          </>}
+          <button type="button" onClick={close}
+            style={{ marginLeft: 'auto', flexShrink: 0, cursor: 'pointer', color: '#E2E8F0', fontWeight: 700, background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 8, padding: '4px 12px', fontSize: 12, fontFamily: FONT }}>
+            ← Back
+          </button>
+        </div>
+        {iv && (
+          <div style={{ background: '#fff', borderBottom: `1px solid ${P.border}`, padding: '8px 20px', flexShrink: 0 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' }}>
               {(st === 'SCHEDULED' || st === 'NO_SHOW') && <Btn small tone="success" icon={IC.check} disabled={!!busy} onClick={() => quick('arrived', {}, 'Marked as arrived')}>Mark Arrived</Btn>}
               {st !== 'COMPLETED' && <Btn small tone="ghost" icon={IC.refresh} onClick={() => setModal('reschedule')}>{st === 'NO_SHOW' || st === 'CANCELLED' ? 'Book Again' : 'Reschedule'}</Btn>}
               {st === 'SCHEDULED' && <Btn small tone="ghost" icon={IC.phone} disabled={!!busy} onClick={() => quick('notes', { type: 'CALLED' }, 'Call recorded in the trail')}>Called</Btn>}
@@ -217,17 +220,17 @@ export default function InterviewDrawer({ id, meta, forms, onClose, onChanged, o
               <Btn small tone="ghost" icon={IC.user} onClick={() => setModal('candidate')}>Edit Candidate</Btn>
               <Btn small tone="danger" icon={IC.trash} title="Delete interview" onClick={() => setModal('delete')} />
             </div>
-          )}
-        </div>
+          </div>
+        )}
 
         {loadError && <div style={{ padding: 20 }}><ErrorBox text={loadError} /></div>}
-        {!iv && !loadError && <div style={{ padding: 40, textAlign: 'center', color: '#8A97AB', fontSize: 13 }}>Loading...</div>}
+        {!iv && !loadError && <div style={{ padding: 40, textAlign: 'center', color: P.textMuted, fontSize: 13 }}>Loading...</div>}
 
         {iv && c && (
           <div style={{ flex: 1, minHeight: 0, display: 'grid', gridTemplateColumns: '410px minmax(0, 1fr)', gap: 14, padding: 14 }}>
             {/* Left: candidate, interview, trail */}
             <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 12, paddingRight: 2 }}>
-              <Panel title="Candidate" icon={IC.user}>
+              <Panel title="Candidate">
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 10, flexWrap: 'wrap' }}>
                   <a href={`tel:${c.phone}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 8, background: withAlpha(P.teal, 0.1), color: P.teal, fontSize: 13, fontWeight: 700, textDecoration: 'none' }}><Svg d={IC.phone} size={13} />{c.phone}</a>
                   <CopyBtn text={c.phone} />
@@ -257,7 +260,7 @@ export default function InterviewDrawer({ id, meta, forms, onClose, onChanged, o
                 </div>
               </Panel>
 
-              <Panel title="Interview" icon={IC.calendar}>
+              <Panel title="Interview">
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '9px 12px' }}>
                   <Detail label={iv.kind === 'WALK_IN' ? 'Walked in' : 'Date and time'}>{iv.scheduledAt ? fmtStamp(iv.scheduledAt) : fmtStamp(iv.arrivedAt ?? iv.createdAt)}</Detail>
                   <Detail label="Duration">{`${iv.durationMin} minutes`}</Detail>
@@ -272,13 +275,13 @@ export default function InterviewDrawer({ id, meta, forms, onClose, onChanged, o
               </Panel>
 
               {iv.history.length > 0 && (
-                <Panel title="Earlier interviews" icon={IC.refresh}>
+                <Panel title="Earlier interviews" badge={iv.history.length}>
                   {iv.history.map(h => (
                     <button key={h.id} type="button" onClick={() => onOpen(h.id)}
-                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', border: 0, borderBottom: `1px dashed ${withAlpha(P.navy, 0.08)}`, background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: FONT }}>
+                      style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 8, padding: '7px 0', border: 0, borderBottom: '1px solid #F1F5F9', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: FONT }}>
                       <span style={{ flex: 1, minWidth: 0 }}>
                         <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: P.navy }}>{h.position}</span>
-                        <span style={{ fontSize: 11.5, color: '#8A97AB' }}>{fmtStamp(h.scheduledAt ?? h.createdAt)}</span>
+                        <span style={{ fontSize: 11.5, color: P.textMuted }}>{fmtStamp(h.scheduledAt ?? h.createdAt)}</span>
                       </span>
                       <StatusPill s={h.status} /><ResultPill r={h.result} />
                     </button>
@@ -286,22 +289,22 @@ export default function InterviewDrawer({ id, meta, forms, onClose, onChanged, o
                 </Panel>
               )}
 
-              <Panel title="Trail" icon={IC.clock} bodyStyle={{ paddingTop: 0 }}>
+              <Panel title="Trail" badge={`${iv.events.length} step${iv.events.length === 1 ? '' : 's'}`}>
                 <div style={{ position: 'relative', paddingLeft: 4 }}>
                   {iv.events.map((e, i) => {
-                    const m = EVENT[e.type] ?? { label: e.type, icon: IC.note, color: '#6B7280' }
+                    const m = EVENT[e.type] ?? { label: e.type, icon: IC.note, color: SLATE }
                     const text = eventText(e)
                     return (
                       <div key={e.id} style={{ display: 'flex', gap: 10, position: 'relative', paddingBottom: i === iv.events.length - 1 ? 2 : 12 }}>
-                        {i < iv.events.length - 1 && <span style={{ position: 'absolute', left: 12, top: 26, bottom: 0, width: 2, background: withAlpha(P.navy, 0.08) }} />}
-                        <span style={{ width: 26, height: 26, borderRadius: 99, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: withAlpha(m.color, 0.12), color: m.color, zIndex: 1 }}><Svg d={m.icon} size={13} /></span>
+                        {i < iv.events.length - 1 && <span style={{ position: 'absolute', left: 12, top: 26, bottom: 0, width: 2, background: P.border }} />}
+                        <span style={{ width: 26, height: 26, borderRadius: 99, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: m.color, color: '#fff', zIndex: 1 }}><Svg d={m.icon} size={13} /></span>
                         <div style={{ minWidth: 0, flex: 1, paddingTop: 2 }}>
                           <div style={{ display: 'flex', gap: 8, alignItems: 'baseline' }}>
-                            <span style={{ fontSize: 12.5, fontWeight: 700, color: m.color === '#6B7280' ? P.navy : m.color }}>{m.label}</span>
-                            <span style={{ marginLeft: 'auto', fontSize: 11, color: '#8A97AB', whiteSpace: 'nowrap' }}>{fmtStamp(e.createdAt)}</span>
+                            <span style={{ fontSize: 12.5, fontWeight: 700, color: m.color === SLATE ? P.navy : m.color }}>{m.label}</span>
+                            <span style={{ marginLeft: 'auto', fontSize: 11, color: P.textMuted, whiteSpace: 'nowrap' }}>{fmtStamp(e.createdAt)}</span>
                           </div>
-                          {text && <div style={{ fontSize: 12.5, color: '#44526B', marginTop: 1, lineHeight: 1.45, wordBreak: 'break-word' }}>{text}</div>}
-                          {e.actor && <div style={{ fontSize: 11, color: '#8A97AB', marginTop: 1 }}>by {e.actor.displayName}</div>}
+                          {text && <div style={{ fontSize: 12, color: P.slate, marginTop: 1, lineHeight: 1.45, wordBreak: 'break-word' }}>{text}</div>}
+                          {e.actor && <div style={{ fontSize: 11, color: P.textMuted, marginTop: 1 }}>by {e.actor.displayName}</div>}
                         </div>
                       </div>
                     )
@@ -315,58 +318,55 @@ export default function InterviewDrawer({ id, meta, forms, onClose, onChanged, o
             </div>
 
             {/* Right: the interview form */}
-            <section style={{ minHeight: 0, display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: 16, border: `1px solid ${withAlpha(P.navy, 0.07)}`, boxShadow: '0 10px 30px -24px rgba(19,46,87,0.5)', overflow: 'hidden' }}>
-              <header style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '12px 16px', borderBottom: `1px solid ${withAlpha(P.navy, 0.07)}`, flexShrink: 0, flexWrap: 'wrap' }}>
-                <span style={{ width: 30, height: 30, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', background: withAlpha(P.gold, 0.18), color: '#B7791F' }}><Svg d={IC.form} size={15} /></span>
-                <div>
-                  <div style={{ fontFamily: OUTFIT, fontSize: 15.5, fontWeight: 600, color: P.navy }}>Interview Form</div>
-                  {questions.length > 0 && <div style={{ fontSize: 11.5, color: '#8A97AB' }}>{answeredCount} of {questions.length} answered{requiredLeft ? `, ${requiredLeft} required left` : ''}</div>}
-                </div>
+            <section style={{ minHeight: 0, display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: 12, border: `1px solid ${P.border}`, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', overflow: 'hidden' }}>
+              <header style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '7px 14px', background: SLATE, flexShrink: 0, flexWrap: 'wrap', minHeight: 36, boxSizing: 'border-box' }}>
+                <h3 style={{ margin: 0, fontFamily: FONT, fontSize: 13, fontWeight: 800, color: '#F1F5F9', letterSpacing: '0.06em', textTransform: 'uppercase' }}>Interview Form</h3>
+                {questions.length > 0 && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700 }}>{answeredCount} of {questions.length} answered{requiredLeft ? `, ${requiredLeft} required left` : ''}</span>}
                 <div style={{ width: 260, marginLeft: 'auto' }}>
                   <StyledSelect value={formId} disabled={readOnly} placeholder="Choose the interview form" onChange={v => { setFormId(v); setDirty(true) }}
                     options={forms.filter(f => f.isActive || f.id === formId).map(f => ({ value: f.id, label: f.kind === 'WALK_IN' ? `${f.name} (walk-in)` : f.name }))} />
                 </div>
               </header>
-              {questions.length > 0 && <div style={{ height: 3, background: '#EEF1F5', flexShrink: 0 }}><div style={{ height: 3, width: `${(answeredCount / questions.length) * 100}%`, background: `linear-gradient(90deg, ${P.teal}, #15803D)`, transition: 'width .3s' }} /></div>}
+              {questions.length > 0 && <div style={{ height: 3, background: '#F1F5F9', flexShrink: 0 }}><div style={{ height: 3, width: `${(answeredCount / questions.length) * 100}%`, background: P.teal, transition: 'width .3s' }} /></div>}
 
               <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 16px' }}>
-                {st === 'CANCELLED' && <div style={{ marginBottom: 10, padding: '9px 12px', borderRadius: 9, background: '#F3F4F6', color: '#4B5563', fontSize: 12.5, fontWeight: 600 }}>This interview was cancelled. Use Book Again to give the candidate a new time.</div>}
-                {st === 'SCHEDULED' && <div style={{ marginBottom: 10, padding: '9px 12px', borderRadius: 9, background: '#EFF6FF', color: '#1D4ED8', fontSize: 12.5, fontWeight: 600 }}>The candidate has not arrived yet. Mark them as arrived when they come in, then fill the form during the interview.</div>}
-                {done && !editingDone && <div style={{ marginBottom: 10, padding: '9px 12px', borderRadius: 9, background: '#ECFDF5', color: '#15803D', fontSize: 12.5, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 8 }}>
+                {st === 'CANCELLED' && <div style={{ ...notice, background: STATUS.CANCELLED.bg, color: STATUS.CANCELLED.text }}>This interview was cancelled. Use Book Again to give the candidate a new time.</div>}
+                {st === 'SCHEDULED' && <div style={{ ...notice, background: STATUS.SCHEDULED.bg, color: STATUS.SCHEDULED.text }}>The candidate has not arrived yet. Mark them as arrived when they come in, then fill the form during the interview.</div>}
+                {done && !editingDone && <div style={{ ...notice, background: STATUS.COMPLETED.bg, color: STATUS.COMPLETED.text, display: 'flex', alignItems: 'center', gap: 8 }}>
                   Completed on {fmtStamp(iv.completedAt)}. <button type="button" onClick={() => setEditingDone(true)} style={{ marginLeft: 'auto', border: 0, background: 'transparent', color: P.teal, fontWeight: 800, cursor: 'pointer', fontSize: 12.5 }}>Edit answers</button>
                 </div>}
-                {!formId && <div style={{ padding: '30px 10px', textAlign: 'center', color: '#8A97AB', fontSize: 13 }}>Choose the interview form at the top right to see its questions.</div>}
+                {!formId && <div style={{ padding: '30px 10px', textAlign: 'center', color: P.textMuted, fontSize: 13 }}>Choose the interview form at the top right to see its questions.</div>}
                 {questions.map((q, i) => (
-                  <div key={q.id} style={{ padding: '10px 12px', borderRadius: 12, marginBottom: 8, border: `1px solid ${answered(answers[q.id]) ? withAlpha(P.teal, 0.25) : '#EEF1F5'}`, background: answered(answers[q.id]) ? withAlpha(P.teal, 0.03) : '#FBFCFD' }}>
+                  <div key={q.id} style={{ padding: '10px 12px', borderRadius: 10, marginBottom: 8, border: answered(answers[q.id]) ? `1.5px solid ${P.teal}55` : '1.5px solid #E2E8F0', background: answered(answers[q.id]) ? P.fillTeal : '#F8FAFC' }}>
                     <div style={{ display: 'flex', gap: 8, marginBottom: 7 }}>
-                      <span style={{ fontFamily: RAJDHANI, fontSize: 13, fontWeight: 700, color: P.teal, minWidth: 20 }}>{i + 1}.</span>
-                      <span style={{ fontSize: 13.5, fontWeight: 600, color: P.navy, lineHeight: 1.4 }}>{q.label}{q.required && <span style={{ color: '#D62828' }}> *</span>}</span>
+                      <span style={{ fontSize: 13, fontWeight: 800, color: P.teal, minWidth: 20 }}>{i + 1}.</span>
+                      <span style={{ fontSize: 13, fontWeight: 700, color: P.navy, lineHeight: 1.4 }}>{q.label}{q.required && <span style={{ color: '#D62828' }}> *</span>}</span>
                     </div>
                     <div style={{ paddingLeft: 28 }}><Answer q={q} value={answers[q.id]} readOnly={readOnly} onChange={v => { setAnswers(a => ({ ...a, [q.id]: v })); setDirty(true) }} /></div>
                   </div>
                 ))}
 
                 {formId && (
-                  <div style={{ marginTop: 6, padding: '12px 14px', borderRadius: 12, background: withAlpha(P.navy, 0.03), border: `1px solid ${withAlpha(P.navy, 0.07)}` }}>
+                  <div style={{ marginTop: 6, padding: '12px 14px', borderRadius: 10, background: '#F8FAFC', border: `1.5px solid ${P.border}` }}>
                     <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '10px 16px', alignItems: 'center' }}>
-                      <span style={{ fontFamily: RAJDHANI, fontSize: 12.5, fontWeight: 700, color: '#5C6D82', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Overall rating</span>
+                      <span style={labelStyle}>Overall rating</span>
                       <div style={{ display: 'flex', gap: 2 }}>
                         {[1, 2, 3, 4, 5].map(n => (
                           <button key={n} type="button" disabled={readOnly} onClick={() => { setRating(rating === n ? '' : n); setDirty(true) }} title={`${n} of 5`}
-                            style={{ border: 0, background: 'transparent', padding: 1, cursor: readOnly ? 'default' : 'pointer', color: rating !== '' && n <= rating ? '#F2AC18' : '#D5DBE3' }}>
+                            style={{ border: 0, background: 'transparent', padding: 1, cursor: readOnly ? 'default' : 'pointer', color: rating !== '' && n <= rating ? P.gold : '#D5DBE3' }}>
                             <svg width={24} height={24} viewBox="0 0 24 24" fill="currentColor"><path d={IC.star} /></svg>
                           </button>
                         ))}
                       </div>
-                      <span style={{ fontFamily: RAJDHANI, fontSize: 12.5, fontWeight: 700, color: '#5C6D82', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Result</span>
+                      <span style={labelStyle}>Result</span>
                       <div style={{ pointerEvents: readOnly ? 'none' : undefined }}>
                         <Segmented value={result} onChange={v => { setResult(v); setDirty(true) }} options={[['PENDING', 'Not decided'], ['SELECTED', 'Selected'], ['ON_HOLD', 'On hold'], ['REJECTED', 'Rejected']]}
-                          colors={{ SELECTED: '#15803D', REJECTED: '#B91C1C', ON_HOLD: '#B45309', PENDING: '#6B7280' }} />
+                          colors={{ SELECTED: RESULT.SELECTED.color, REJECTED: RESULT.REJECTED.color, ON_HOLD: RESULT.ON_HOLD.color, PENDING: RESULT.PENDING.color }} />
                       </div>
-                      <span style={{ fontFamily: RAJDHANI, fontSize: 12.5, fontWeight: 700, color: '#5C6D82', textTransform: 'uppercase', letterSpacing: '0.06em' }}>Interviewer</span>
+                      <span style={labelStyle}>Interviewer</span>
                       <div style={{ maxWidth: 300 }}><StyledSelect value={interviewerId} disabled={readOnly} onChange={v => { setInterviewerId(v); setDirty(true) }} placeholder="Who took the interview"
                         options={(meta?.interviewers ?? []).map(u => ({ value: u.id, label: u.managerType ? `${u.displayName} (${u.managerType})` : u.displayName }))} /></div>
-                      <span style={{ fontFamily: RAJDHANI, fontSize: 12.5, fontWeight: 700, color: '#5C6D82', textTransform: 'uppercase', letterSpacing: '0.06em', alignSelf: 'start', paddingTop: 6 }}>Remarks</span>
+                      <span style={{ ...labelStyle, alignSelf: 'start', paddingTop: 6 }}>Remarks</span>
                       <textarea className={`${cls} resize-none`} rows={3} value={remarks} readOnly={readOnly} onChange={e => { setRemarks(e.target.value); setDirty(true) }} placeholder="Overall impression, salary agreed, joining date, next step" />
                     </div>
                   </div>
@@ -374,8 +374,8 @@ export default function InterviewDrawer({ id, meta, forms, onClose, onChanged, o
               </div>
 
               {formId && !readOnly && (
-                <footer style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderTop: `1px solid ${withAlpha(P.navy, 0.07)}`, background: '#FAFBFC', flexShrink: 0 }}>
-                  <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: evalError ? '#B91C1C' : '#8A97AB', fontWeight: evalError ? 600 : 400 }}>
+                <footer style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 16px', borderTop: `1px solid ${P.border}`, background: '#FAFBFC', flexShrink: 0 }}>
+                  <div style={{ flex: 1, minWidth: 0, fontSize: 12.5, color: evalError ? '#DC2626' : P.textMuted, fontWeight: evalError ? 600 : 400 }}>
                     {evalError || (dirty ? 'Unsaved changes' : 'Save as you go; complete it with a result at the end.')}
                   </div>
                   {done && <Btn small onClick={() => take(iv)}>Discard</Btn>}

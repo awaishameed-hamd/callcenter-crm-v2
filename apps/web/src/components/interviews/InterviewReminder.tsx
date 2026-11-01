@@ -11,8 +11,10 @@ import { apiGet, apiPost } from '@/lib/api'
 import { getSocket } from '@/lib/socket'
 import { useAuth } from '@/contexts/AuthContext'
 import { isHrManager, roleBase } from '@/lib/roles'
-import { Svg, withAlpha } from '@/components/sales/saleUi'
-import { OUTFIT, FONT, IC, CopyBtn, WhatsAppIcon, OPEN_INTERVIEW_EVENT, INTERVIEWS_CHANGED_EVENT, fmtTime, relTime, useNow, waNumber } from './shared'
+import { Svg, withAlpha, BEBAS, CRISP, ETHNO } from '@/components/sales/saleUi'
+import { FONT, IC, Btn, CopyBtn, WhatsAppIcon, OPEN_INTERVIEW_EVENT, INTERVIEWS_CHANGED_EVENT, fmtTime, relTime, useNow, waNumber } from './shared'
+
+const fade = (c: string) => `linear-gradient(90deg, ${c} 0%, ${c} 30%, ${withAlpha(c, 0.78)} 55%, ${withAlpha(c, 0.45)} 78%, ${withAlpha(c, 0.18)} 100%)`
 
 interface Reminder { id: string; position: string; scheduledAt: string; mode: string; candidate: { fullName: string; phone: string; altPhone?: string | null } }
 
@@ -61,30 +63,31 @@ export default function InterviewReminder() {
       {list.slice(0, 3).map(r => {
         const late = new Date(r.scheduledAt).getTime() < now
         return (
-          <div key={r.id} role="alert" style={{ background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 18px 40px -16px rgba(19,46,87,0.55)', border: `1px solid ${withAlpha(P.navy, 0.08)}` }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 14px', background: late ? 'linear-gradient(135deg, #FDECEC 0%, #F8D4D4 100%)' : 'linear-gradient(135deg, #FFF6E5 0%, #FBE6BC 100%)' }}>
-              <span style={{ width: 30, height: 30, borderRadius: 10, background: '#fff', color: late ? '#B91C1C' : '#B45309', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Svg d={IC.bell} size={16} /></span>
+          <div key={r.id} role="alert" style={{ background: '#fff', borderRadius: 16, overflow: 'hidden', boxShadow: '0 20px 60px rgba(0,0,0,0.25)', border: `1px solid ${P.border}` }}>
+            {/* Fading header as in the Approvals dialogs: amber before the time, red once it has passed */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', color: '#fff', background: fade(late ? '#DC2626' : '#D97706') }}>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ fontFamily: OUTFIT, fontSize: 14.5, fontWeight: 600, color: P.navy }}>Interview {late ? 'time has passed' : relTime(r.scheduledAt, now)}</div>
-                <div style={{ fontSize: 11.5, color: '#5C6D82' }}>at {fmtTime(r.scheduledAt)}, {r.mode.toLowerCase()}</div>
+                <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 9.5, letterSpacing: '0.05em', opacity: 0.9 }}>INTERVIEW REMINDER</p>
+                <p style={{ margin: '2px 0 0', display: 'flex', alignItems: 'baseline', gap: 8 }}>
+                  <span style={{ fontFamily: BEBAS, ...CRISP, fontSize: 20, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap' }}>{late ? 'Time has passed' : `Starts ${relTime(r.scheduledAt, now)}`}</span>
+                  <span style={{ fontSize: 11.5, opacity: 0.9, whiteSpace: 'nowrap' }}>at {fmtTime(r.scheduledAt)}, {r.mode.toLowerCase()}</span>
+                </p>
               </div>
-              <button type="button" onClick={() => ack(r, false)} disabled={busy === r.id} title="Dismiss" style={{ width: 26, height: 26, borderRadius: 8, border: 0, background: 'rgba(255,255,255,0.7)', color: P.navy, cursor: 'pointer', fontSize: 16, lineHeight: 1 }}>×</button>
+              <button type="button" onClick={() => ack(r, false)} disabled={busy === r.id} title="Dismiss" style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.navy, fontSize: 20, lineHeight: 1, fontWeight: 700, padding: '0 2px' }}>×</button>
             </div>
             <div style={{ padding: '10px 14px 12px' }}>
-              <div style={{ fontSize: 13.5, color: P.navy, lineHeight: 1.5 }}>
+              <div style={{ fontSize: 13, color: P.navy, lineHeight: 1.5 }}>
                 <strong>{r.candidate.fullName}</strong> is coming for <strong>{r.position}</strong>. Please call to confirm they are on the way.
               </div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8 }}>
                 <a href={`tel:${r.candidate.phone}`} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '5px 10px', borderRadius: 8, background: withAlpha(P.teal, 0.1), color: P.teal, fontSize: 13, fontWeight: 700, textDecoration: 'none' }}><Svg d={IC.phone} size={13} />{r.candidate.phone}</a>
                 <CopyBtn text={r.candidate.phone} />
                 <a href={`https://wa.me/${waNumber(r.candidate.phone)}`} target="_blank" rel="noreferrer" title="WhatsApp" style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 28, height: 28, borderRadius: 8, background: '#E7F8EE', color: '#16A34A' }}><WhatsAppIcon size={15} /></a>
-                {r.candidate.altPhone && <span style={{ fontSize: 11.5, color: '#8A97AB', marginLeft: 4 }}>Alt: {r.candidate.altPhone}</span>}
+                {r.candidate.altPhone && <span style={{ fontSize: 11.5, color: P.textMuted, marginLeft: 4 }}>Alt: {r.candidate.altPhone}</span>}
               </div>
-              <div style={{ display: 'flex', gap: 6, marginTop: 10 }}>
-                <button type="button" onClick={() => ack(r, true)} disabled={busy === r.id}
-                  style={{ flex: 1, padding: '7px 10px', borderRadius: 9, border: 0, background: 'linear-gradient(135deg, #16A34A 0%, #15803D 100%)', color: '#fff', fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: FONT }}>I Called Them</button>
-                <button type="button" onClick={() => open(r)}
-                  style={{ flex: 1, padding: '7px 10px', borderRadius: 9, border: `1px solid ${P.border}`, background: '#fff', color: P.navy, fontSize: 12.5, fontWeight: 700, cursor: 'pointer', fontFamily: FONT }}>Open Interview</button>
+              <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 8, marginTop: 10 }}>
+                <Btn onClick={() => open(r)}>Open Interview</Btn>
+                <Btn tone="success" icon={IC.check} onClick={() => ack(r, true)} disabled={busy === r.id}>I Called Them</Btn>
               </div>
             </div>
           </div>

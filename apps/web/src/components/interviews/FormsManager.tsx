@@ -8,8 +8,14 @@ import { useEffect, useState } from 'react'
 import { P } from '@/lib/palette'
 import { apiDelete, apiPost, apiPut, errMsg } from '@/lib/api'
 import StyledSelect from '@/components/ui/StyledSelect'
-import { Field, Svg, withAlpha, RAJDHANI } from '@/components/sales/saleUi'
-import { OUTFIT, FONT, IC, QTYPE_LABEL, Btn, Segmented, ErrorBox, Pill, type FormFull, type Kind, type QType, type Question } from './shared'
+import { Field, Svg } from '@/components/sales/saleUi'
+import { FONT, SLATE, IC, QTYPE_LABEL, Btn, Segmented, ErrorBox, Pill, SectionTag, type FormFull, type Kind, type QType, type Question } from './shared'
+
+// Attendance Report card with its slate header band
+const card: React.CSSProperties = { background: '#fff', borderRadius: 12, border: `1px solid ${P.border}`, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }
+const bandStyle: React.CSSProperties = { display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: SLATE, flexShrink: 0, minHeight: 40, boxSizing: 'border-box' }
+const bandTitle: React.CSSProperties = { margin: 0, fontFamily: FONT, fontSize: 13, fontWeight: 800, color: '#F1F5F9', letterSpacing: '0.06em', textTransform: 'uppercase', whiteSpace: 'nowrap' }
+const bandPill: React.CSSProperties = { fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700, fontFamily: FONT, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 260 }
 
 const cls = 'w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[13px] text-gray-800 placeholder-gray-400 outline-none transition focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20'
 
@@ -79,49 +85,52 @@ export default function FormsManager({ forms, reload, notify }: { forms: FormFul
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '300px minmax(0, 1fr)', gap: 14, height: 'calc(100vh - 128px)', minHeight: 460 }}>
       {/* List */}
-      <aside style={{ background: '#fff', borderRadius: 16, border: `1px solid ${withAlpha(P.navy, 0.07)}`, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
-        <div style={{ padding: 12, borderBottom: `1px solid ${withAlpha(P.navy, 0.07)}` }}>
-          <Btn tone="primary" icon={IC.plus} onClick={() => open(null)}>New Form</Btn>
+      <aside style={card}>
+        <div style={bandStyle}>
+          <h3 style={bandTitle}>Interview Forms</h3>
+          <span style={bandPill}>{forms.length}</span>
+          <div style={{ marginLeft: 'auto' }}><Btn small tone="light" icon={IC.plus} onClick={() => open(null)}>New Form</Btn></div>
         </div>
-        <div style={{ overflowY: 'auto', flex: 1, padding: '6px 8px 10px' }}>
+        <div style={{ overflowY: 'auto', flex: 1, padding: '10px 8px' }}>
           {groups.map(([kind, label]) => (
-            <div key={kind}>
-              <div style={{ padding: '10px 8px 4px', fontFamily: RAJDHANI, fontSize: 12, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: '#8A97AB' }}>{label}</div>
+            <div key={kind} style={{ marginBottom: 8 }}>
+              <div style={{ padding: '0 4px 6px' }}><SectionTag>{label}</SectionTag></div>
               {forms.filter(f => f.kind === kind).map(f => {
                 const on = f.id === selId
                 return (
                   <button key={f.id} type="button" onClick={() => open(f)}
-                    style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', marginBottom: 2, borderRadius: 10, border: 0, cursor: 'pointer', fontFamily: FONT,
-                      background: on ? withAlpha(P.teal, 0.1) : 'transparent', opacity: f.isActive ? 1 : 0.55 }}>
-                    <span style={{ width: 28, height: 28, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: on ? '#fff' : '#F1F4F7', color: on ? P.teal : '#8A97AB' }}>
-                      <Svg d={kind === 'WALK_IN' ? IC.walk : IC.form} size={14} />
-                    </span>
+                    style={{ width: '100%', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 10, padding: '7px 10px', marginBottom: 2, borderRadius: 8, border: 0, cursor: 'pointer', fontFamily: FONT,
+                      background: on ? 'rgba(242,172,24,0.26)' : 'transparent', opacity: f.isActive ? 1 : 0.55, transition: 'background .15s' }}
+                    onMouseEnter={e => { if (!on) e.currentTarget.style.background = 'rgba(30,132,150,0.08)' }}
+                    onMouseLeave={e => { if (!on) e.currentTarget.style.background = 'transparent' }}>
+                    <span style={{ color: on ? P.teal : P.iconMuted, display: 'flex', flexShrink: 0 }}><Svg d={kind === 'WALK_IN' ? IC.walk : IC.form} size={16} /></span>
                     <span style={{ minWidth: 0, flex: 1 }}>
                       <span style={{ display: 'block', fontSize: 13, fontWeight: 700, color: P.navy, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.name}</span>
-                      <span style={{ fontSize: 11.5, color: '#8A97AB' }}>{f.questions.length} questions{f.used ? `, used ${f.used}x` : ''}{f.isActive ? '' : ', off'}</span>
+                      <span style={{ fontSize: 11.5, color: P.textMuted }}>{f.questions.length} questions{f.used ? `, used ${f.used}x` : ''}{f.isActive ? '' : ', off'}</span>
                     </span>
                   </button>
                 )
               })}
-              {!forms.some(f => f.kind === kind) && <div style={{ padding: '4px 10px 8px', fontSize: 12, color: '#A3ADBB' }}>No forms yet</div>}
+              {!forms.some(f => f.kind === kind) && <div style={{ padding: '4px 10px 8px', fontSize: 12, color: '#94A3B8' }}>No forms yet</div>}
             </div>
           ))}
         </div>
       </aside>
 
       {/* Editor */}
-      <section style={{ background: '#fff', borderRadius: 16, border: `1px solid ${withAlpha(P.navy, 0.07)}`, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+      <section style={card}>
         {!draft ? (
-          <div style={{ margin: 'auto', color: '#8A97AB', fontSize: 13 }}>Choose a form on the left, or create a new one.</div>
+          <div style={{ margin: 'auto', color: P.textMuted, fontSize: 13 }}>Choose a form on the left, or create a new one.</div>
         ) : <>
-          <div style={{ padding: '14px 18px 12px', borderBottom: `1px solid ${withAlpha(P.navy, 0.07)}`, flexShrink: 0 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <span style={{ fontFamily: OUTFIT, fontSize: 17, fontWeight: 600, color: P.navy }}>{draft.id ? 'Edit Form' : 'New Form'}</span>
-              {draft.id && !draft.isActive && <Pill color="#6B7280">Turned off</Pill>}
-              <span style={{ flex: 1 }} />
-              {draft.id && <Btn small icon={IC.copy} onClick={duplicate} disabled={busy}>Duplicate</Btn>}
-              {draft.id && <Btn small tone="danger" icon={IC.trash} onClick={remove} disabled={busy}>{(forms.find(f => f.id === draft.id)?.used ?? 0) ? 'Turn Off' : 'Delete'}</Btn>}
-            </div>
+          <div style={bandStyle}>
+            <h3 style={bandTitle}>{draft.id ? 'Edit Form' : 'New Form'}</h3>
+            {draft.id && <span style={bandPill}>{draft.name}</span>}
+            {draft.id && !draft.isActive && <Pill bg="#F3F4F6" text="#4B5563">Turned off</Pill>}
+            <span style={{ flex: 1 }} />
+            {draft.id && <Btn small tone="light" icon={IC.copy} onClick={duplicate} disabled={busy}>Duplicate</Btn>}
+            {draft.id && <Btn small tone="danger" icon={IC.trash} onClick={remove} disabled={busy}>{(forms.find(f => f.id === draft.id)?.used ?? 0) ? 'Turn Off' : 'Delete'}</Btn>}
+          </div>
+          <div style={{ padding: '12px 18px', borderBottom: `1px solid ${P.border}`, flexShrink: 0 }}>
             <ErrorBox text={error} />
             <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.2fr) auto minmax(0, 1.6fr) auto', gap: 14, alignItems: 'end' }}>
               <Field label="Form name" required><input className={cls} value={draft.name} onChange={e => edit({ name: e.target.value })} placeholder="e.g. Medicare Agent" /></Field>
@@ -134,13 +143,14 @@ export default function FormsManager({ forms, reload, notify }: { forms: FormFul
           </div>
 
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 18px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr) 170px 86px 88px', gap: 10, padding: '0 10px 6px', fontFamily: RAJDHANI, fontSize: 12, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: '#8A97AB' }}>
+            {/* Gold column header, as every CRM table */}
+            <div style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr) 170px 86px 88px', gap: 10, padding: '7px 10px', marginBottom: 6, borderRadius: 6, background: P.gold, fontFamily: FONT, fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#1a1a1a' }}>
               <span>#</span><span>Question</span><span>Answer type</span><span>Required</span><span />
             </div>
             {draft.questions.map((q, i) => (
-              <div key={i} style={{ padding: '8px 10px', marginBottom: 6, borderRadius: 12, border: '1px solid #EEF1F5', background: '#FBFCFD' }}>
+              <div key={i} style={{ padding: '7px 10px', marginBottom: 5, borderRadius: 8, border: '1.5px solid #E2E8F0', background: i % 2 ? '#F8FAFC' : '#fff' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr) 170px 86px 88px', gap: 10, alignItems: 'center' }}>
-                  <span style={{ fontFamily: RAJDHANI, fontSize: 14, fontWeight: 700, color: P.teal }}>{i + 1}</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: P.teal }}>{i + 1}</span>
                   <input className={cls} value={q.label} onChange={e => editQ(i, { label: e.target.value })} placeholder="Type the question" />
                   <StyledSelect value={q.type} onChange={v => editQ(i, { type: v as QType })} options={(Object.keys(QTYPE_LABEL) as QType[]).map(t => ({ value: t, label: QTYPE_LABEL[t] }))} />
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: P.navy, cursor: 'pointer' }}>
@@ -154,7 +164,7 @@ export default function FormsManager({ forms, reload, notify }: { forms: FormFul
                       </button>
                     ))}
                     <button type="button" title="Remove question" disabled={draft.questions.length === 1} onClick={() => edit({ questions: draft.questions.filter((_, j) => j !== i) })}
-                      style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid #F5C2C2', background: '#fff', color: '#B91C1C', cursor: draft.questions.length === 1 ? 'default' : 'pointer', opacity: draft.questions.length === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      style={{ width: 26, height: 26, borderRadius: 7, border: '1px solid #FCA5A5', background: '#fff', color: '#DC2626', cursor: draft.questions.length === 1 ? 'default' : 'pointer', opacity: draft.questions.length === 1 ? 0.3 : 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Svg d={IC.trash} size={12} />
                     </button>
                   </div>
@@ -168,13 +178,13 @@ export default function FormsManager({ forms, reload, notify }: { forms: FormFul
               </div>
             ))}
             <button type="button" onClick={() => edit({ questions: [...draft.questions, { id: '', label: '', type: 'text' }] })}
-              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px', borderRadius: 12, border: `1.5px dashed ${withAlpha(P.teal, 0.45)}`, background: '#F8FBFC', color: P.teal, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: FONT }}>
+              style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, padding: '9px', borderRadius: 8, border: `1.5px dashed ${P.teal}88`, background: P.fillTeal, color: P.teal, fontSize: 13, fontWeight: 700, cursor: 'pointer', fontFamily: FONT }}>
               <Svg d={IC.plus} size={14} /> Add Question
             </button>
           </div>
 
-          <footer style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderTop: `1px solid ${withAlpha(P.navy, 0.07)}`, background: '#FAFBFC', flexShrink: 0 }}>
-            <span style={{ flex: 1, fontSize: 12.5, color: '#8A97AB' }}>
+          <footer style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '10px 18px', borderTop: `1px solid ${P.border}`, background: '#FAFBFC', flexShrink: 0 }}>
+            <span style={{ flex: 1, fontSize: 12.5, color: P.textMuted }}>
               {dirty ? 'Unsaved changes' : (forms.find(f => f.id === draft.id)?.used ?? 0) ? 'Interviews already done keep the questions they were asked.' : `${draft.questions.length} question${draft.questions.length === 1 ? '' : 's'}`}
             </span>
             {dirty && <Btn onClick={() => open(forms.find(f => f.id === draft.id) ?? null, true)}>Discard</Btn>}

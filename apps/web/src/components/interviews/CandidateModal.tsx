@@ -10,7 +10,7 @@ import { uploadFile, fileHref } from '@/lib/storage'
 import StyledSelect from '@/components/ui/StyledSelect'
 import DateInput from '@/components/ui/DateInput'
 import { Field, Svg, withAlpha } from '@/components/sales/saleUi'
-import { Modal, ModalHead, ModalFoot, ErrorBox, Btn, Segmented, IC, OUTFIT, todayPkt, pktParts, type Candidate, type InterviewFull, type Meta } from './shared'
+import { Modal, ModalHead, ModalFoot, ErrorBox, Btn, Segmented, SectionTag, IC, todayPkt, pktParts, type Candidate, type InterviewFull, type Meta } from './shared'
 
 const cls = 'w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[13px] text-gray-800 placeholder-gray-400 outline-none transition focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20'
 
@@ -41,13 +41,13 @@ const cnicFmt = (raw: string) => {
   return d.length <= 5 ? d : d.length <= 12 ? `${d.slice(0, 5)}-${d.slice(5)}` : `${d.slice(0, 5)}-${d.slice(5, 12)}-${d.slice(12)}`
 }
 
-function Section({ icon, title, children }: { icon: string; title: string; children: React.ReactNode }) {
+// Navy tag with gold text, as the Attendance Report's month headings
+function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 14 }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-        <span style={{ width: 24, height: 24, borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', background: withAlpha(P.teal, 0.1), color: P.teal }}><Svg d={icon} size={13} /></span>
-        <span style={{ fontFamily: OUTFIT, fontSize: 13.5, fontWeight: 600, color: P.navy }}>{title}</span>
-        <span style={{ flex: 1, height: 1, background: withAlpha(P.navy, 0.07) }} />
+        <SectionTag>{title}</SectionTag>
+        <span style={{ flex: 1, height: 1, background: P.border }} />
       </div>
       {children}
     </div>
@@ -123,12 +123,12 @@ export default function CandidateModal({ mode, meta, interview, onClose, onSaved
 
   return (
     <Modal width={1120} onClose={onClose}>
-      <ModalHead title={title} sub={sub} icon={mode === 'walkin' ? IC.walk : mode === 'edit' ? IC.user : IC.calendar} onClose={onClose} />
+      <ModalHead title={title} sub={sub} onClose={onClose} />
       <div style={{ padding: '14px 18px 2px', overflowY: 'auto', flex: 1 }}>
         <ErrorBox text={error} />
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1.25fr) minmax(0, 1fr)', gap: 22 }}>
           <div>
-            <Section icon={IC.user} title="Candidate">
+            <Section title="Candidate">
               <div style={grid(3)}>
                 <Field label="Full name" required><input className={cls} value={c.fullName} onChange={set('fullName')} placeholder="As on CNIC" autoFocus /></Field>
                 <Field label="Father name"><input className={cls} value={c.fatherName} onChange={set('fatherName')} /></Field>
@@ -142,7 +142,7 @@ export default function CandidateModal({ mode, meta, interview, onClose, onSaved
                 <div style={span(3)}><Field label="Address"><input className={cls} value={c.address} onChange={set('address')} /></Field></div>
               </div>
             </Section>
-            <Section icon={IC.briefcase} title="Background">
+            <Section title="Background">
               <div style={grid(3)}>
                 <Field label="Education"><StyledSelect value={c.education} onChange={pick('education')} options={opts(EDUCATION, c.education)} placeholder="Select" /></Field>
                 <Field label="Total experience (years)"><input className={cls} type="number" min={0} step={0.5} value={c.experienceYears} onChange={set('experienceYears')} /></Field>
@@ -161,7 +161,7 @@ export default function CandidateModal({ mode, meta, interview, onClose, onSaved
 
           <div>
             {mode !== 'edit' && (
-              <Section icon={mode === 'walkin' ? IC.walk : IC.calendar} title="Interview">
+              <Section title="Interview">
                 <div style={grid(2)}>
                   <Field label="Interview form"><StyledSelect value={formId} onChange={chooseForm} placeholder="Choose a form"
                     options={[...forms].sort((a, b) => (a.kind === (mode === 'walkin' ? 'WALK_IN' : 'SCHEDULED') ? -1 : 1) - (b.kind === (mode === 'walkin' ? 'WALK_IN' : 'SCHEDULED') ? -1 : 1)).map(f => ({ value: f.id, label: f.kind === 'WALK_IN' ? `${f.name} (walk-in)` : f.name }))} /></Field>
@@ -183,7 +183,7 @@ export default function CandidateModal({ mode, meta, interview, onClose, onSaved
               </Section>
             )}
 
-            <Section icon={IC.doc} title="CV">
+            <Section title="CV">
               <input ref={fileRef} type="file" accept=".pdf,.doc,.docx,.png,.jpg,.jpeg" style={{ display: 'none' }} onChange={e => { onFile(e.target.files?.[0]); e.target.value = '' }} />
               {cv ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 12px', borderRadius: 10, border: `1px solid ${withAlpha(P.teal, 0.3)}`, background: withAlpha(P.teal, 0.05) }}>
@@ -201,7 +201,7 @@ export default function CandidateModal({ mode, meta, interview, onClose, onSaved
               )}
             </Section>
 
-            <Section icon={IC.note} title="Notes">
+            <Section title="Notes">
               <textarea className={`${cls} resize-none`} rows={mode === 'edit' ? 8 : 3} value={c.notes} onChange={set('notes')} placeholder="Anything HR should know before the interview" />
             </Section>
           </div>

@@ -16,23 +16,24 @@ import { Svg, withAlpha } from '@/components/sales/saleUi'
 import CandidateModal from './CandidateModal'
 import InterviewDrawer from './InterviewDrawer'
 import FormsManager from './FormsManager'
-import { OUTFIT, FONT, IC, RESULT, OPEN_INTERVIEW_EVENT, INTERVIEWS_CHANGED_EVENT, StatusPill, ResultPill, Segmented, fmtDay, fmtTime, relTime, useNow, type InterviewRow, type Meta, type FormFull, type InterviewFull } from './shared'
+import { FONT, IC, RESULT, OPEN_INTERVIEW_EVENT, INTERVIEWS_CHANGED_EVENT, StatusPill, ResultPill, Segmented, fmtDay, fmtTime, relTime, useNow, type InterviewRow, type Meta, type FormFull, type InterviewFull } from './shared'
 
 type View = 'today' | 'upcoming' | 'awaiting' | 'completed' | 'no_show' | 'cancelled' | 'walk_in' | 'all'
 const VIEWS: [View, string][] = [['today', 'Today'], ['upcoming', 'Upcoming'], ['awaiting', 'Waiting'], ['completed', 'Completed'], ['no_show', 'No-show'], ['cancelled', 'Cancelled'], ['walk_in', 'Walk-in'], ['all', 'All']]
 interface Stats { today: number; upcoming: number; awaiting: number; completedThisMonth: number; selectedThisMonth: number; noShowsThisMonth: number }
 interface PageData { data: InterviewRow[]; total: number; currentPage: number; lastPage: number; perPage: number }
 
-function Tile({ label, value, icon, color, active, onClick }: { label: string; value?: number; icon: string; color: string; active: boolean; onClick: () => void }) {
+// The Dashboard's number cards: palette fill fading to white, Ethnocentric label, big coloured number
+function Tile({ label, value, color, fill, active, onClick }: { label: string; value?: number; color: string; fill: string; active: boolean; onClick: () => void }) {
   return (
     <button type="button" onClick={onClick}
-      style={{ flex: '1 1 150px', display: 'flex', alignItems: 'center', gap: 12, padding: '12px 14px', borderRadius: 14, cursor: 'pointer', textAlign: 'left', fontFamily: FONT,
-        background: '#fff', border: `1px solid ${active ? withAlpha(color, 0.55) : withAlpha(P.navy, 0.07)}`, boxShadow: active ? `0 0 0 3px ${withAlpha(color, 0.12)}` : '0 8px 24px -20px rgba(19,46,87,0.5)', transition: 'box-shadow .15s, border-color .15s' }}>
-      <span style={{ width: 38, height: 38, borderRadius: 12, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: withAlpha(color, 0.12), color }}><Svg d={icon} size={18} /></span>
-      <span style={{ minWidth: 0 }}>
-        <span style={{ display: 'block', fontFamily: OUTFIT, fontSize: 22, fontWeight: 600, color: P.navy, lineHeight: 1.1 }}>{value ?? '·'}</span>
-        <span style={{ fontSize: 11.5, fontWeight: 600, color: '#8A97AB', whiteSpace: 'nowrap' }}>{label}</span>
-      </span>
+      style={{ display: 'block', width: '100%', textAlign: 'left', cursor: 'pointer', fontFamily: FONT, background: `linear-gradient(135deg, ${fill} 0%, #fff 100%)`,
+        border: active ? `1.5px solid ${color}` : `1px solid ${color}33`, borderRadius: 8, padding: 14, minHeight: 80, boxSizing: 'border-box', overflow: 'hidden',
+        boxShadow: active ? `0 0 0 3px ${withAlpha(color, 0.12)}` : 'none', transition: 'box-shadow .15s, border-color .15s' }}>
+      <div style={{ fontSize: 9.5, color: P.textMuted, letterSpacing: '0.03em', fontWeight: 300, textTransform: 'uppercase', fontFamily: "'Ethnocentric Rg', sans-serif", whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</div>
+      {value === undefined
+        ? <div style={{ width: 55, height: 24, background: P.border, borderRadius: 4, marginTop: 9 }} />
+        : <div style={{ fontSize: 24, fontWeight: 700, color, marginTop: 9, lineHeight: 1 }}>{value}</div>}
     </button>
   )
 }
@@ -88,7 +89,7 @@ export default function InterviewsPage() {
     { key: 'when', label: 'When', width: 150, render: r => r.scheduledAt ? (
       <div>
         <div style={{ fontWeight: 700, color: P.navy }}>{fmtDay(r.scheduledAt)}, {fmtTime(r.scheduledAt)}</div>
-        {r.status === 'SCHEDULED' && <div style={{ fontSize: 11.5, fontWeight: 600, color: new Date(r.scheduledAt).getTime() < now ? '#B91C1C' : new Date(r.scheduledAt).getTime() - now < 60 * 60_000 ? '#B45309' : '#8A97AB' }}>{relTime(r.scheduledAt, now)}</div>}
+        {r.status === 'SCHEDULED' && <div style={{ fontSize: 11.5, fontWeight: 600, color: new Date(r.scheduledAt).getTime() < now ? '#DC2626' : new Date(r.scheduledAt).getTime() - now < 60 * 60_000 ? '#D97706' : P.textMuted }}>{relTime(r.scheduledAt, now)}</div>}
       </div>
     ) : (
       <div>
@@ -100,7 +101,7 @@ export default function InterviewsPage() {
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ minWidth: 0, flex: 1 }}>
           <div style={{ fontWeight: 700, color: P.navy }}>{r.candidate.fullName}</div>
-          <div style={{ fontSize: 11.5, color: '#8A97AB' }}>{r.candidate.phone}{r.candidate.city ? `, ${r.candidate.city}` : ''}</div>
+          <div style={{ fontSize: 11.5, color: P.textMuted }}>{r.candidate.phone}{r.candidate.city ? `, ${r.candidate.city}` : ''}</div>
         </div>
         {r.candidate.cvKey && <a href={fileHref(r.candidate.cvKey, { name: r.candidate.cvName ?? 'CV' })} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()} title="Open CV"
           style={{ display: 'flex', alignItems: 'center', gap: 3, padding: '2px 7px', borderRadius: 6, background: withAlpha(P.teal, 0.1), color: P.teal, fontSize: 11, fontWeight: 700, textDecoration: 'none' }}><Svg d={IC.doc} size={12} />CV</a>}
@@ -109,7 +110,7 @@ export default function InterviewsPage() {
     { key: 'position', label: 'Position', width: 170, render: r => (
       <div>
         <div style={{ fontWeight: 600, color: P.navy }}>{r.position}</div>
-        {r.form && r.form.name !== r.position && <div style={{ fontSize: 11.5, color: '#8A97AB' }}>{r.form.name}</div>}
+        {r.form && r.form.name !== r.position && <div style={{ fontSize: 11.5, color: P.textMuted }}>{r.form.name}</div>}
       </div>
     ) },
     { key: 'mode', label: 'Mode', width: 90, render: r => r.mode },
@@ -143,13 +144,13 @@ export default function InterviewsPage() {
         {tab === 'forms' ? (
           <FormsManager forms={forms} reload={loadForms} notify={notify} />
         ) : <>
-          <div style={{ display: 'flex', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-            <Tile label="Today" value={stats?.today} icon={IC.calendar} color={P.teal} active={view === 'today'} onClick={() => choose('today')} />
-            <Tile label="Upcoming" value={stats?.upcoming} icon={IC.clock} color="#2563EB" active={view === 'upcoming'} onClick={() => choose('upcoming')} />
-            <Tile label="Waiting now" value={stats?.awaiting} icon={IC.walk} color="#D97706" active={view === 'awaiting'} onClick={() => choose('awaiting')} />
-            <Tile label="Completed this month" value={stats?.completedThisMonth} icon={IC.check} color="#15803D" active={view === 'completed' && !result} onClick={() => choose('completed')} />
-            <Tile label="Selected this month" value={stats?.selectedThisMonth} icon={IC.star} color="#B7791F" active={view === 'completed' && result === 'SELECTED'} onClick={() => choose('completed', 'SELECTED')} />
-            <Tile label="No-shows this month" value={stats?.noShowsThisMonth} icon={IC.x} color="#B91C1C" active={view === 'no_show'} onClick={() => choose('no_show')} />
+          <div className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-6" style={{ gap: 10, marginBottom: 10 }}>
+            <Tile label="Today" value={stats?.today} color={P.navy} fill={P.fillNavy} active={view === 'today'} onClick={() => choose('today')} />
+            <Tile label="Upcoming" value={stats?.upcoming} color={P.teal} fill={P.fillTeal} active={view === 'upcoming'} onClick={() => choose('upcoming')} />
+            <Tile label="Waiting now" value={stats?.awaiting} color={P.gold} fill={P.fillGold} active={view === 'awaiting'} onClick={() => choose('awaiting')} />
+            <Tile label="Completed this month" value={stats?.completedThisMonth} color={P.forest} fill="#E3EEE3" active={view === 'completed' && !result} onClick={() => choose('completed')} />
+            <Tile label="Selected this month" value={stats?.selectedThisMonth} color={P.purple} fill="#F2E6F5" active={view === 'completed' && result === 'SELECTED'} onClick={() => choose('completed', 'SELECTED')} />
+            <Tile label="No-shows this month" value={stats?.noShowsThisMonth} color={P.brick} fill={P.fillBrick} active={view === 'no_show'} onClick={() => choose('no_show')} />
           </div>
 
           <FilterBar>

@@ -8,7 +8,7 @@ import { apiDelete, apiPost, apiPut, errMsg } from '@/lib/api'
 import StyledSelect from '@/components/ui/StyledSelect'
 import DateInput from '@/components/ui/DateInput'
 import { Field } from '@/components/sales/saleUi'
-import { Modal, ModalHead, ModalFoot, ErrorBox, Btn, Segmented, IC, todayPkt, pktParts, fmtStamp, type InterviewFull, type Meta } from './shared'
+import { Modal, ModalHead, ModalFoot, ErrorBox, Btn, Segmented, todayPkt, pktParts, fmtStamp, type InterviewFull, type Meta } from './shared'
 
 const cls = 'w-full rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1.5 text-[13px] text-gray-800 placeholder-gray-400 outline-none transition focus:bg-white focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20'
 
@@ -30,11 +30,11 @@ export default function ActionModal({ action, iv, meta, onClose, onDone, onDelet
 
   const again = iv.status === 'NO_SHOW' || iv.status === 'CANCELLED'
   const head = {
-    reschedule: { title: again ? 'Book Again' : 'Reschedule Interview', sub: iv.scheduledAt ? `Currently ${fmtStamp(iv.scheduledAt)}` : 'Choose the new time', icon: IC.refresh, tone: 'amber' as const },
-    cancel:     { title: 'Cancel Interview', sub: `${iv.candidate.fullName}, ${iv.position}`, icon: IC.x, tone: 'red' as const },
-    noshow:     { title: 'Mark as No-show', sub: `${iv.candidate.fullName} did not come`, icon: IC.x, tone: 'red' as const },
-    delete:     { title: 'Delete Interview', sub: 'This removes the interview and its full trail', icon: IC.trash, tone: 'red' as const },
-    details:    { title: 'Interview Details', sub: `${iv.candidate.fullName}`, icon: IC.form, tone: 'teal' as const },
+    reschedule: { title: again ? 'Book Again' : 'Reschedule Interview', sub: iv.scheduledAt ? `Currently ${fmtStamp(iv.scheduledAt)}` : 'Choose the new time', tone: 'amber' as const },
+    cancel:     { title: 'Cancel Interview', sub: `${iv.candidate.fullName}, ${iv.position}`, tone: 'red' as const },
+    noshow:     { title: 'Mark as No-show', sub: `${iv.candidate.fullName} did not come`, tone: 'red' as const },
+    delete:     { title: 'Delete Interview', sub: 'This removes the interview and its full trail', tone: 'red' as const },
+    details:    { title: 'Interview Details', sub: `${iv.candidate.fullName}`, tone: 'teal' as const },
   }[action]
 
   async function go() {
@@ -59,7 +59,7 @@ export default function ActionModal({ action, iv, meta, onClose, onDone, onDelet
 
   return (
     <Modal width={action === 'details' ? 620 : 480} onClose={onClose}>
-      <ModalHead title={head.title} sub={head.sub} icon={head.icon} tone={head.tone} onClose={onClose} />
+      <ModalHead title={head.title} sub={head.sub} tone={head.tone} onClose={onClose} />
       <div style={{ padding: '16px 18px', overflowY: 'auto' }}>
         <ErrorBox text={error} />
         {action === 'reschedule' && <>
@@ -92,7 +92,7 @@ export default function ActionModal({ action, iv, meta, onClose, onDone, onDelet
       </div>
       <ModalFoot>
         <Btn onClick={onClose}>{action === 'delete' || action === 'cancel' ? 'Keep it' : 'Cancel'}</Btn>
-        <Btn tone={action === 'delete' || action === 'cancel' || action === 'noshow' ? 'danger' : 'primary'} onClick={go} disabled={busy}>
+        <Btn tone={action === 'delete' || action === 'cancel' || action === 'noshow' ? 'red' : 'primary'} onClick={go} disabled={busy}>
           {busy ? 'Saving...' : { reschedule: again ? 'Book Again' : 'Reschedule', cancel: 'Cancel Interview', noshow: 'Mark No-show', delete: 'Delete', details: 'Save' }[action]}
         </Btn>
       </ModalFoot>

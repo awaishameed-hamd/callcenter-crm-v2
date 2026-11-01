@@ -1,13 +1,16 @@
 'use client'
 
-// Types, labels and small pieces shared by the HR > Interviews screens.
+// Types, labels and small pieces shared by the HR > Interviews screens. The look is the rest of
+// the CRM's: Attendance Report cards (slate header band, uppercase labels, solid status pills),
+// Dashboard number cards, and the Approvals dialogs and buttons.
 
 import { useEffect, useState } from 'react'
 import { P } from '@/lib/palette'
-import { Svg, withAlpha, RAJDHANI } from '@/components/sales/saleUi'
+import { Svg, withAlpha, RAJDHANI, BEBAS, CRISP, ETHNO } from '@/components/sales/saleUi'
 
-export const OUTFIT = "'Outfit', 'Aptos', sans-serif"
 export const FONT   = "'Aptos', sans-serif"
+/** Header band of the Attendance Report detail card */
+export const SLATE  = '#64748B'
 export const TZ     = 'Asia/Karachi'
 /** The reminder popup asks an already open Interviews page to show one interview. */
 export const OPEN_INTERVIEW_EVENT = 'interviews:open'
@@ -53,18 +56,19 @@ export interface FormSummary { id: string; name: string; kind: Kind; description
 export interface FormFull extends FormSummary { questions: Question[]; isActive: boolean; sortOrder: number; used: number }
 export interface Meta { forms: FormSummary[]; interviewers: (Person & { role: string; managerType?: string | null })[]; modes: string[] }
 
-export const STATUS: Record<Status, { label: string; color: string }> = {
-  SCHEDULED: { label: 'Scheduled', color: '#2563EB' },
-  ARRIVED:   { label: 'Waiting',   color: '#D97706' },
-  COMPLETED: { label: 'Completed', color: '#15803D' },
-  NO_SHOW:   { label: 'No-show',   color: '#B91C1C' },
-  CANCELLED: { label: 'Cancelled', color: '#6B7280' },
+// Pill colours follow the Attendance Report statuses; `color` is the strong shade for buttons
+export const STATUS: Record<Status, { label: string; bg: string; text: string; color: string }> = {
+  SCHEDULED: { label: 'Scheduled', bg: '#DBEAFE', text: '#1E40AF', color: '#2563EB' },
+  ARRIVED:   { label: 'Waiting',   bg: '#FEF3C7', text: '#92400E', color: '#D97706' },
+  COMPLETED: { label: 'Completed', bg: '#D1FAE5', text: '#065F46', color: '#16A34A' },
+  NO_SHOW:   { label: 'No-show',   bg: '#FEE2E2', text: '#991B1B', color: '#DC2626' },
+  CANCELLED: { label: 'Cancelled', bg: '#F3F4F6', text: '#4B5563', color: '#64748B' },
 }
-export const RESULT: Record<Result, { label: string; color: string }> = {
-  PENDING:  { label: 'Pending',  color: '#6B7280' },
-  SELECTED: { label: 'Selected', color: '#15803D' },
-  REJECTED: { label: 'Rejected', color: '#B91C1C' },
-  ON_HOLD:  { label: 'On hold',  color: '#B45309' },
+export const RESULT: Record<Result, { label: string; bg: string; text: string; color: string }> = {
+  PENDING:  { label: 'Pending',  bg: '#F3F4F6', text: '#4B5563', color: '#64748B' },
+  SELECTED: { label: 'Selected', bg: '#D1FAE5', text: '#065F46', color: '#16A34A' },
+  REJECTED: { label: 'Rejected', bg: '#FEE2E2', text: '#991B1B', color: '#DC2626' },
+  ON_HOLD:  { label: 'On hold',  bg: '#EDE9FE', text: '#5B21B6', color: '#7C3AED' },
 }
 export const QTYPE_LABEL: Record<QType, string> = {
   text: 'Short answer', textarea: 'Long answer', rating: 'Rating 1 to 5', yesno: 'Yes / No', choice: 'Pick one', number: 'Number',
@@ -129,19 +133,14 @@ export const waNumber = (phone: string) => { const d = phone.replace(/\D/g, '');
 
 // ── Small UI ────────────────────────────────────────────────────────────────
 
-export function Pill({ color, children, solid }: { color: string; children: React.ReactNode; solid?: boolean }) {
-  return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 9px', borderRadius: 99, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', letterSpacing: '0.02em',
-      background: solid ? color : withAlpha(color, 0.12), color: solid ? '#fff' : color }}>
-      {!solid && <span style={{ width: 6, height: 6, borderRadius: 99, background: color }} />}
-      {children}
-    </span>
-  )
+/** Solid pill, as the Attendance Report statuses. */
+export function Pill({ bg, text, children }: { bg: string; text: string; children: React.ReactNode }) {
+  return <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 9999, fontSize: 11, fontWeight: 700, whiteSpace: 'nowrap', background: bg, color: text, fontFamily: FONT }}>{children}</span>
 }
-export const StatusPill = ({ s }: { s: Status }) => <Pill color={STATUS[s].color}>{STATUS[s].label}</Pill>
-export const ResultPill = ({ r }: { r: Result }) => r === 'PENDING' ? null : <Pill color={RESULT[r].color}>{RESULT[r].label}</Pill>
+export const StatusPill = ({ s }: { s: Status }) => <Pill bg={STATUS[s].bg} text={STATUS[s].text}>{STATUS[s].label}</Pill>
+export const ResultPill = ({ r }: { r: Result }) => r === 'PENDING' ? null : <Pill bg={RESULT[r].bg} text={RESULT[r].text}>{RESULT[r].label}</Pill>
 
-/** Centered dialog on a dimmed page. */
+/** Centered dialog on a dimmed, slightly blurred page (Attendance Report dialogs). */
 export function Modal({ children, width = 520, onClose }: { children: React.ReactNode; width?: number; onClose?: () => void }) {
   useEffect(() => {
     if (!onClose) return
@@ -150,26 +149,30 @@ export function Modal({ children, width = 520, onClose }: { children: React.Reac
     return () => window.removeEventListener('keydown', h)
   }, [onClose])
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(19,46,87,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
-      <div style={{ width: '100%', maxWidth: width, maxHeight: 'calc(100vh - 32px)', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: 16, boxShadow: '0 24px 60px -20px rgba(19,46,87,0.5)', overflow: 'hidden', fontFamily: FONT }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 1100, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
+      <div style={{ width: '100%', maxWidth: width, maxHeight: 'calc(100vh - 32px)', display: 'flex', flexDirection: 'column', background: '#fff', borderRadius: 16, border: `1px solid ${P.border}`, boxShadow: '0 20px 60px rgba(0,0,0,0.25)', overflow: 'hidden', fontFamily: FONT }}>
         {children}
       </div>
     </div>
   )
 }
 
-/** Gradient title band of a dialog. */
-export function ModalHead({ title, sub, icon, onClose, tone = 'teal' }: { title: string; sub?: string; icon: string; onClose: () => void; tone?: 'teal' | 'red' | 'amber' }) {
-  const bg = tone === 'red' ? 'linear-gradient(135deg, #FDECEC 0%, #F8D4D4 100%)' : tone === 'amber' ? 'linear-gradient(135deg, #FFF6E5 0%, #FBE6BC 100%)' : `linear-gradient(135deg, ${withAlpha(P.teal, 0.12)} 0%, ${withAlpha(P.navy, 0.1)} 100%)`
-  const fg = tone === 'red' ? '#B91C1C' : tone === 'amber' ? '#B45309' : P.teal
+const TONE = { teal: P.teal, red: '#DC2626', amber: '#D97706', green: '#16A34A' }
+
+/** Slim dialog header whose colour fades out to the right, like the Approvals approve/reject dialog. */
+export function ModalHead({ title, sub, onClose, tone = 'teal', caption = 'HR INTERVIEWS' }: { title: string; sub?: string; onClose: () => void; tone?: keyof typeof TONE; caption?: string }) {
+  const hc = TONE[tone]
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '14px 18px', background: bg, flexShrink: 0 }}>
-      <span style={{ width: 34, height: 34, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fff', color: fg, boxShadow: '0 2px 6px rgba(0,0,0,0.06)' }}><Svg d={icon} size={17} /></span>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '11px 20px', color: '#fff', flexShrink: 0,
+      background: `linear-gradient(90deg, ${hc} 0%, ${hc} 30%, ${withAlpha(hc, 0.78)} 55%, ${withAlpha(hc, 0.45)} 78%, ${withAlpha(hc, 0.18)} 100%)` }}>
       <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontFamily: OUTFIT, fontSize: 17, fontWeight: 600, color: P.navy }}>{title}</div>
-        {sub && <div style={{ fontSize: 12, color: '#5C6D82', marginTop: 1 }}>{sub}</div>}
+        <p style={{ margin: 0, fontFamily: ETHNO, fontWeight: 300, fontSize: 10, letterSpacing: '0.05em', opacity: 0.9 }}>{caption}</p>
+        <p style={{ margin: '3px 0 0', display: 'flex', alignItems: 'baseline', gap: 10, minWidth: 0 }}>
+          <span style={{ fontFamily: BEBAS, ...CRISP, fontSize: 22, letterSpacing: '0.05em', lineHeight: 1.05, whiteSpace: 'nowrap' }}>{title}</span>
+          {sub && <span style={{ fontSize: 12, opacity: 0.9, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub}</span>}
+        </p>
       </div>
-      <button type="button" onClick={onClose} aria-label="Close" style={{ width: 30, height: 30, borderRadius: 9, border: 0, background: 'rgba(255,255,255,0.7)', color: P.navy, cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
+      <button type="button" onClick={onClose} aria-label="Close" style={{ background: 'none', border: 'none', cursor: 'pointer', color: P.navy, fontSize: 20, lineHeight: 1, fontWeight: 700, padding: '0 2px' }}>×</button>
     </div>
   )
 }
@@ -183,37 +186,39 @@ export function ErrorBox({ text }: { text: string }) {
   return <div style={{ margin: '0 0 12px', padding: '9px 12px', borderRadius: 9, background: '#FEF2F2', border: '1px solid #FECACA', color: '#B91C1C', fontSize: 12.5, fontWeight: 600 }}>{text}</div>
 }
 
-/** Rounded button used across the module. */
+/** Uppercase Rajdhani button, the Approvals page's action buttons. */
 export function Btn({ children, onClick, tone = 'ghost', disabled, small, icon, title, type = 'button' }: {
-  children?: React.ReactNode; onClick?: () => void; tone?: 'primary' | 'ghost' | 'danger' | 'success' | 'amber' | 'navy'; disabled?: boolean; small?: boolean; icon?: string; title?: string; type?: 'button' | 'submit'
+  children?: React.ReactNode; onClick?: () => void; tone?: 'primary' | 'ghost' | 'danger' | 'red' | 'success' | 'navy' | 'light'; disabled?: boolean; small?: boolean; icon?: string; title?: string; type?: 'button' | 'submit'
 }) {
   const look: Record<string, React.CSSProperties> = {
-    primary: { background: `linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`, color: '#fff', border: 0 },
+    primary: { background: `linear-gradient(135deg, ${P.teal} 0%, ${P.deepTeal} 100%)`, color: '#fff', border: 0, boxShadow: '0 2px 8px rgba(30,132,150,0.3)' },
     navy:    { background: P.navy, color: '#fff', border: 0 },
     success: { background: 'linear-gradient(135deg, #16A34A 0%, #15803D 100%)', color: '#fff', border: 0 },
-    danger:  { background: '#fff', color: '#B91C1C', border: '1px solid #F5C2C2' },
-    amber:   { background: '#fff', color: '#B45309', border: '1px solid #F3D9A4' },
+    red:     { background: 'linear-gradient(135deg, #DC2626 0%, #B91C1C 100%)', color: '#fff', border: 0 },
+    danger:  { background: '#fff', color: '#DC2626', border: '1px solid #FCA5A5' },
     ghost:   { background: '#fff', color: P.navy, border: `1px solid ${P.border}` },
+    // on the slate header band
+    light:   { background: 'rgba(255,255,255,0.15)', color: '#E2E8F0', border: '1px solid rgba(255,255,255,0.3)' },
   }
   return (
     <button type={type} onClick={onClick} disabled={disabled} title={title}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: small ? '5px 10px' : '8px 15px', borderRadius: 9, fontSize: small ? 12 : 13, fontWeight: 700, fontFamily: FONT,
-        cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.55 : 1, whiteSpace: 'nowrap', ...look[tone] }}>
-      {icon && <Svg d={icon} size={small ? 13 : 14} />}{children}
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: small ? '4px 10px' : '6px 13px', borderRadius: 8, fontFamily: RAJDHANI, fontSize: small ? 11.5 : 12.5, fontWeight: 700,
+        letterSpacing: '0.06em', textTransform: 'uppercase', cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.55 : 1, whiteSpace: 'nowrap', ...look[tone] }}>
+      {icon && <Svg d={icon} size={small ? 12 : 13} />}{children}
     </button>
   )
 }
 
-/** Segmented control: a row of options with one chosen. */
+/** Option switch in the Dashboard's period style: white box, navy when chosen. */
 export function Segmented<T extends string>({ value, onChange, options, colors }: { value: T; onChange: (v: T) => void; options: [T, string][]; colors?: Partial<Record<T, string>> }) {
   return (
-    <div style={{ display: 'inline-flex', gap: 4, padding: 3, borderRadius: 10, background: '#F1F4F7', flexWrap: 'wrap' }}>
+    <div style={{ display: 'inline-flex', gap: 2, padding: 3, borderRadius: 8, background: '#fff', border: `1px solid ${P.border}`, flexWrap: 'wrap' }}>
       {options.map(([v, label]) => {
-        const on = v === value, c = colors?.[v] ?? P.teal
+        const on = v === value, c = colors?.[v] ?? P.navy
         return (
           <button key={v} type="button" onClick={() => onChange(v)}
-            style={{ padding: '5px 12px', borderRadius: 8, border: 0, cursor: 'pointer', fontSize: 12.5, fontWeight: 700, fontFamily: FONT, whiteSpace: 'nowrap',
-              background: on ? '#fff' : 'transparent', color: on ? c : '#5C6D82', boxShadow: on ? `0 1px 4px rgba(0,0,0,0.08), inset 0 0 0 1.5px ${withAlpha(c, 0.5)}` : 'none' }}>
+            style={{ padding: '5px 13px', borderRadius: 6, border: 0, cursor: 'pointer', fontSize: 12, fontWeight: on ? 700 : 500, fontFamily: FONT, whiteSpace: 'nowrap', transition: 'all .15s',
+              background: on ? c : 'transparent', color: on ? '#fff' : P.slate }}>
             {label}
           </button>
         )
@@ -222,18 +227,26 @@ export function Segmented<T extends string>({ value, onChange, options, colors }
   )
 }
 
-/** Card with an icon bubble heading, as on the Profile page. */
-export function Panel({ title, icon, action, children, style, bodyStyle }: { title: string; icon: string; action?: React.ReactNode; children: React.ReactNode; style?: React.CSSProperties; bodyStyle?: React.CSSProperties }) {
+/** Attendance Report card: white, slate header band with a light uppercase title. */
+export function Panel({ title, badge, action, children, style, bodyStyle }: { title: string; badge?: React.ReactNode; action?: React.ReactNode; children: React.ReactNode; style?: React.CSSProperties; bodyStyle?: React.CSSProperties }) {
   return (
-    <section style={{ background: '#fff', borderRadius: 16, border: `1px solid ${withAlpha(P.navy, 0.07)}`, boxShadow: '0 10px 30px -24px rgba(19,46,87,0.5)', display: 'flex', flexDirection: 'column', minWidth: 0, ...style }}>
-      <header style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px 8px', flexShrink: 0 }}>
-        <span style={{ width: 28, height: 28, borderRadius: 9, display: 'flex', alignItems: 'center', justifyContent: 'center', background: withAlpha(P.teal, 0.1), color: P.teal }}><Svg d={icon} size={14} /></span>
-        <h3 style={{ margin: 0, fontFamily: OUTFIT, fontSize: 14.5, fontWeight: 600, color: P.navy }}>{title}</h3>
-        {action && <div style={{ marginLeft: 'auto', display: 'flex', gap: 6 }}>{action}</div>}
+    <section style={{ background: '#fff', borderRadius: 12, border: `1px solid ${P.border}`, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', overflow: 'hidden', display: 'flex', flexDirection: 'column', minWidth: 0, flexShrink: 0, ...style }}>
+      <header style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', background: SLATE, flexShrink: 0, minHeight: 36, boxSizing: 'border-box' }}>
+        <h3 style={{ margin: 0, fontFamily: FONT, fontSize: 13, fontWeight: 800, color: '#F1F5F9', letterSpacing: '0.06em', textTransform: 'uppercase' }}>{title}</h3>
+        {badge !== undefined && badge !== null && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700, fontFamily: FONT }}>{badge}</span>}
+        {action && <div style={{ marginLeft: 'auto', display: 'flex', alignItems: 'center', gap: 6 }}>{action}</div>}
       </header>
-      <div style={{ padding: '4px 16px 14px', minHeight: 0, ...bodyStyle }}>{children}</div>
+      <div style={{ padding: '12px 14px 14px', minHeight: 0, ...bodyStyle }}>{children}</div>
     </section>
   )
+}
+
+/** Uppercase label as in the Attendance Report dialogs. */
+export const labelStyle: React.CSSProperties = { fontSize: 11, fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: P.textMuted, fontFamily: FONT }
+
+/** Navy tag with gold text, the Attendance Report's month headings. */
+export function SectionTag({ children }: { children: React.ReactNode }) {
+  return <span style={{ display: 'inline-block', padding: '5px 12px', background: P.navy, borderRadius: 8, fontFamily: FONT, fontSize: 12, fontWeight: 700, color: P.gold, letterSpacing: '0.07em', textTransform: 'uppercase' }}>{children}</span>
 }
 
 /** Small label over a value, for read-only details. */
@@ -241,8 +254,8 @@ export function Detail({ label, children, span = 1 }: { label: string; children?
   const empty = children === null || children === undefined || children === ''
   return (
     <div style={{ gridColumn: `span ${span}`, minWidth: 0 }}>
-      <div style={{ fontFamily: RAJDHANI, fontSize: 11.5, fontWeight: 700, color: '#8A97AB', textTransform: 'uppercase', letterSpacing: '0.06em' }}>{label}</div>
-      <div style={{ fontSize: 13, fontWeight: 600, color: empty ? '#A3ADBB' : P.navy, wordBreak: 'break-word', marginTop: 1 }}>{empty ? 'Not entered' : children}</div>
+      <div style={labelStyle}>{label}</div>
+      <div style={{ fontSize: 13, fontWeight: 600, color: empty ? '#94A3B8' : P.navy, wordBreak: 'break-word', marginTop: 2, fontFamily: FONT }}>{empty ? 'Not entered' : children}</div>
     </div>
   )
 }
@@ -252,7 +265,7 @@ export function CopyBtn({ text }: { text: string }) {
   const [done, setDone] = useState(false)
   return (
     <button type="button" title="Copy" onClick={e => { e.stopPropagation(); navigator.clipboard?.writeText(text).then(() => { setDone(true); setTimeout(() => setDone(false), 1200) }).catch(() => {}) }}
-      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, border: `1px solid ${P.border}`, background: done ? '#ECFDF5' : '#fff', color: done ? '#15803D' : '#5C6D82', cursor: 'pointer', flexShrink: 0 }}>
+      style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 22, height: 22, borderRadius: 6, border: `1px solid ${P.border}`, background: done ? '#ECFDF5' : '#fff', color: done ? '#16A34A' : P.textMuted, cursor: 'pointer', flexShrink: 0 }}>
       {done ? <span style={{ fontSize: 11, fontWeight: 800 }}>✓</span> : <Svg d={IC.copy} size={12} />}
     </button>
   )
