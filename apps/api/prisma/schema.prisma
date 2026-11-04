@@ -119,6 +119,7 @@ model User {
 
   refreshTokens              RefreshToken[]
   messages                   Message[]
+  messageReactions           MessageReaction[]
   notifications              Notification[]
   conversationParticipations ConversationParticipant[]
 
@@ -212,11 +213,31 @@ model Message {
   replyTo           Message?     @relation("MessageReplies", fields: [replyToId], references: [id])
   replies           Message[]    @relation("MessageReplies")
   deletedForUserIds String[]     @default([])
+  /// Set when the sender edits the text (WhatsApp style, within 15 minutes)
+  editedAt          DateTime?
+  /// Users tagged with @ in a group message
+  mentions          String[]     @default([])
+  reactions         MessageReaction[]
   createdAt         DateTime     @default(now())
 
   @@index([conversationId])
   @@index([senderId])
   @@map("messages")
+}
+
+/// One emoji reaction per person per message; picking another emoji replaces it.
+model MessageReaction {
+  id        String   @id @default(cuid())
+  messageId String
+  message   Message  @relation(fields: [messageId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  emoji     String   @db.VarChar(16)
+  createdAt DateTime @default(now())
+
+  @@unique([messageId, userId])
+  @@index([messageId])
+  @@map("message_reactions")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

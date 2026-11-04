@@ -101,7 +101,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   @SubscribeMessage('send_message')
   async sendMessage(
-    @MessageBody() data: { conversationId: string; content: string; type?: string; attachmentUrl?: string; replyToId?: string },
+    @MessageBody() data: { conversationId: string; content: string; type?: string; attachmentUrl?: string; replyToId?: string; mentions?: string[] },
     @ConnectedSocket() client: AuthenticatedSocket,
   ) {
     const message = await this.chatService.saveMessage(
@@ -111,6 +111,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       data.type,
       data.attachmentUrl,
       data.replyToId,
+      data.mentions,
     )
 
     this.server.to(`conv:${data.conversationId}`).emit('new_message', message)
@@ -118,16 +119,18 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     const participants = await this.chatService.getConversationParticipants(data.conversationId)
     const senderName   = (message as any).sender?.displayName ?? 'Someone'
     const snippet      = data.content?.substring(0, 80) ?? 'You have a new message'
-    const title        = `New Message from ${senderName}`
+    const tagged       = new Set(message.mentions)
 
     for (const p of participants) {
       if (p.userId === client.userId) continue
+      // Someone tagged with @ is told so, as on WhatsApp
+      const title = tagged.has(p.userId) ? `${senderName} mentioned you` : `New Message from ${senderName}`
       await this.notifications.create({
         userId: p.userId,
         title,
         body:   snippet,
         type:   'NEW_MESSAGE',
-        data:   { conversationId: data.conversationId, senderId: client.userId },
+        data:   { conversationId: data.conversationId, senderId: client.userId, ...(tagged.has(p.userId) ? { mention: true } : {}) },
       })
       this.emitToUser(p.userId, 'notification', {
         title,
@@ -137,6 +140,35 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     }
 
     return message
+  }
+
+  // Edit and react answer through the acknowledgement, so the browser can show why one was refused
+  @SubscribeMessage('edit_message')
+  async editMessage(
+    @MessageBody() data: { messageId: string; content: string; mentions?: string[] },
+    @ConnectedSocket() client: AuthenticatedSocket,
+  ) {
+    try {
+      const message = await this.chatService.editMessage(data.messageId, client.userId, data.content, data.mentions)
+      this.server.to(`conv:${message.conversationId}`).emit('message_edited', message)
+      return { ok: true }
+    } catch (e: any) {
+      return { error: e?.message ?? 'Could not edit the message' }
+    }
+  }
+
+  @SubscribeMessage('react_message')
+  async reactMessage(
+    @MessageBody() data: { messageId: string; emoji: string | null },
+    @ConnectedSocket() client: AuthenticatedSocket,
+  ) {
+    try {
+      const result = await this.chatService.reactToMessage(data.messageId, client.userId, data.emoji)
+      this.server.to(`conv:${result.conversationId}`).emit('message_reactions', result)
+      return { ok: true }
+    } catch (e: any) {
+      return { error: e?.message ?? 'Could not add the reaction' }
+    }
   }
 
   @SubscribeMessage('delete_message')

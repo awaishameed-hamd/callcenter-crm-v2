@@ -1,9 +1,21 @@
-import { Injectable, ForbiddenException, NotFoundException } from '@nestjs/common'
+import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common'
 import { Role } from '@prisma/client'
 import { PrismaService } from '../prisma/prisma.service'
 import { PresenceService } from './presence.service'
 
 const CONTACT_SELECT = { id: true, displayName: true, role: true, managerType: true, agentType: true, avatar: true, lastSeenAt: true }
+
+// What every message carries to the browser: sender, the message it replies to, and its reactions
+const MESSAGE_INCLUDE = {
+  sender:    { select: { id: true, displayName: true, role: true, avatar: true } },
+  replyTo:   { include: { sender: { select: { id: true, displayName: true } } } },
+  reactions: { select: { emoji: true, userId: true, user: { select: { id: true, displayName: true } } }, orderBy: { createdAt: 'asc' as const } },
+}
+
+/** The reactions offered in the chat (WhatsApp's quick set plus thumbs down). */
+export const REACTIONS = ['👍', '👎', '❤️', '😂', '😊', '😮', '😢', '🙏']
+/** Like WhatsApp, a text message can be edited for 15 minutes after it was sent. */
+export const EDIT_WINDOW_MS = 15 * 60_000
 
 // Who may start a chat with whom: Admin, Director and Manager with anyone; Agents only with
 // Managers and other Agents. Someone an Agent cannot reach may still start a chat with the Agent,
@@ -197,13 +209,21 @@ export class ChatService {
         NOT: { deletedForUserIds: { has: userId } },
         ...(before && { createdAt: { lt: new Date(before) } }),
       },
-      include: {
-        sender:  { select: { id: true, displayName: true, role: true, avatar: true } },
-        replyTo: { include: { sender: { select: { id: true, displayName: true } } } },
-      },
+      include: MESSAGE_INCLUDE,
       orderBy: { createdAt: 'desc' },
       take:    limit,
     })
+  }
+
+  /** Keeps only real members of a group chat (never the sender); direct chats have no tags. */
+  private async validMentions(conversationId: string, senderId: string, mentions: unknown): Promise<string[]> {
+    if (!Array.isArray(mentions) || !mentions.length) return []
+    const conv = await this.prisma.conversation.findUnique({
+      where: { id: conversationId }, select: { isGroup: true, participants: { select: { userId: true } } },
+    })
+    if (!conv?.isGroup) return []
+    const members = new Set(conv.participants.map(p => p.userId))
+    return Array.from(new Set(mentions.filter((id): id is string => typeof id === 'string' && id !== senderId && members.has(id))))
   }
 
   async saveMessage(
@@ -213,18 +233,17 @@ export class ChatService {
     type = 'TEXT',
     attachmentUrl?: string,
     replyToId?: string,
+    mentions?: unknown,
   ) {
     const member = await this.prisma.conversationParticipant.findUnique({
       where: { conversationId_userId: { conversationId, userId: senderId } }, select: { userId: true },
     })
     if (!member) throw new ForbiddenException('You are not part of this conversation')
 
+    const tagged = type === 'TEXT' ? await this.validMentions(conversationId, senderId, mentions) : []
     const msg = await this.prisma.message.create({
-      data: { conversationId, senderId, content, type: type as any, attachmentUrl, replyToId },
-      include: {
-        sender:  { select: { id: true, displayName: true, role: true, avatar: true } },
-        replyTo: { include: { sender: { select: { id: true, displayName: true } } } },
-      },
+      data: { conversationId, senderId, content, type: type as any, attachmentUrl, replyToId, mentions: tagged },
+      include: MESSAGE_INCLUDE,
     })
 
     await this.prisma.conversation.update({
@@ -233,6 +252,45 @@ export class ChatService {
     })
 
     return msg
+  }
+
+  /** The sender changes the text of their own message within 15 minutes, as on WhatsApp. */
+  async editMessage(messageId: string, userId: string, content: unknown, mentions?: unknown) {
+    const message = await this.prisma.message.findUnique({ where: { id: messageId } })
+    if (!message || message.deletedForUserIds.includes(userId)) throw new NotFoundException('Message not found')
+    if (message.senderId !== userId) throw new ForbiddenException('You can only edit your own messages')
+    if (message.type !== 'TEXT') throw new BadRequestException('Only text messages can be edited')
+    if (Date.now() - message.createdAt.getTime() > EDIT_WINDOW_MS) throw new BadRequestException('A message can only be edited within 15 minutes of sending it')
+    const text = typeof content === 'string' ? content.trim() : ''
+    if (!text) throw new BadRequestException('The message cannot be empty')
+    if (text.length > 5000) throw new BadRequestException('The message is too long')
+    const updated = await this.prisma.message.update({
+      where:   { id: messageId },
+      data:    { content: text, editedAt: new Date(), mentions: await this.validMentions(message.conversationId, userId, mentions) },
+      include: MESSAGE_INCLUDE,
+    })
+    return updated
+  }
+
+  /** Sets, changes or (same emoji again, or none) removes this user's reaction to a message. */
+  async reactToMessage(messageId: string, userId: string, emoji: unknown) {
+    const message = await this.prisma.message.findUnique({
+      where:   { id: messageId },
+      select:  { id: true, conversationId: true, deletedForUserIds: true, conversation: { select: { participants: { select: { userId: true } } } } },
+    })
+    if (!message || message.deletedForUserIds.includes(userId)) throw new NotFoundException('Message not found')
+    if (!message.conversation.participants.some(p => p.userId === userId)) throw new ForbiddenException('You are not part of this conversation')
+    if (emoji !== null && emoji !== undefined && emoji !== '' && !REACTIONS.includes(String(emoji))) throw new BadRequestException('Choose one of the offered reactions')
+
+    const key = { messageId_userId: { messageId, userId } }
+    const current = await this.prisma.messageReaction.findUnique({ where: key })
+    if (!emoji || current?.emoji === emoji) {
+      if (current) await this.prisma.messageReaction.delete({ where: key })
+    } else {
+      await this.prisma.messageReaction.upsert({ where: key, create: { messageId, userId, emoji: String(emoji) }, update: { emoji: String(emoji) } })
+    }
+    const reactions = await this.prisma.messageReaction.findMany({ where: { messageId }, select: MESSAGE_INCLUDE.reactions.select, orderBy: { createdAt: 'asc' } })
+    return { messageId, conversationId: message.conversationId, reactions }
   }
 
   async deleteMessage(messageId: string, userId: string) {

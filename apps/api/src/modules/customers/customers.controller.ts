@@ -52,7 +52,8 @@ export class CustomersController {
   @Post(':id/final-reject')
   finalReject(@CurrentUser() actor: any, @Param('id') id: string) { return this.customers.finalReject(actor, id) }
 
-  @Roles(Role.ADMIN, Role.DIRECTOR)
+  // Managers and above (Sales Report and Approvals); agents never edit or delete sales
+  @Roles(Role.ADMIN, Role.DIRECTOR, Role.MANAGER)
   @Delete(':id')
   remove(@Param('id') id: string) { return this.customers.remove(id) }
 }

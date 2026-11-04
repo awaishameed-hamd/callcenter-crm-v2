@@ -241,6 +241,9 @@ export class CustomersService {
 
   async remove(id: string) {
     await this.load(id)
+    // Deleting would silently take the sale off an invoice (the line cascades), so a billed sale stays
+    const billed = await this.prisma.invoiceItem.findFirst({ where: { customerId: id }, select: { invoice: { select: { invoiceNumber: true } } } })
+    if (billed) fail(`This sale is on invoice ${billed.invoice.invoiceNumber}. Remove it from the invoice first.`)
     await this.prisma.customer.delete({ where: { id } })
     return { message: 'Record permanently deleted.' }
   }

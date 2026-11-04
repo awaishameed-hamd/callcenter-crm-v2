@@ -84,6 +84,33 @@ interface Message {
   attachmentUrl: string | null
   sender:        { id: string; displayName: string; role: string; avatar?: string | null }
   replyTo?:      { id: string; content: string; type: string; sender: { id: string; displayName: string } } | null
+  editedAt?:     string | null
+  mentions?:     string[]
+  reactions?:    Reaction[]
+}
+interface Reaction { emoji: string; userId: string; user: { id: string; displayName: string } }
+
+// Same lists as the API (chat.service.ts)
+const REACTIONS = ['👍', '👎', '❤️', '😂', '😊', '😮', '😢', '🙏']
+const EDIT_WINDOW_MS = 15 * 60_000
+const canEdit = (m: Message, myId?: string) => m.type === 'TEXT' && (m.senderId === myId || m.sender?.id === myId) && Date.now() - new Date(m.createdAt).getTime() < EDIT_WINDOW_MS
+
+const escapeRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+/** "@Name" followed by anything but a letter or digit, so "@Ali" does not match inside "@Alina" */
+const mentionRe = (name: string, flags = 'u') => new RegExp(`@${escapeRe(name)}(?![\\p{L}\\p{N}])`, flags)
+
+/** Text with tagged people in blue, as WhatsApp shows them. */
+function MessageText({ content, names }: { content: string; names: string[] }) {
+  if (!names.length) return <>{content}</>
+  const re = new RegExp(`(${[...names].sort((a, b) => b.length - a.length).map(n => `@${escapeRe(n)}(?![\\p{L}\\p{N}])`).join('|')})`, 'gu')
+  return <>{content.split(re).map((part, i) => i % 2 ? <span key={i} style={{ color: '#027EB5', fontWeight: 600 }}>{part}</span> : part)}</>
+}
+
+/** Who reacted with what, grouped, for the little pill under a bubble. */
+function groupReactions(list: Reaction[] = []) {
+  const map = new Map<string, string[]>()
+  for (const r of list) map.set(r.emoji, [...(map.get(r.emoji) ?? []), r.user?.displayName ?? 'Someone'])
+  return Array.from(map.entries())
 }
 
 function timeAgo(dateStr: string | null) {
@@ -611,7 +638,14 @@ export default function ChatPage() {
   const [forwardMsg,    setForwardMsg]     = useState<Message | null>(null)
   const [showNewGroup,  setShowNewGroup]   = useState(false)
   const [groupInfoId,   setGroupInfoId]    = useState<string | null>(null)
+  const [editingMsg,    setEditingMsg]     = useState<Message | null>(null)
+  const [reactFor,      setReactFor]       = useState<{ messageId: string; x: number; y: number } | null>(null)
+  const [hoverMsgId,    setHoverMsgId]     = useState<string | null>(null)
+  const [members,       setMembers]        = useState<Contact[]>([])   // of the open group, for @ tags
+  const [mention,       setMention]        = useState<{ start: number; query: string } | null>(null)
+  const [mentionIdx,    setMentionIdx]     = useState(0)
 
+  const inputRef        = useRef<HTMLInputElement>(null)
   const bottomRef       = useRef<HTMLDivElement>(null)
   const fileInputRef    = useRef<HTMLInputElement>(null)
   const socketRef       = useRef(getSocket())
@@ -652,7 +686,43 @@ export default function ChatPage() {
 
     socketRef.current.emit('join_conversation', { conversationId: selectedId })
     setConversations(prev => prev.map(c => c.id === selectedId ? { ...c, unreadCount: 0 } : c))
+    setEditingMsg(null)
   }, [selectedId])
+
+  // Members of the open group, for the @ tag list and to show tagged names in blue
+  const selectedIsGroup = !!conversations.find(c => c.id === selectedId)?.isGroup
+  useEffect(() => {
+    setMembers([]); setMention(null)
+    if (!selectedId || !selectedIsGroup) return
+    api.get(`/chat/conversations/${selectedId}/group`)
+      .then(({ data }) => setMembers((data.data ?? data)?.members ?? []))
+      .catch(() => {})
+  }, [selectedId, selectedIsGroup])
+  const memberName = useMemo(() => new Map(members.map(m => [m.id, m.displayName])), [members])
+  const mentionNames = (m: Message) => (m.mentions ?? []).map(id => memberName.get(id)).filter((n): n is string => !!n)
+
+  // Live edits and reactions from anyone in the open chat
+  useEffect(() => {
+    const socket = socketRef.current
+    function onEdited(msg: Message & { conversationId: string }) {
+      if (msg.conversationId === selectedId) setMessages(prev => prev.map(m => m.id === msg.id ? { ...m, ...msg } : m))
+      fetchConversations(undefined, true)
+    }
+    function onReactions(d: { messageId: string; conversationId: string; reactions: Reaction[] }) {
+      if (d.conversationId === selectedId) setMessages(prev => prev.map(m => m.id === d.messageId ? { ...m, reactions: d.reactions } : m))
+    }
+    socket.on('message_edited', onEdited)
+    socket.on('message_reactions', onReactions)
+    return () => { socket.off('message_edited', onEdited); socket.off('message_reactions', onReactions) }
+  }, [selectedId, fetchConversations])
+
+  // Dismiss the reaction picker on any outside click
+  useEffect(() => {
+    if (!reactFor) return
+    function dismiss() { setReactFor(null) }
+    window.addEventListener('click', dismiss)
+    return () => window.removeEventListener('click', dismiss)
+  }, [reactFor])
 
   useEffect(() => {
     const socket = socketRef.current
@@ -741,27 +811,103 @@ export default function ChatPage() {
     return () => window.removeEventListener('click', dismiss)
   }, [showEmoji])
 
-  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [messages])
+  // Scroll down for a new message only; reactions and edits leave the view where it is
+  const lastMsgId = messages[messages.length - 1]?.id
+  useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [lastMsgId])
+
+  /** Group members whose "@Name" is still in the text when it is sent. */
+  const mentionedIds = (t: string) => members.filter(m => m.id !== user?.id && mentionRe(m.displayName).test(t)).map(m => m.id)
 
   function handleSend(e: React.FormEvent) {
     e.preventDefault()
     if (!text.trim() || !selectedId) return
+    const content = text.trim()
+    setMention(null)
+    if (editingMsg) {
+      if (content !== editingMsg.content) {
+        socketRef.current.emit('edit_message', { messageId: editingMsg.id, content, mentions: mentionedIds(content) },
+          (res: { error?: string }) => { if (res?.error) window.alert(res.error) })
+      }
+      setEditingMsg(null)
+      setText('')
+      return
+    }
     socketRef.current.emit('send_message', {
       conversationId: selectedId,
-      content:        text.trim(),
+      content,
       type:           'TEXT',
       replyToId:      replyTarget?.id,
+      mentions:       mentionedIds(content),
     })
     setText('')
     setReplyTarget(null)
+  }
+
+  // ── Edit, react, tag ────────────────────────────────────────────────────────
+
+  function startEdit(message: Message) {
+    setMsgMenu(null)
+    setReplyTarget(null)
+    setEditingMsg(message)
+    setText(message.content)
+    setTimeout(() => inputRef.current?.focus(), 0)
+  }
+  function cancelEdit() { setEditingMsg(null); setText(''); setMention(null) }
+
+  /** Same emoji again takes the reaction off, as on WhatsApp. */
+  function react(messageId: string, emoji: string) {
+    setReactFor(null)
+    setMsgMenu(null)
+    socketRef.current.emit('react_message', { messageId, emoji }, (res: { error?: string }) => { if (res?.error) window.alert(res.error) })
+  }
+  function openReactPicker(e: React.MouseEvent, m: Message, isMine: boolean) {
+    e.stopPropagation()
+    const r = e.currentTarget.getBoundingClientRect()
+    const pos = clampMenuPosition(isMine ? r.right - 340 : r.left, r.top - 56, 340, 52)
+    setReactFor({ messageId: m.id, x: pos.x, y: pos.y })
+  }
+
+  // Typing "@" in a group opens the member list; the text after it filters the list
+  function onTextChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const value = e.target.value
+    setText(value)
+    if (!members.length) { setMention(null); return }
+    const before = value.slice(0, e.target.selectionStart ?? value.length)
+    const at = before.lastIndexOf('@')
+    if (at >= 0 && (at === 0 || /\s/.test(before[at - 1]))) {
+      const query = before.slice(at + 1)
+      if (query.length <= 30 && !/\s{2}|@/.test(query)) { setMention({ start: at, query }); setMentionIdx(0); return }
+    }
+    setMention(null)
+  }
+  const mentionOptions = mention
+    ? members.filter(m => m.id !== user?.id && m.displayName.toLowerCase().includes(mention.query.toLowerCase())).slice(0, 8)
+    : []
+  function pickMention(m: Contact) {
+    if (!mention) return
+    const caret = inputRef.current?.selectionStart ?? text.length
+    setText(`${text.slice(0, mention.start)}@${m.displayName} ${text.slice(caret)}`)
+    const pos = mention.start + m.displayName.length + 2
+    setMention(null)
+    setTimeout(() => { inputRef.current?.focus(); inputRef.current?.setSelectionRange(pos, pos) }, 0)
+  }
+  function onComposerKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+    if (mentionOptions.length) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIdx(i => (i + 1) % mentionOptions.length); return }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); setMentionIdx(i => (i - 1 + mentionOptions.length) % mentionOptions.length); return }
+      if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pickMention(mentionOptions[Math.min(mentionIdx, mentionOptions.length - 1)]); return }
+      if (e.key === 'Escape') { e.preventDefault(); setMention(null); return }
+    }
+    if (e.key === 'Escape' && editingMsg) { e.preventDefault(); cancelEdit() }
   }
 
   // ── Message-level actions (right-click menu) ────────────────────────────────
 
   function handleMessageContextMenu(e: React.MouseEvent, message: Message) {
     e.preventDefault()
-    const itemCount = 2 + (message.attachmentUrl ? 1 : 0) + 1 + 1 // Reply, Copy, [Download], Forward, Delete
-    const pos = clampMenuPosition(e.clientX, e.clientY, 200, itemCount * 42 + 8)
+    // Reactions row, Reply, Copy, [Download], [Edit], Forward, Delete
+    const itemCount = 2 + (message.attachmentUrl ? 1 : 0) + (canEdit(message, user?.id) ? 1 : 0) + 1 + 1
+    const pos = clampMenuPosition(e.clientX, e.clientY, 340, itemCount * 42 + 64)
     setMsgMenu({ x: pos.x, y: pos.y, message })
   }
 
@@ -1186,11 +1332,28 @@ export default function ChatPage() {
             background: '#fff', borderRadius: 6, border: `1px solid ${WA.border}`,
             boxShadow: '0 2px 10px rgba(0,0,0,0.2)', overflow: 'hidden', minWidth: 180,
           }}>
+          {/* Quick reactions across the top, as on WhatsApp */}
+          <div style={{ display: 'flex', gap: 2, padding: '6px 8px', borderBottom: `1px solid ${WA.border}` }}>
+            {REACTIONS.map(em => {
+              const on = msgMenu.message.reactions?.some(r => r.userId === user?.id && r.emoji === em)
+              return (
+                <button key={em} type="button" onClick={() => react(msgMenu.message.id, em)} title={on ? 'Remove reaction' : 'React'}
+                  style={{ width: 36, height: 36, borderRadius: '50%', border: 0, cursor: 'pointer', fontSize: 20, lineHeight: 1, background: on ? WA.activeBg : 'transparent' }}
+                  onMouseEnter={ev => { ev.currentTarget.style.background = WA.hoverBg }}
+                  onMouseLeave={ev => { ev.currentTarget.style.background = on ? WA.activeBg : 'transparent' }}>
+                  {em}
+                </button>
+              )
+            })}
+          </div>
           {[
             { label: 'Reply',   onClick: () => handleReply(msgMenu.message), icon: 'M9 14l-4-4 4-4M5 10h11a4 4 0 010 8h-1' },
             { label: 'Copy',    onClick: () => handleCopyMessage(msgMenu.message), icon: 'M9 9h10v10H9V9zM5 15H4a1 1 0 01-1-1V4a1 1 0 011-1h10a1 1 0 011 1v1' },
             ...(msgMenu.message.attachmentUrl
               ? [{ label: 'Download', onClick: () => handleDownloadAttachment(msgMenu.message), icon: 'M12 3v12m0 0l-4-4m4 4l4-4M5 19h14' }]
+              : []),
+            ...(canEdit(msgMenu.message, user?.id)
+              ? [{ label: 'Edit', onClick: () => startEdit(msgMenu.message), icon: 'M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z' }]
               : []),
             { label: 'Forward', onClick: () => handleForwardClick(msgMenu.message), icon: 'M14 5l6 6-6 6M4 11h14' },
             { label: 'Delete', onClick: () => handleDeleteMessage(msgMenu.message), icon: 'M3 6h18M8 6V4a1 1 0 011-1h6a1 1 0 011 1v2m3 0l-1 14a2 2 0 01-2 2H7a2 2 0 01-2-2L4 6h16z', danger: true },
@@ -1211,6 +1374,24 @@ export default function ChatPage() {
           ))}
         </div>
       )}
+
+      {/* Reaction picker (smiley next to a bubble, or the reaction pill under it) */}
+      {reactFor && (() => {
+        const mineNow = messages.find(x => x.id === reactFor.messageId)?.reactions?.find(r => r.userId === user?.id)?.emoji
+        return (
+          <div onClick={e => e.stopPropagation()}
+            style={{ position: 'fixed', top: reactFor.y, left: reactFor.x, zIndex: 2000, display: 'flex', gap: 2, padding: '6px 8px', background: '#fff', borderRadius: 26, boxShadow: '0 2px 14px rgba(0,0,0,0.22)' }}>
+            {REACTIONS.map(em => (
+              <button key={em} type="button" onClick={() => react(reactFor.messageId, em)} title={mineNow === em ? 'Remove reaction' : 'React'}
+                style={{ width: 38, height: 38, borderRadius: '50%', border: 0, cursor: 'pointer', fontSize: 22, lineHeight: 1, transition: 'transform .1s', background: mineNow === em ? WA.activeBg : 'transparent' }}
+                onMouseEnter={ev => { ev.currentTarget.style.transform = 'scale(1.18)' }}
+                onMouseLeave={ev => { ev.currentTarget.style.transform = 'scale(1)' }}>
+                {em}
+              </button>
+            ))}
+          </div>
+        )
+      })()}
 
       {/* Message thread */}
       <div style={{
@@ -1272,12 +1453,14 @@ export default function ChatPage() {
                 const isImage = m.type === 'IMAGE'
                 const isFile   = m.type === 'FILE'
                 const isAudio  = m.type === 'AUDIO'
+                const grouped  = groupReactions(m.reactions)
                 return (
-                  <div key={m.id} style={{ display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }}>
+                  <div key={m.id} onMouseEnter={() => setHoverMsgId(m.id)} onMouseLeave={() => setHoverMsgId(h => (h === m.id ? null : h))}
+                    style={{ display: 'flex', alignItems: 'center', gap: 6, flexDirection: isMine ? 'row-reverse' : 'row', marginBottom: grouped.length ? 14 : 0 }}>
+                    <div style={{ position: 'relative', maxWidth: '65%', minWidth: 0 }}>
                     <div
                       onContextMenu={e => handleMessageContextMenu(e, m)}
                       style={{
-                        maxWidth: '65%',
                         background: isMine ? WA.sentBubble : WA.receivedBubble,
                         color: WA.textPrimary,
                         borderRadius: 7.5,
@@ -1332,13 +1515,14 @@ export default function ChatPage() {
                         />
                       )}
 
-                      {m.type === 'TEXT' && <p style={{ margin: 0, fontSize: 14.2, lineHeight: 1.4 }}>{m.content}</p>}
+                      {m.type === 'TEXT' && <p style={{ margin: 0, fontSize: 14.2, lineHeight: 1.4, wordBreak: 'break-word' }}><MessageText content={m.content} names={mentionNames(m)} /></p>}
 
                       {!isAudio && (
                         <div style={{
                           margin: isImage ? '4px 8px 0' : '2px 0 0', display: 'flex',
                           alignItems: 'center', justifyContent: 'flex-end', gap: 4,
                         }}>
+                          {m.editedAt && <span style={{ fontSize: 11, color: WA.textSecondary, fontStyle: 'italic' }}>Edited</span>}
                           <span style={{ fontSize: 11, color: WA.textSecondary }}>
                             {new Date(m.createdAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true })}
                           </span>
@@ -1346,6 +1530,28 @@ export default function ChatPage() {
                         </div>
                       )}
                     </div>
+
+                    {/* Reactions sit on the bottom edge of the bubble; hover shows who */}
+                    {grouped.length > 0 && (
+                      <button type="button" onClick={e => openReactPicker(e, m, isMine)}
+                        title={grouped.map(([em, names]) => `${em} ${names.join(', ')}`).join('\n')}
+                        style={{ position: 'absolute', bottom: -15, [isMine ? 'right' : 'left']: 10, display: 'flex', alignItems: 'center', gap: 1, padding: '0 6px', height: 22,
+                          borderRadius: 11, background: '#fff', border: `1px solid ${WA.border}`, boxShadow: '0 1px 2px rgba(0,0,0,0.15)', cursor: 'pointer', fontSize: 13, lineHeight: 1 }}>
+                        {grouped.slice(0, 3).map(([em]) => <span key={em}>{em}</span>)}
+                        {(m.reactions?.length ?? 0) > 1 && <span style={{ fontSize: 11, color: WA.textSecondary, marginLeft: 3, fontFamily: WA_FONT }}>{m.reactions!.length}</span>}
+                      </button>
+                    )}
+                    </div>
+
+                    {/* Smiley next to the bubble on hover opens the reaction picker */}
+                    <button type="button" onClick={e => openReactPicker(e, m, isMine)} title="React" aria-label="React"
+                      style={{ width: 28, height: 28, borderRadius: '50%', border: 0, flexShrink: 0, cursor: 'pointer', background: 'rgba(255,255,255,0.9)', color: WA.textSecondary,
+                        boxShadow: '0 1px 3px rgba(0,0,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        visibility: hoverMsgId === m.id || reactFor?.messageId === m.id ? 'visible' : 'hidden' }}>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                        <circle cx="12" cy="12" r="10" /><path d="M8 14s1.5 2 4 2 4-2 4-2" /><line x1="9" y1="9" x2="9" y2="9.01" /><line x1="15" y1="9" x2="15" y2="9.01" />
+                      </svg>
+                    </button>
                   </div>
                 )
               })}
@@ -1374,8 +1580,40 @@ export default function ChatPage() {
               </div>
             )}
 
+            {/* "Edit message" banner: the text is back in the box; Esc or × cancels */}
+            {editingMsg && (
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: WA.chatBg, padding: '8px 16px 0' }}>
+                <div style={{ flex: 1, minWidth: 0, background: '#fff', borderLeft: `3px solid ${WA.green}`, borderRadius: 6, padding: '6px 10px', display: 'flex', flexDirection: 'column' }}>
+                  <span style={{ fontSize: 12, fontWeight: 600, color: WA.green }}>Edit message</span>
+                  <span style={{ fontSize: 12.5, color: WA.textSecondary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{editingMsg.content}</span>
+                </div>
+                <button type="button" onClick={cancelEdit} title="Cancel edit"
+                  style={{ border: 0, background: 'transparent', cursor: 'pointer', color: WA.textSecondary, fontSize: 20, padding: '0 10px', lineHeight: 1 }}>
+                  ×
+                </button>
+              </div>
+            )}
+
             <form onSubmit={handleSend} style={{ position: 'relative', display: 'flex', gap: 10, padding: '12px 16px', background: WA.chatBg, alignItems: 'center' }}>
               <input ref={fileInputRef} type="file" style={{ display: 'none' }} onChange={handleFileChange} />
+
+              {/* @ tag list: group members matching what is typed after @ */}
+              {mentionOptions.length > 0 && (
+                <div style={{ position: 'absolute', bottom: '100%', left: 16, marginBottom: 6, width: 300, maxHeight: 300, overflowY: 'auto', zIndex: 20,
+                  background: '#fff', borderRadius: 10, boxShadow: '0 2px 14px rgba(0,0,0,0.2)', padding: '4px 0' }}>
+                  {mentionOptions.map((m, i) => (
+                    <button key={m.id} type="button" onMouseDown={e => { e.preventDefault(); pickMention(m) }} onMouseEnter={() => setMentionIdx(i)}
+                      style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '7px 12px', border: 0, cursor: 'pointer', textAlign: 'left', fontFamily: WA_FONT,
+                        background: i === mentionIdx ? WA.activeBg : 'transparent' }}>
+                      <Avatar name={m.displayName} photo={m.avatar} size={32} />
+                      <span style={{ minWidth: 0 }}>
+                        <span style={{ display: 'block', fontSize: 14, color: WA.textPrimary, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.displayName}</span>
+                        <span style={{ fontSize: 12, color: WA.textSecondary }}>{staffRole(m.role, m.managerType ?? m.agentType)}</span>
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Emoji picker popover */}
               {showEmoji && (
@@ -1446,7 +1684,7 @@ export default function ChatPage() {
                     background: '#fff', borderRadius: 24, padding: '6px 8px 6px 12px',
                   }}>
                     {/* "+" attach */}
-                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                    <button type="button" onClick={() => fileInputRef.current?.click()} disabled={uploading || !!editingMsg}
                       title="Attach file"
                       style={{
                         border: 0, background: 'transparent', cursor: 'pointer', flexShrink: 0,
@@ -1472,9 +1710,12 @@ export default function ChatPage() {
                     </button>
 
                     <input
+                      ref={inputRef}
                       value={text}
-                      onChange={e => setText(e.target.value)}
-                      placeholder="Type a message"
+                      onChange={onTextChange}
+                      onKeyDown={onComposerKeyDown}
+                      onBlur={() => setTimeout(() => setMention(null), 150)}
+                      placeholder={editingMsg ? 'Edit message' : selectedConv.isGroup ? 'Type a message, @ to tag someone' : 'Type a message'}
                       style={{
                         flex: 1, background: 'transparent', border: 0,
                         padding: '5px 0', fontSize: 14.5, color: WA.textPrimary, outline: 'none', fontFamily: WA_FONT,
@@ -1497,17 +1738,21 @@ export default function ChatPage() {
                     )}
                   </div>
 
-                  {/* Send, appears only once there's text to send */}
+                  {/* Send, appears only once there's text to send (a tick while editing) */}
                   {text.trim() && (
-                    <button type="submit"
+                    <button type="submit" title={editingMsg ? 'Save edit' : 'Send'}
                       style={{
                         width: 40, height: 40, borderRadius: '50%', border: 0, flexShrink: 0,
                         background: WA.green, color: '#fff',
                         display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer',
                       }}>
-                      <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">
-                        <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                      </svg>
+                      {editingMsg ? (
+                        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.6} strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12" /></svg>
+                      ) : (
+                        <svg width="19" height="19" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                        </svg>
+                      )}
                     </button>
                   )}
                 </>

@@ -14,6 +14,7 @@ import { isFinalApprover } from '@/lib/roles'
 import type { Customer, Page, Client } from '@/types'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { useVerticals } from '@/lib/verticals'
+import { EditSaleModal, DeleteSaleModal } from '@/components/sales/EditSaleModal'
 
 const STATUS_OPTIONS = Object.keys(STATUS_LABEL) as CustomerStatus[]
 const PERIODS: { key: PeriodKey; label: string }[] = [
@@ -43,6 +44,7 @@ function rejectionReason(c: Customer) {
 function buildCols(canSeeAgent: boolean, canSeeCompany: boolean): Col[] {
   const cols: Col[] = [
     { key: 'name', label: 'Name', w: 165, show: true },
+    { key: 'phone', label: 'Phone', w: 120, show: true },
     { key: 'status', label: 'Status', w: 158, show: true },
     { key: 'vertical', label: 'Vertical', w: 115, show: true },
   ]
@@ -70,6 +72,7 @@ function RateTypePill({ v }: { v?: string | null }) {
 function cell(col: Col, c: Customer) {
   switch (col.key) {
     case 'name':     return <span style={{ fontWeight: 600, color: P.textHeading }}>{c.firstName} {c.lastName}</span>
+    case 'phone':    return <span className="font-mono text-xs text-gray-700 whitespace-nowrap">{c.phone || 'N/A'}</span>
     case 'status':   return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_BADGE[c.status] ?? 'bg-gray-100 text-gray-600'}`}>{STATUS_LABEL[c.status] ?? c.status}</span>
     case 'vertical': return <span className="truncate block text-xs text-gray-600">{c.verticalType ?? 'N/A'}</span>
     case 'agent':    return <span className="truncate block text-xs font-bold text-gray-700">{c.agent?.displayName ?? 'N/A'}</span>
@@ -108,7 +111,21 @@ function MS({ title, children }: { title: string; children: React.ReactNode }) {
   )
 }
 
-function SaleDetailModal({ c, onClose, canSeeCompany }: { c: Customer; onClose: () => void; canSeeCompany: boolean }) {
+const ICON_EDIT  = 'M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L6.832 19.82a4.5 4.5 0 01-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 011.13-1.897L16.863 4.487z'
+const ICON_TRASH = 'M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0'
+
+/** Small icon button in a table row; never opens the row's detail. */
+function RowBtn({ title, icon, danger, onClick }: { title: string; icon: string; danger?: boolean; onClick: () => void }) {
+  return (
+    <button type="button" title={title} aria-label={title} onClick={e => { e.stopPropagation(); onClick() }}
+      style={{ width: 28, height: 26, borderRadius: 6, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+        border: `1px solid ${danger ? '#FCA5A5' : P.border}`, background: '#fff', color: danger ? '#DC2626' : P.navy }}>
+      <svg width={14} height={14} fill="none" viewBox="0 0 24 24" strokeWidth={1.8} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d={icon} /></svg>
+    </button>
+  )
+}
+
+function SaleDetailModal({ c, onClose, canSeeCompany, onEdit, onDelete }: { c: Customer; onClose: () => void; canSeeCompany: boolean; onEdit?: () => void; onDelete?: () => void }) {
   const extras = Object.entries(c.extraFields ?? {}).filter(([, v]) => v !== null && v !== '')
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -157,6 +174,12 @@ function SaleDetailModal({ c, onClose, canSeeCompany }: { c: Customer; onClose: 
             {c.agent && <DR label="Agent" value={c.agent.displayName} />}
           </MS>
         </div>
+        {(onEdit || onDelete) && (
+          <div className="flex justify-end gap-2 px-6 py-3 flex-shrink-0" style={{ borderTop: `1px solid ${P.border}`, background: '#FAFBFC' }}>
+            {onDelete && <button type="button" onClick={onDelete} style={{ padding: '6px 13px', borderRadius: 8, border: '1px solid #FCA5A5', background: '#fff', color: '#DC2626', cursor: 'pointer', fontFamily: "'Rajdhani', sans-serif", fontSize: 12.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Delete</button>}
+            {onEdit && <button type="button" onClick={onEdit} style={{ padding: '6px 13px', borderRadius: 8, border: 0, background: `linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`, color: '#fff', cursor: 'pointer', fontFamily: "'Rajdhani', sans-serif", fontSize: 12.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>Edit Sale</button>}
+          </div>
+        )}
       </div>
     </div>
   )
@@ -166,8 +189,11 @@ export default function ReportsPage() {
   const { user } = useAuth()
   const canSeeAgent   = !!user && user.role !== Role.AGENT
   const canSeeCompany = isFinalApprover(user)
+  // Edit and delete: managers and above only, never agents (the API checks the same)
+  const canManage = !!user && [Role.ADMIN, Role.DIRECTOR, Role.MANAGER].includes(user.role as Role)
   const { verticals } = useVerticals()
-  const LS_KEY = `reports_cols_v5_${user?.role ?? ''}`
+  // v6: the Phone column was added, so saved column choices from before start fresh
+  const LS_KEY = `reports_cols_v6_${user?.role ?? ''}`
 
   const base: Filters = { status: '', agentId: '', clientId: '', companyName: '', verticalType: '', ...periodDates('today')! }
   const [period, setPeriod]   = useState<PeriodKey>('today')
@@ -181,6 +207,8 @@ export default function ReportsPage() {
   const [exporting, setExporting] = useState(false)
   const [toast, setToast]     = useState<{ message: string; type: 'success' | 'error' } | null>(null)
   const [selected, setSelected] = useState<Customer | null>(null)
+  const [editing, setEditing]   = useState<Customer | null>(null)
+  const [deleting, setDeleting] = useState<Customer | null>(null)
 
   const allCols = buildCols(canSeeAgent, canSeeCompany)
   const [shown, setShown] = useState<string[]>(allCols.map(c => c.key))
@@ -243,9 +271,20 @@ export default function ReportsPage() {
   }
 
   const rows = data?.data ?? []
-  const columns: Column<Customer>[] = allCols
-    .filter(c => shown.includes(c.key))
-    .map(c => ({ key: c.key, label: c.label, width: c.w, render: (row: Customer) => cell(c, row) }))
+  const columns: Column<Customer>[] = [
+    ...allCols
+      .filter(c => shown.includes(c.key))
+      .map(c => ({ key: c.key, label: c.label, width: c.w, render: (row: Customer) => cell(c, row) })),
+    ...(canManage ? [{
+      key: 'actions', label: 'Actions', width: 84, resizable: false,
+      render: (row: Customer) => (
+        <div style={{ display: 'flex', gap: 5 }}>
+          <RowBtn title="Edit sale" icon={ICON_EDIT} onClick={() => setEditing(row)} />
+          <RowBtn title="Delete sale" icon={ICON_TRASH} danger onClick={() => setDeleting(row)} />
+        </div>
+      ),
+    }] : []),
+  ]
 
   return (
     <>
@@ -297,7 +336,13 @@ export default function ReportsPage() {
         {data && <Pager page={data.currentPage} lastPage={data.lastPage} perPage={data.perPage} total={data.total} shown={rows.length} noun="records" onPage={setPage} />}
       </PageShell>
 
-      {selected && <SaleDetailModal c={selected} onClose={() => setSelected(null)} canSeeCompany={canSeeCompany} />}
+      {selected && <SaleDetailModal c={selected} onClose={() => setSelected(null)} canSeeCompany={canSeeCompany}
+        onEdit={canManage ? () => { setEditing(selected); setSelected(null) } : undefined}
+        onDelete={canManage ? () => { setDeleting(selected); setSelected(null) } : undefined} />}
+      {editing && <EditSaleModal customer={editing} onClose={() => setEditing(null)}
+        onSaved={() => { setEditing(null); fetchData(true); setToast({ message: 'Sale updated.', type: 'success' }) }} />}
+      {deleting && <DeleteSaleModal customer={deleting} onClose={() => setDeleting(null)}
+        onDeleted={() => { setDeleting(null); fetchData(true); setToast({ message: 'Sale deleted.', type: 'success' }) }} />}
     </>
   )
 }
