@@ -7,7 +7,7 @@ import { Roles }        from '../../common/decorators/roles.decorator'
 import { CurrentUser }  from '../../common/decorators/current-user.decorator'
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles(Role.ADMIN)
+@Roles(Role.ADMIN, Role.DIRECTOR)   // Invoicing & Payments: Admin and Director
 @Controller('invoicing')
 export class InvoicingController {
   constructor(private invoicing: InvoicingService) {}

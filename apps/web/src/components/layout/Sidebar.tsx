@@ -80,6 +80,7 @@ function navFor(user: NonNullable<ReturnType<typeof useAuth>['user']>): NavItem[
       it('attApproval', 'Attendance Approval', `${b}/attendance/approval`),
       it('dailyAtt', 'Daily Attendance', `${b}/attendance/daily`),
       it('interviews', 'Interviews', `${b}/interviews`),
+      it('invoicing', 'Invoicing & Payments', `${b}/invoicing`),
       it('messages', 'Chats', `${b}/messages`),
       it('profile', 'Profile', `${b}/profile`),
     ]
