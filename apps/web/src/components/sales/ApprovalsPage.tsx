@@ -191,10 +191,13 @@ export default function ApprovalsPage() {
     try {
       const payload = Object.fromEntries(Object.entries(editForm).map(([k, v]) => [k, v === '' ? null : v]))
       const { customer } = await apiPut<{ customer: Customer }>(`/customers/${selected.id}`, payload)
+      // Saving with a Reason of Cancellation rejects the sale (Rejected by Manager)
+      const rejectedNow = customer.status === CustomerStatus.DISAPPROVED && selected.status !== CustomerStatus.DISAPPROVED
       replaceRow(customer)
       setNoteQa(customer.qaComments ?? '')
       setEditing(false)
-      setToast({ message: 'Customer updated.', type: 'success' })
+      if (rejectedNow) loadCounts()
+      setToast({ message: rejectedNow ? 'Customer updated and marked Rejected by Manager.' : 'Customer updated.', type: 'success' })
     } catch (e) {
       setToast({ message: errMsg(e, 'Failed to save changes.'), type: 'error' })
     } finally {

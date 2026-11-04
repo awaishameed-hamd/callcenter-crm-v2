@@ -1,5 +1,6 @@
 'use client'
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useLayoutEffect } from 'react'
+import { createPortal } from 'react-dom'
 
 const NAVY = '#132E57'
 const TEAL = '#1E8496'
@@ -27,6 +28,8 @@ export default function StyledSelect({ value, onChange, options, placeholder, lo
   const [open,    setOpen]    = useState(false)
   const [focused, setFocused] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
+  const dropRef = useRef<HTMLDivElement>(null)
+  const [pos, setPos] = useState<{ top?: number; bottom?: number; left: number; width: number; maxHeight: number } | null>(null)
 
   const selected   = options.find(o => o.value === value)
   const displayVal = focused ? query : (selected?.label ?? '')
@@ -37,13 +40,33 @@ export default function StyledSelect({ value, onChange, options, placeholder, lo
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) {
+      const t = e.target as Node
+      if (wrapRef.current && !wrapRef.current.contains(t) && !dropRef.current?.contains(t)) {
         setOpen(false); setFocused(false); setQuery('')
       }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
   }, [])
+
+  // The list is drawn on top of the page, not inside the field's box, so a dialog or card with
+  // hidden overflow can no longer cut off its last options. It opens upward when there is more
+  // room above the field than below it.
+  const place = () => {
+    const r = wrapRef.current?.getBoundingClientRect()
+    if (!r) return
+    const below = window.innerHeight - r.bottom - 10, above = r.top - 10
+    const up = below < 180 && above > below
+    const maxHeight = Math.max(120, Math.min(240, up ? above : below))
+    setPos(up ? { bottom: window.innerHeight - r.top + 3, left: r.left, width: r.width, maxHeight } : { top: r.bottom + 3, left: r.left, width: r.width, maxHeight })
+  }
+  useLayoutEffect(() => { if (open) place() }, [open, filtered.length]) // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!open) return
+    window.addEventListener('resize', place)
+    window.addEventListener('scroll', place, true)
+    return () => { window.removeEventListener('resize', place); window.removeEventListener('scroll', place, true) }
+  }, [open]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const handleSelect = (opt: { value: string; label: string }) => {
     onChange(opt.value)
@@ -76,11 +99,11 @@ export default function StyledSelect({ value, onChange, options, placeholder, lo
         </span>
       </div>
 
-      {open && !loading && !disabled && (
-        <div style={{
-          position: 'absolute', zIndex: 999, top: 'calc(100% + 3px)', left: 0, right: 0,
+      {open && !loading && !disabled && pos && createPortal(
+        <div ref={dropRef} style={{
+          position: 'fixed', zIndex: 5000, top: pos.top, bottom: pos.bottom, left: pos.left, width: pos.width, boxSizing: 'border-box',
           background: '#fff', border: '1.5px solid #E0DDD5', borderRadius: 8,
-          boxShadow: '0 6px 20px rgba(0,0,0,0.12)', maxHeight: 200, overflowY: 'auto',
+          boxShadow: '0 6px 20px rgba(0,0,0,0.12)', maxHeight: pos.maxHeight, overflowY: 'auto',
         }}>
           {filtered.length === 0 ? (
             <div style={{ padding: '10px 14px', fontSize: 12, color: '#808080', fontFamily: "'Aptos',sans-serif" }}>No results</div>
@@ -97,7 +120,8 @@ export default function StyledSelect({ value, onChange, options, placeholder, lo
               onMouseLeave={e => { if (opt.value !== value) (e.currentTarget as HTMLElement).style.background = 'transparent' }}
             >{opt.label}</div>
           ))}
-        </div>
+        </div>,
+        document.body,
       )}
     </div>
   )

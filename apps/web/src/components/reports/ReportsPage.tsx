@@ -340,7 +340,11 @@ export default function ReportsPage() {
         onEdit={canManage ? () => { setEditing(selected); setSelected(null) } : undefined}
         onDelete={canManage ? () => { setDeleting(selected); setSelected(null) } : undefined} />}
       {editing && <EditSaleModal customer={editing} onClose={() => setEditing(null)}
-        onSaved={() => { setEditing(null); fetchData(true); setToast({ message: 'Sale updated.', type: 'success' }) }} />}
+        onSaved={saved => {
+          const rejectedNow = saved.status === CustomerStatus.DISAPPROVED && editing.status !== CustomerStatus.DISAPPROVED
+          setEditing(null); fetchData(true)
+          setToast({ message: rejectedNow ? 'Sale updated and marked Rejected by Manager.' : 'Sale updated.', type: 'success' })
+        }} />}
       {deleting && <DeleteSaleModal customer={deleting} onClose={() => setDeleting(null)}
         onDeleted={() => { setDeleting(null); fetchData(true); setToast({ message: 'Sale deleted.', type: 'success' }) }} />}
     </>

@@ -4,7 +4,7 @@
 // editing on the Approvals page; the approval status itself is not changed here.
 
 import { useEffect, useState } from 'react'
-import { CANCEL_REASONS } from '@crm/shared'
+import { CANCEL_REASONS, CustomerStatus } from '@crm/shared'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
 import { useVerticals } from '@/lib/verticals'
@@ -14,6 +14,8 @@ import type { Customer } from '@/types'
 import { FONT, BEBAS, CRISP, RAJDHANI, ETHNO, inputCls, withAlpha, ICONS, Field, SectionCard, INFO_GRID } from './saleUi'
 
 type Form = Record<string, string>
+// Statuses that are already a rejection; any other sale saved with a reason becomes Rejected by Manager
+const REJECTED: string[] = [CustomerStatus.DISAPPROVED, CustomerStatus.FINAL_DISAPPROVED, CustomerStatus.AGENT_REJECTED]
 type DidOption = { id: string; didCode: string; saleType: string | null }
 
 const toForm = (c: Customer): Form => ({
@@ -146,6 +148,9 @@ export function EditSaleModal({ customer, onClose, onSaved }: { customer: Custom
                   <StyledSelect value={form.reason} onChange={v => set('reason', v)} placeholder="Select reason"
                     options={[{ value: '', label: 'No reason' }, ...CANCEL_REASONS.map(r => ({ value: r, label: r })), ...(form.reason && !(CANCEL_REASONS as readonly string[]).includes(form.reason) ? [{ value: form.reason, label: form.reason }] : [])]} />
                 </Field>
+                {form.reason && !REJECTED.includes(customer.status) && (
+                  <p style={{ margin: '4px 0 0', fontSize: 11.5, fontWeight: 600, color: '#DC2626' }}>Saving with a reason marks this sale Rejected by Manager.</p>
+                )}
               </div>
             </div>
           </SectionCard>

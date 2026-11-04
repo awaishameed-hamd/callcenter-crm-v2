@@ -11,6 +11,7 @@ type Actor = { id: string; role: Role; managerType?: string | null }
 
 const FINAL_ROLES: Role[] = [Role.ADMIN, Role.DIRECTOR]
 const REVIEW_ROLES: Role[] = [Role.ADMIN, Role.DIRECTOR, Role.MANAGER]
+const REJECTED: string[] = [CustomerStatus.DISAPPROVED, CustomerStatus.FINAL_DISAPPROVED, CustomerStatus.AGENT_REJECTED]
 
 export function clientSelect(role: Role) {
   const full = FINAL_ROLES.includes(role)
@@ -147,7 +148,7 @@ export class CustomersService {
 
   async update(actor: Actor, id: string, b: Record<string, any>) {
     if (!REVIEW_ROLES.includes(actor.role)) throw new ForbiddenException('Forbidden.')
-    await this.load(id)
+    const current = await this.load(id)
     const clientId = V.str(b.clientId, 'DID')
     if (clientId && !(await this.prisma.client.findUnique({ where: { id: clientId }, select: { id: true } }))) fail('The selected DID is invalid.')
     const dob = V.date(b.dateOfBirth, 'Date of birth')
@@ -174,8 +175,32 @@ export class CustomersService {
       reason:          V.str(b.reason, 'Reason', { max: 50 }),
       qaComments:      V.str(b.qaComments, 'QA comments', { max: 2000 }),
     })
-    await this.prisma.customer.update({ where: { id }, data: data as Prisma.CustomerUncheckedUpdateInput })
+    await this.prisma.customer.update({ where: { id }, data: { ...data, ...(await this.rejectionByEdit(actor, current, data)) } as Prisma.CustomerUncheckedUpdateInput })
     return this.respond(id, actor.role)
+  }
+
+  /**
+   * Choosing a Reason of Cancellation while editing rejects the sale: it becomes Rejected by
+   * Manager, exactly as if the manager had pressed Reject with that reason. A sale that is already
+   * rejected keeps its status; only its rejection reason follows the new choice.
+   */
+  private async rejectionByEdit(actor: Actor, c: Awaited<ReturnType<CustomersService['load']>>, data: { reason?: string | null; clientId?: string | null }) {
+    const reason = data.reason
+    if (!reason || reason === c.reason && REJECTED.includes(c.status)) return {}
+    if (REJECTED.includes(c.status)) {
+      // Keep any note typed after the old reason ("No LA: called twice" -> "Hangup: called twice")
+      if (c.status !== CustomerStatus.DISAPPROVED) return {}
+      const note = c.reason && c.managerNote?.startsWith(c.reason) ? c.managerNote.slice(c.reason.length) : ''
+      return { managerNote: `${reason}${note}`.slice(0, 255) }
+    }
+    const billed = await this.prisma.invoiceItem.findFirst({ where: { customerId: c.id }, select: { invoice: { select: { invoiceNumber: true } } } })
+    if (billed) fail(`This sale is on invoice ${billed.invoice.invoiceNumber}. Remove it from the invoice before rejecting it.`)
+    const clientId = data.clientId !== undefined ? data.clientId : c.clientId
+    const client = clientId ? await this.prisma.client.findUnique({ where: { id: clientId } }) : null
+    return {
+      status: CustomerStatus.DISAPPROVED, managerId: actor.id, managerNote: reason, disapprovedAt: new Date(),
+      ...this.snapshot(client),
+    }
   }
 
   async approve(actor: Actor, id: string, b: Record<string, any>) {
