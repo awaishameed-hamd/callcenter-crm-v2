@@ -2,16 +2,16 @@
 
 // My Profile: a modern profile view on one screen. Header card with a cover banner, photo (shared
 // with the sidebar), name, role and quick facts; below it Contact, Salary, Identity & Address, a
-// bank-card style Bank Details and Security (change password). "Edit Profile" opens a side panel
+// bank-card style Bank Details and Security (change password). "Edit Profile" opens the same popup as My Team's Edit User
 // with the form from CRM Management > User Form; HR-only values (joining date, department,
 // salary) stay read-only.
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { STANDARD_FIELD_KEYS, snakeToCamel, bankCodeOf } from '@crm/shared'
+import { STANDARD_FIELD_KEYS, snakeToCamel } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
-import BankFields from '@/components/ui/BankFields'
+import { Modal, SectionCard, DynamicField, LockedValue, iStyle, labelStyle, readOnlyStyle, roleName } from '@/components/admin/userFormUi'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompact } from '@/hooks/useMediaQuery'
 import { apiGet, apiPut, errMsg, errFields } from '@/lib/api'
@@ -27,6 +27,8 @@ const FONT   = "'Aptos', sans-serif"
 const GOLD   = '#C8902A'
 
 const CORE_KEYS     = new Set(['display_name', ...STANDARD_FIELD_KEYS.user])
+// Shown in the Account block, as in My Team's Edit User
+const ACCOUNT_KEYS  = new Set(['department', 'email'])
 const READONLY_KEYS = new Set(['date_of_joining', 'department', 'basic_salary', 'punctuality_allowance', 'travelling_allowance', 'other_allowance'])
 const SALARY_KEYS   = ['basic_salary', 'punctuality_allowance', 'travelling_allowance', 'other_allowance']
 const SALARY_COLORS = [P.teal, '#F2AC18', P.navy, P.brick]
@@ -113,32 +115,6 @@ function Fact({ label, value }: { label: string; value: React.ReactNode }) {
   )
 }
 
-/** A form field inside the edit panel. */
-function EditField({ field, value, onChange, error }: { field: FormField; value: string; onChange: (k: string, v: string) => void; error?: string }) {
-  const cls = `${inputCls} ${error ? 'border-red-400' : ''}`
-  const handle = (e: React.ChangeEvent<any>) => onChange(field.fieldKey, e.target.value)
-  // Bank: chosen from HR's list, with its Bank Code filled in beside it
-  if (field.fieldKey === 'bank') return (
-    <div style={{ gridColumn: '1 / -1', minWidth: 0 }}>
-      <BankFields value={value} onChange={v => onChange('bank', v)} label={field.label} required={field.isRequired} error={error} inputClass={inputCls}
-        Field={p => <Field label={p.label} required={p.required} error={p.error}>{p.children}</Field>} />
-    </div>
-  )
-  let input: React.ReactNode
-  switch (field.fieldType) {
-    case 'date':     input = <DateInput value={value} onChange={handle} className={cls} />; break
-    case 'number':   input = <input type="number" value={value} onChange={handle} placeholder={field.placeholder ?? ''} className={cls} />; break
-    case 'textarea': input = <textarea value={value} onChange={handle} placeholder={field.placeholder ?? ''} rows={field.textareaRows || 2} className={`${cls} resize-none`} />; break
-    case 'select':
-      input = <StyledSelect value={value} onChange={v => onChange(field.fieldKey, v)} placeholder="Select" borderColor={error ? '#f87171' : undefined} options={(field.options ?? []).map(o => ({ value: o, label: o }))} />
-      break
-    default:
-      input = field.fieldKey === 'cnic'
-        ? <input type="text" value={value} onChange={e => onChange(field.fieldKey, formatCNIC(e.target.value))} placeholder={field.placeholder ?? '00000-0000000-0'} maxLength={15} className={cls} />
-        : <input type={field.fieldKey === 'email' ? 'email' : 'text'} value={value} onChange={handle} placeholder={field.placeholder ?? ''} className={cls} />
-  }
-  return <div style={{ gridColumn: `span ${COL_SPAN[field.colSpan] ?? 2}`, minWidth: 0 }}><Field label={field.label} required={field.isRequired} error={error}>{input}</Field></div>
-}
 
 // ── Page ─────────────────────────────────────────────────────────────────────
 
@@ -395,7 +371,6 @@ export default function ProfilePage() {
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <span style={{ minWidth: 0 }}>
             <span style={{ display: 'block', fontFamily: OUTFIT, fontSize: 15, fontWeight: 600, letterSpacing: '0.02em' }}>{val('bank') || 'Bank not added'}</span>
-            {bankCodeOf(val('bank')) && <span style={{ fontSize: 11, opacity: 0.8, letterSpacing: '0.06em' }}>BANK CODE {bankCodeOf(val('bank'))}</span>}
           </span>
           {/* card chip */}
           <span style={{ width: 34, height: 26, borderRadius: 6, background: 'linear-gradient(135deg, #F7D58B, #C8902A)', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }} />
@@ -450,51 +425,82 @@ export default function ProfilePage() {
     </Card>
   )
 
-  // ── Edit panel ─────────────────────────────────────────────────────────────
-  const editPanel = editing && (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 60, display: 'flex', justifyContent: 'flex-end' }}>
-      <div onClick={() => { setEditing(false); load(profile) }} style={{ position: 'absolute', inset: 0, background: 'rgba(19,46,87,0.35)', backdropFilter: 'blur(2px)' }} />
-      <aside style={{ position: 'relative', width: 'min(560px, 100%)', height: '100%', background: '#fff', boxShadow: '-20px 0 40px -20px rgba(19,46,87,0.5)', display: 'flex', flexDirection: 'column', fontFamily: FONT }}>
-        <div style={{ padding: '18px 22px', borderBottom: `1px solid ${withAlpha(P.navy, 0.08)}`, display: 'flex', alignItems: 'center', gap: 10 }}>
-          <span style={{ width: 34, height: 34, borderRadius: 11, display: 'flex', alignItems: 'center', justifyContent: 'center', background: withAlpha(P.teal, 0.1), color: P.teal }}>
-            <Svg d="m16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L6.832 19.82a4.5 4.5 0 0 1-1.897 1.13l-2.685.8.8-2.685a4.5 4.5 0 0 1 1.13-1.897L16.863 4.487Z" size={16} />
-          </span>
-          <div>
-            <h2 style={{ margin: 0, fontFamily: OUTFIT, fontSize: 18, fontWeight: 700, color: P.navy }}>Edit Profile</h2>
-            <p style={{ margin: 0, fontSize: 12, color: '#8A97AB' }}>Joining date, department and salary are managed by HR.</p>
-          </div>
-          <button type="button" onClick={() => { setEditing(false); load(profile) }} title="Close" style={{ marginLeft: 'auto', width: 32, height: 32, borderRadius: 10, border: 0, background: '#F3F6F9', color: P.slate, cursor: 'pointer', fontSize: 18, lineHeight: 1 }}>×</button>
-        </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 22px', display: 'flex', flexDirection: 'column', gap: 18 }}>
-          <Field label="Display Name" required error={err('display_name')}>
-            <input value={form.display_name ?? ''} onChange={e => onField('display_name', e.target.value)} className={inputCls} />
-          </Field>
-          {sections.map(s => {
-            const list = s.list.filter(f => !READONLY_KEYS.has(f.fieldKey))
-            if (!list.length) return null
-            return (
-              <div key={s.name}>
-                <div style={{ fontFamily: OUTFIT, fontSize: 13, fontWeight: 600, color: P.teal, marginBottom: 8 }}>{s.name}</div>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: '10px 12px' }}>
-                  {list.map(f => <EditField key={f.fieldKey} field={f} value={fieldValue(f.fieldKey)} onChange={onField} error={err(f.fieldKey)} />)}
-                </div>
-              </div>
-            )
-          })}
-        </div>
-        <div style={{ padding: '14px 22px', borderTop: `1px solid ${withAlpha(P.navy, 0.08)}`, display: 'flex', justifyContent: 'flex-end', gap: 8 }}>
-          <button type="button" onClick={() => { setEditing(false); load(profile); setErrors({}) }}
-            style={{ padding: '9px 18px', borderRadius: 12, border: `1px solid ${withAlpha(P.navy, 0.15)}`, background: '#fff', color: P.navy, fontFamily: OUTFIT, fontSize: 13.5, fontWeight: 600, cursor: 'pointer' }}>Cancel</button>
-          <button type="button" onClick={save} disabled={loading} style={{ ...btnPrimary, opacity: loading ? 0.65 : 1 }}>{loading ? 'Saving...' : 'Save Changes'}</button>
-        </div>
-      </aside>
+  // ── Edit (the same popup as My Team's Edit User; what only HR may change is locked) ──
+  const closeEdit = () => { setEditing(false); if (profile) load(profile); setErrors({}) }
+  const editSalaryTotal = SALARY_KEYS.reduce((t, k) => t + (parseFloat(form[k]) || 0), 0)
+  const displayAfter = byKey.father_name ? 'father_name' : 'last_name'
+  const displayNameInput = (
+    <div key="display_name" style={{ gridColumn: 'span 2' }}>
+      <label style={labelStyle}>Display Name<span style={{ color: '#D62828' }}> *</span></label>
+      <input style={iStyle} value={form.display_name ?? ''} onChange={e => onField('display_name', e.target.value)} placeholder="e.g. John Smith" />
+      {err('display_name') && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#EF4444' }}>{err('display_name')}</p>}
     </div>
+  )
+  const editSections = sections.map(s => ({ ...s, list: s.list.filter(f => !ACCOUNT_KEYS.has(f.fieldKey)) })).filter(s => s.list.length)
+  const editModal = editing && profile && (
+    <Modal title="Edit Profile" onClose={closeEdit}>
+      <div style={{ padding: '20px 28px', display: 'flex', flexDirection: 'column', gap: 16 }}>
+        <SectionCard title="Account">
+          <div className="grid grid-cols-3 gap-4 mb-4">
+            <div><label style={labelStyle}>Role</label><LockedValue value={roleName(profile.role)} /></div>
+            <div>
+              <label style={labelStyle}>{profile.agentType ? 'Agent Type' : profile.managerType ? 'Manager Type' : 'Type'}</label>
+              <LockedValue value={profile.agentType ?? profile.managerType ?? 'Not applicable'} />
+            </div>
+            <div><label style={labelStyle}>{byKey.department?.label ?? 'Department'}</label><LockedValue value={form.department ?? ''} /></div>
+          </div>
+          <div className="grid grid-cols-3 gap-4">
+            <div><label style={labelStyle}>User Code</label><div style={readOnlyStyle}>{profile.userCode}</div></div>
+            {byKey.email
+              ? <DynamicField plain field={byKey.email} value={fieldValue('email')} onChange={onField} error={err('email')} />
+              : <div />}
+            <div>
+              <label style={labelStyle}>Password</label>
+              <div style={{ ...iStyle, background: '#F8FAFC', color: P.textMuted }}>Change it under Security</div>
+            </div>
+          </div>
+        </SectionCard>
+
+        {editSections.map(s => {
+          const isSalary = SALARY_KEYS.some(k => s.list.some(f => f.fieldKey === k))
+          return (
+            <SectionCard key={s.name} title={s.name}>
+              <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(6, 1fr)' }}>
+                {s.list.flatMap(f => {
+                  const el = <DynamicField key={f.fieldKey} field={f} value={fieldValue(f.fieldKey)} onChange={onField} error={err(f.fieldKey)} locked={READONLY_KEYS.has(f.fieldKey)} />
+                  return f.fieldKey === displayAfter ? [el, displayNameInput] : [el]
+                })}
+                {s.list === editSections[0]?.list && !s.list.some(f => f.fieldKey === displayAfter) && displayNameInput}
+              </div>
+              {isSalary && editSalaryTotal > 0 && (
+                <div className="flex items-center justify-between pt-3 mt-3 border-t border-gray-200">
+                  <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Total Package</span>
+                  <span className="text-sm font-bold" style={{ color: '#AA7F56' }}>PKR {editSalaryTotal.toLocaleString('en-PK')}</span>
+                </div>
+              )}
+            </SectionCard>
+          )
+        })}
+        <p style={{ margin: 0, fontSize: 12, color: P.textMuted }}>Fields with a lock (role, department, joining date and salary) are managed by HR.</p>
+      </div>
+
+      <div style={{ padding: '16px 28px', borderTop: `1px solid ${P.border}`, display: 'flex', justifyContent: 'flex-end', gap: 10, background: '#fff', borderRadius: '0 0 18px 18px' }}>
+        <button type="button" onClick={closeEdit}
+          style={{ padding: '9px 20px', borderRadius: 8, border: `1px solid ${P.border}`, background: '#fff', color: P.textMuted, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>
+          Cancel
+        </button>
+        <button type="button" onClick={save} disabled={loading}
+          style={{ padding: '9px 24px', borderRadius: 8, border: 0, background: `linear-gradient(135deg, ${P.teal} 0%, #0E5F6E 100%)`, color: '#fff', fontSize: 13, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontFamily: '"Aptos", sans-serif', letterSpacing: '0.04em' }}>
+          {loading ? 'Saving...' : 'Save Changes'}
+        </button>
+      </div>
+    </Modal>
   )
 
   return (
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      {editPanel}
+      {editModal}
       <style>{`
         @keyframes mvGrow { from { transform: scaleX(0) } to { transform: scaleX(1) } }
         .mv-grow { transform-origin: left; animation: mvGrow .9s cubic-bezier(.2,.8,.2,1) both }

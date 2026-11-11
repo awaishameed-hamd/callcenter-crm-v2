@@ -5,7 +5,6 @@ import { Role, AGENT_TYPES, MANAGER_TYPES, DEPARTMENTS, STANDARD_FIELD_KEYS, sna
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
-import BankFields from '@/components/ui/BankFields'
 import PillSelect from '@/components/ui/PillSelect'
 import DataTable, { type Column } from '@/components/ui/DataTable'
 import { PageShell, PageHeader, FilterBar, FilterSep, FilterPills, FilterSearch, FilterCount, PrimaryButton, SecondaryButton, DownloadIcon, ColumnPicker, PlusIcon, Pager } from '@/components/ui/PageChrome'
@@ -15,6 +14,7 @@ import { apiGet, apiPost, apiPut, apiDelete, errMsg, errFields, downloadText } f
 import { fmtDay, pktToday } from '@/lib/format'
 import type { FormField, Page, User } from '@/types'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
+import { COL_SPAN, inputCls, iStyle, readOnlyStyle, labelStyle, roleName, formatCNIC, Field, SectionCard, Modal, DynamicField } from './userFormUi'
 
 const HIERARCHY: Role[] = [Role.ADMIN, Role.DIRECTOR, Role.MANAGER, Role.AGENT]
 const VISIBLE_ROLES: Partial<Record<Role, Role[]>> = {
@@ -37,114 +37,13 @@ const LS_COLS = 'mv_users_cols_v3'
 const DEFAULT_PASSWORD = '12345678'
 const CORE_KEYS = new Set(STANDARD_FIELD_KEYS.user)
 const SALARY_KEYS = ['basic_salary', 'punctuality_allowance', 'travelling_allowance', 'other_allowance']
-const COL_SPAN: Record<string, number> = { full: 6, two_thirds: 4, half: 3, third: 2 }
-// Create/edit user modal styles, copied from argroup's UserProfileModal
-const inputCls  = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5 text-sm text-gray-800 placeholder-gray-400 outline-none transition focus:border-teal-500 focus:ring-2 focus:ring-teal-500/20 disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed'
-const iStyle: React.CSSProperties = {
-  width: '100%', padding: '9px 12px', borderRadius: 8, border: '1px solid #D1D5DB', fontSize: 13, outline: 'none',
-  color: P.textHeading, fontFamily: '"Aptos", sans-serif', boxSizing: 'border-box',
-}
-const readOnlyStyle: React.CSSProperties = { ...iStyle, background: '#F8FAFC', color: P.teal, fontWeight: 700, letterSpacing: '0.06em' }
-const labelStyle: React.CSSProperties = {
-  display: 'block', fontSize: 11, fontWeight: 700, color: P.textMuted, textTransform: 'uppercase', letterSpacing: '0.06em', marginBottom: 5,
-}
-const roleName = (r: string) => r.charAt(0) + r.slice(1).toLowerCase()
 
 function lsGet<T>(key: string, fallback: T): T {
   try { const v = localStorage.getItem(key); return v !== null ? JSON.parse(v) : fallback } catch { return fallback }
 }
 function lsSet(key: string, val: unknown) { try { localStorage.setItem(key, JSON.stringify(val)) } catch { /* ignore */ } }
 
-function formatCNIC(raw: string) {
-  const d = raw.replace(/\D/g, '').slice(0, 13)
-  if (d.length <= 5) return d
-  if (d.length <= 12) return `${d.slice(0, 5)}-${d.slice(5)}`
-  return `${d.slice(0, 5)}-${d.slice(5, 12)}-${d.slice(12)}`
-}
 const fmtPKR = (v?: string | null) => (!v || Number(v) === 0 ? 'N/A' : `PKR ${Number(v).toLocaleString('en-PK')}`)
-
-function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-xs font-semibold text-gray-600 uppercase tracking-wide mb-1.5">{label}{required && <span className="text-red-500 ml-0.5">*</span>}</label>
-      {children}
-      {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
-    </div>
-  )
-}
-
-function SectionCard({ title, children }: { title: string; children: React.ReactNode }) {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm" style={{ overflow: 'visible' }}>
-      <div className="px-5 py-2.5 border-b border-gray-200" style={{ background: 'linear-gradient(90deg, #E4E9F0, #EDF0F5)', borderRadius: '12px 12px 0 0' }}>
-        <h3 className="text-xs font-bold uppercase tracking-widest" style={{ color: P.textMuted }}>{title}</h3>
-      </div>
-      <div className="px-5 py-3">{children}</div>
-    </div>
-  )
-}
-
-function Modal({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
-  return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(19,46,87,0.5)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: '24px 16px', overflowY: 'auto' }}>
-      <div style={{ background: '#F8FAFC', borderRadius: 18, width: '100%', maxWidth: 780, boxShadow: '0 32px 80px rgba(0,0,0,0.3)', marginBottom: 24 }}>
-        <div style={{ padding: '18px 28px', borderBottom: `1px solid ${P.border}`, display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'linear-gradient(135deg, #DDE3EC 0%, #D0D8E4 100%)', borderRadius: '18px 18px 0 0' }}>
-          <h2 style={{ margin: 0, fontFamily: '"Aptos", sans-serif', fontSize: 18, fontWeight: 900, color: P.navy, letterSpacing: '0.04em' }}>{title}</h2>
-          <button onClick={onClose} aria-label="Close" style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 24, color: P.textMuted, lineHeight: 1 }}>×</button>
-        </div>
-        {children}
-      </div>
-    </div>
-  )
-}
-
-function DynamicField({ field, value, onChange, error, plain }: { field: FormField; value: string; onChange: (k: string, v: string) => void; error?: string; plain?: boolean }) {
-  const err = error ? 'border-red-400' : ''
-  const handle = (e: React.ChangeEvent<any>) => onChange(field.fieldKey, e.target.value)
-  // Bank: chosen from HR's list, with its Bank Code filled in beside it
-  if (field.fieldKey === 'bank') return (
-    <div style={plain ? undefined : { gridColumn: '1 / -1' }}>
-      <BankFields value={value} onChange={v => onChange('bank', v)} label={field.label} required={field.isRequired} error={error} inputClass={inputCls}
-        Field={p => <Field label={p.label} required={p.required} error={p.error}>{p.children}</Field>} />
-    </div>
-  )
-  let input: React.ReactNode
-  if (field.fieldKey === 'cnic') {
-    input = (
-      <>
-        <input type="text" value={value} onChange={e => onChange(field.fieldKey, formatCNIC(e.target.value))} placeholder={field.placeholder ?? '00000-0000000-0'} maxLength={15} className={`${inputCls} ${err}`} />
-        <p className="mt-1 text-xs text-gray-400">Format: XXXXX-XXXXXXX-X</p>
-      </>
-    )
-  } else if (field.fieldType === 'select') {
-    const opts = field.options ?? (field.fieldKey === 'department' ? DEPARTMENTS : [])
-    input = (
-      <StyledSelect value={value} onChange={v => onChange(field.fieldKey, v)} placeholder={`Select ${field.label}`}
-        borderColor={error ? '#f87171' : undefined} options={opts.map(o => ({ value: o, label: o }))} />
-    )
-  } else if (field.fieldType === 'date') {
-    input = <DateInput value={value} onChange={handle} className={`${inputCls} ${err}`} />
-  } else if (field.fieldType === 'textarea') {
-    input = <textarea value={value} onChange={handle} rows={field.textareaRows || 2} placeholder={field.placeholder ?? ''} className={`${inputCls} resize-none ${err}`} />
-  } else if (field.fieldType === 'amount_pkr' || field.fieldType === 'amount_usd') {
-    input = (
-      <div className="relative">
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-semibold select-none">{field.fieldType === 'amount_pkr' ? '₨' : '$'}</span>
-        <input type="number" min={0} step="0.01" value={value} onChange={handle} placeholder={field.placeholder ?? '0.00'} className={`${inputCls} pl-7 ${err}`} />
-      </div>
-    )
-  } else if (field.fieldType === 'number') {
-    input = <input type="number" value={value} onChange={handle} placeholder={field.placeholder ?? ''} className={`${inputCls} ${err}`} />
-  } else {
-    const t = field.fieldKey === 'email' ? 'email' : field.fieldKey === 'phone' ? 'tel' : 'text'
-    input = <input type={t} value={value} onChange={handle} placeholder={field.placeholder ?? ''} className={`${inputCls} ${err}`} />
-  }
-  return (
-    <div style={plain ? undefined : { gridColumn: `span ${COL_SPAN[field.colSpan] ?? 2}` }}>
-      <Field label={field.label} required={field.isRequired} error={error}>{input}</Field>
-    </div>
-  )
-}
 
 type Form = Record<string, string>
 
