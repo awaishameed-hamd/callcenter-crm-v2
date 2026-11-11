@@ -5,6 +5,7 @@ import { Role, AGENT_TYPES, MANAGER_TYPES, DEPARTMENTS, STANDARD_FIELD_KEYS, sna
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
+import BankFields from '@/components/ui/BankFields'
 import PillSelect from '@/components/ui/PillSelect'
 import DataTable, { type Column } from '@/components/ui/DataTable'
 import { PageShell, PageHeader, FilterBar, FilterSep, FilterPills, FilterSearch, FilterCount, PrimaryButton, SecondaryButton, DownloadIcon, ColumnPicker, PlusIcon, Pager } from '@/components/ui/PageChrome'
@@ -100,6 +101,13 @@ function Modal({ title, onClose, children }: { title: string; onClose: () => voi
 function DynamicField({ field, value, onChange, error, plain }: { field: FormField; value: string; onChange: (k: string, v: string) => void; error?: string; plain?: boolean }) {
   const err = error ? 'border-red-400' : ''
   const handle = (e: React.ChangeEvent<any>) => onChange(field.fieldKey, e.target.value)
+  // Bank: chosen from HR's list, with its Bank Code filled in beside it
+  if (field.fieldKey === 'bank') return (
+    <div style={plain ? undefined : { gridColumn: '1 / -1' }}>
+      <BankFields value={value} onChange={v => onChange('bank', v)} label={field.label} required={field.isRequired} error={error} inputClass={inputCls}
+        Field={p => <Field label={p.label} required={p.required} error={p.error}>{p.children}</Field>} />
+    </div>
+  )
   let input: React.ReactNode
   if (field.fieldKey === 'cnic') {
     input = (

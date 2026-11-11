@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common'
 import { Prisma, Role } from '@prisma/client'
 import * as bcrypt from 'bcryptjs'
-import { ManagerType, MANAGER_TYPES, AGENT_TYPES, DEPARTMENTS } from '@crm/shared'
+import { ManagerType, MANAGER_TYPES, AGENT_TYPES, DEPARTMENTS, findBank, bankCodeOf } from '@crm/shared'
 import { PrismaService } from '../prisma/prisma.service'
 import { V, fail, defined, pageArgs, toPage, csvRow } from '../../common/utils/validate'
 import { dateOnly, fmtDateOnly } from '../../common/utils/time'
@@ -23,6 +23,19 @@ export const USER_SELECT = {
 } satisfies Prisma.UserSelect
 
 type Actor = { id: string; role: Role }
+
+/**
+ * Bank comes from the listed banks (HR's bank codes) and is saved by its listed name, so everyone
+ * spells it the same. A name typed before the list existed may stay until it is changed.
+ */
+export function readBank(v: unknown, current?: string | null) {
+  const s = V.str(v, 'Bank', { max: 255 })
+  if (s === undefined || s === null) return s
+  const listed = findBank(s)
+  if (listed) return listed.name
+  if (current && s === current) return s
+  fail('Choose the bank from the list.')
+}
 
 export function rolesBelow(role: Role): Role[] {
   const i = HIERARCHY.indexOf(role)
@@ -87,7 +100,7 @@ export class UsersService {
       'User ID', 'Role', 'Role Type', 'Display Name', 'Status', 'Inactive Since',
       'First Name', 'Middle Name', 'Last Name', 'Father Name', 'Email', 'Phone', 'Date of Birth', 'Date of Joining',
       'Department', 'Experience', 'CNIC', 'Permanent Address', 'Current Address',
-      'Bank', 'Account Title', 'Account No.', 'IBAN No.',
+      'Bank', 'Bank Code', 'Account Title', 'Account No.', 'IBAN No.',
       'Basic Salary', 'Punctuality Allowance', 'Travelling Allowance', 'Other Allowance', 'Total Package',
     ])]
     for (const u of users) {
@@ -99,7 +112,7 @@ export class UsersService {
         u.firstName, u.midName ?? '', u.lastName, u.fatherName ?? '', u.email ?? '', u.phone ?? '',
         fmtDateOnly(u.dateOfBirth) ?? '', fmtDateOnly(u.dateOfJoining) ?? '',
         u.department ?? '', u.experience ?? '', u.cnic ?? '', u.permanentAddress ?? '', u.currentAddress ?? '',
-        u.bank ?? '', u.accountTitle ?? '', u.bankAccountNo ?? '', u.ibanNo ?? '',
+        u.bank ?? '', bankCodeOf(u.bank), u.accountTitle ?? '', u.bankAccountNo ?? '', u.ibanNo ?? '',
         u.basicSalary ?? '', u.punctualityAllowance ?? '', u.travellingAllowance ?? '', u.otherAllowance ?? '',
         total > 0 ? total : '',
       ]))
@@ -109,7 +122,7 @@ export class UsersService {
   }
 
   /** Field readers shared by create and update. */
-  private readProfile(b: Record<string, any>, creating: boolean) {
+  private readProfile(b: Record<string, any>, creating: boolean, currentBank?: string | null) {
     const cnic = V.str(b.cnic, 'CNIC', { max: 15 })
     if (cnic && !CNIC_RE.test(cnic)) fail('CNIC must be in the format 00000-0000000-0.')
     const extra = V.obj(b.extraFields, 'Extra fields')
@@ -131,7 +144,7 @@ export class UsersService {
       department:           V.oneOf(b.department, 'Department', DEPARTMENTS),
       agentType:            V.oneOf(b.agentType, 'Agent type', AGENT_TYPES),
       managerType:          V.oneOf(b.managerType, 'Manager type', MANAGER_TYPES),
-      bank:                 V.str(b.bank, 'Bank', { max: 255 }),
+      bank:                 readBank(b.bank, currentBank),
       accountTitle:         V.str(b.accountTitle, 'Account title', { max: 255 }),
       bankAccountNo:        V.str(b.bankAccountNo, 'Account number', { max: 100 }),
       ibanNo:               V.str(b.ibanNo, 'IBAN', { max: 100 }),
@@ -196,7 +209,7 @@ export class UsersService {
   }
 
   private async target(id: string) {
-    const u = await this.prisma.user.findUnique({ where: { id }, select: { id: true, role: true, managerType: true, profileLocked: true } })
+    const u = await this.prisma.user.findUnique({ where: { id }, select: { id: true, role: true, managerType: true, profileLocked: true, bank: true } })
     if (!u) throw new NotFoundException('User not found.')
     return u
   }
@@ -213,7 +226,7 @@ export class UsersService {
 
     const userCode = V.str(b.userCode, 'Username', { max: 100 })?.toUpperCase()
     const password = V.str(b.password, 'Password', { min: 8 })
-    const data = this.readProfile(b, false)
+    const data = this.readProfile(b, false, user.bank)
     await this.assertUnique(userCode, data.email as string | null | undefined, id)
 
     const nextRole = role ?? user.role

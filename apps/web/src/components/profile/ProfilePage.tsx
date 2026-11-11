@@ -7,10 +7,11 @@
 // salary) stay read-only.
 
 import { useState, useEffect, useMemo, useRef } from 'react'
-import { STANDARD_FIELD_KEYS, snakeToCamel } from '@crm/shared'
+import { STANDARD_FIELD_KEYS, snakeToCamel, bankCodeOf } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
+import BankFields from '@/components/ui/BankFields'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompact } from '@/hooks/useMediaQuery'
 import { apiGet, apiPut, errMsg, errFields } from '@/lib/api'
@@ -116,6 +117,13 @@ function Fact({ label, value }: { label: string; value: React.ReactNode }) {
 function EditField({ field, value, onChange, error }: { field: FormField; value: string; onChange: (k: string, v: string) => void; error?: string }) {
   const cls = `${inputCls} ${error ? 'border-red-400' : ''}`
   const handle = (e: React.ChangeEvent<any>) => onChange(field.fieldKey, e.target.value)
+  // Bank: chosen from HR's list, with its Bank Code filled in beside it
+  if (field.fieldKey === 'bank') return (
+    <div style={{ gridColumn: '1 / -1', minWidth: 0 }}>
+      <BankFields value={value} onChange={v => onChange('bank', v)} label={field.label} required={field.isRequired} error={error} inputClass={inputCls}
+        Field={p => <Field label={p.label} required={p.required} error={p.error}>{p.children}</Field>} />
+    </div>
+  )
   let input: React.ReactNode
   switch (field.fieldType) {
     case 'date':     input = <DateInput value={value} onChange={handle} className={cls} />; break
@@ -385,7 +393,10 @@ export default function ProfilePage() {
         background: `radial-gradient(260px 140px at 100% 0%, ${withAlpha('#F2AC18', 0.35)}, transparent 70%), linear-gradient(135deg, ${P.navy} 0%, #1B4F7E 55%, ${P.teal} 100%)`, boxShadow: '0 18px 30px -20px rgba(19,46,87,0.9)' }}>
         <div style={{ position: 'absolute', right: -40, bottom: -60, width: 180, height: 180, borderRadius: '50%', border: '24px solid rgba(255,255,255,0.06)' }} />
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <span style={{ fontFamily: OUTFIT, fontSize: 15, fontWeight: 600, letterSpacing: '0.02em' }}>{val('bank') || 'Bank not added'}</span>
+          <span style={{ minWidth: 0 }}>
+            <span style={{ display: 'block', fontFamily: OUTFIT, fontSize: 15, fontWeight: 600, letterSpacing: '0.02em' }}>{val('bank') || 'Bank not added'}</span>
+            {bankCodeOf(val('bank')) && <span style={{ fontSize: 11, opacity: 0.8, letterSpacing: '0.06em' }}>BANK CODE {bankCodeOf(val('bank'))}</span>}
+          </span>
           {/* card chip */}
           <span style={{ width: 34, height: 26, borderRadius: 6, background: 'linear-gradient(135deg, #F7D58B, #C8902A)', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.12)' }} />
         </div>

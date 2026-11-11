@@ -10,6 +10,7 @@ import { v4 as uuidv4 }  from 'uuid'
 import { Role, ManagerType } from '@crm/shared'
 import { PrismaService } from '../prisma/prisma.service'
 import { AttendanceService } from '../attendance/attendance.service'
+import { readBank } from '../users/users.service'
 import { EmailService } from '../email/email.service'
 import { uploadRoot, AVATAR_RE } from '../files/files.controller'
 import { USER_SELECT } from '../users/users.service'
@@ -88,7 +89,7 @@ export class AuthService {
   }
 
   async updateProfile(userId: string, b: Record<string, any>) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { profileLocked: true } })
+    const user = await this.prisma.user.findUnique({ where: { id: userId }, select: { profileLocked: true, bank: true } })
     if (!user) throw new UnauthorizedException()
     if (user.profileLocked) throw new ForbiddenException('Your profile is locked. Contact an administrator.')
 
@@ -114,7 +115,7 @@ export class AuthService {
       cnic:             V.str(b.cnic, 'CNIC', { max: 15 }),
       permanentAddress: V.str(b.permanentAddress, 'Permanent address'),
       currentAddress:   V.str(b.currentAddress, 'Current address'),
-      bank:             V.str(b.bank, 'Bank', { max: 255 }),
+      bank:             readBank(b.bank, user.bank),
       accountTitle:     V.str(b.accountTitle, 'Account title', { max: 255 }),
       bankAccountNo:    V.str(b.bankAccountNo, 'Account number', { max: 100 }),
       ibanNo:           V.str(b.ibanNo, 'IBAN', { max: 100 }),
