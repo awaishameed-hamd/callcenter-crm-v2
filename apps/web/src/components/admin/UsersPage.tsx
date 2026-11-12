@@ -10,10 +10,11 @@ import DataTable, { type Column } from '@/components/ui/DataTable'
 import { PageShell, PageHeader, FilterBar, FilterSep, FilterPills, FilterSearch, FilterCount, PrimaryButton, SecondaryButton, DownloadIcon, ColumnPicker, PlusIcon, Pager } from '@/components/ui/PageChrome'
 import { P } from '@/lib/palette'
 import { useAuth } from '@/contexts/AuthContext'
-import { apiGet, apiPost, apiPut, apiDelete, errMsg, errFields, downloadText } from '@/lib/api'
+import { apiGet, apiPost, apiPut, apiDelete, errMsg, errFields } from '@/lib/api'
 import { fmtDay, pktToday } from '@/lib/format'
 import type { FormField, Page, User } from '@/types'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
+import { exportTeamExcel } from './exportTeamExcel'
 import { COL_SPAN, inputCls, iStyle, readOnlyStyle, labelStyle, roleName, formatCNIC, Field, SectionCard, Modal, DynamicField } from './userFormUi'
 
 const HIERARCHY: Role[] = [Role.ADMIN, Role.DIRECTOR, Role.MANAGER, Role.AGENT]
@@ -289,13 +290,16 @@ export default function UsersPage() {
   useEffect(() => { fetchUsers() }, [fetchUsers])
   useAutoRefresh(() => fetchUsers(true))
 
+  // Formatted Excel of everyone matching the current filters (all pages, not just this one)
+  const [exporting, setExporting] = useState(false)
   const handleExport = async () => {
+    setExporting(true)
     try {
-      const { csv, filename } = await apiGet<{ csv: string; filename: string }>('/users', { format: 'csv', status: statusFilter, role: roleFilter, search })
-      downloadText(csv, filename)
+      const users = await apiGet<User[]>('/users', { perPage: 'all', status: statusFilter, role: roleFilter, search })
+      await exportTeamExcel(users, { status: statusFilter, role: roleFilter, search })
     } catch {
       setToast({ message: 'Export failed.', type: 'error' })
-    }
+    } finally { setExporting(false) }
   }
 
   const save = async (payload: Record<string, unknown>) => {
@@ -463,7 +467,7 @@ export default function UsersPage() {
 
       <PageShell>
         <PageHeader title="My Team" actions={<>
-          <SecondaryButton onClick={handleExport}><DownloadIcon /> Export</SecondaryButton>
+          <SecondaryButton onClick={handleExport} disabled={exporting}><DownloadIcon /> {exporting ? 'Exporting' : 'Export Excel'}</SecondaryButton>
           {allowedRoles.length > 0 && <PrimaryButton onClick={() => { setShowCreate(true); setFormErrors({}) }}><PlusIcon /> New User</PrimaryButton>}
         </>} />
 
