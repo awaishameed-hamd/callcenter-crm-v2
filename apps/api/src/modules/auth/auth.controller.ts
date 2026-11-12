@@ -45,6 +45,10 @@ export class ProfileController {
   @Put()
   update(@CurrentUser() user: any, @Body() body: Record<string, any>) { return this.auth.updateProfile(user.id, body) }
 
+  /** What on my profile still breaks the rules (e.g. an email that cannot receive mail). */
+  @Get('issues')
+  issues(@CurrentUser() user: any) { return this.auth.profileIssues(user.id) }
+
   @Put('avatar')
   setAvatar(@CurrentUser() user: any, @Body('image') image: string) { return this.auth.setAvatar(user.id, image) }
 

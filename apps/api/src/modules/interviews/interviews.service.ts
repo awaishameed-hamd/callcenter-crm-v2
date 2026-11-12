@@ -5,6 +5,11 @@ import { PrismaService } from '../prisma/prisma.service'
 import { EmailService } from '../email/email.service'
 import { Actor, assertHrDesk, isHrManager } from '../../common/utils/staff-policy'
 import { V, fail, pageArgs, toPage } from '../../common/utils/validate'
+import { assertEmailReceivesMail } from '../../common/utils/profile-rules'
+import { properCase, isValidEmailFormat, PROFILE_RULE_MESSAGES } from '@crm/shared'
+
+/** Candidate names auto-corrected to "Awais Ali" case, as staff names are */
+const cap = (v: string | null | undefined) => (v ? properCase(v) : v)
 import { PKT_TZ, todayIn, isYmd, parseYmd, zonedToUtc, dayRangeUtc, monthStart, addDays, dateOnly } from '../../common/utils/time'
 
 export const KINDS    = ['SCHEDULED', 'WALK_IN'] as const
@@ -47,6 +52,8 @@ export class InterviewsService {
   }
 
   private candidateData(b: Record<string, any>, creating: boolean) {
+    const email = V.email(b.email, 'Email')
+    if (email && !isValidEmailFormat(email)) fail(PROFILE_RULE_MESSAGES.email)
     const cvKey = V.str(b.cvKey, 'CV', { max: 120 })
     if (cvKey && !CV_KEY_RE.test(cvKey)) fail('The CV upload is not valid. Please upload it again.')
     const gender = V.str(b.gender, 'Gender')
@@ -58,9 +65,9 @@ export class InterviewsService {
     }
     const date = (v: unknown, label: string) => { const s = V.date(v, label); return s === undefined ? undefined : s === null ? null : dateOnly(s) }
     const data = {
-      fullName:        V.str(b.fullName, 'Full name', { required: creating, max: 120 }) ?? undefined,
-      fatherName:      V.str(b.fatherName, 'Father name', { max: 120 }),
-      email:           V.email(b.email, 'Email'),
+      fullName:        cap(V.str(b.fullName, 'Full name', { required: creating, max: 120 })) ?? undefined,
+      fatherName:      cap(V.str(b.fatherName, 'Father name', { max: 120 })),
+      email,
       phone:           V.str(b.phone, 'Phone', { required: creating, max: 30 }) ?? undefined,
       altPhone:        V.str(b.altPhone, 'Alternate phone', { max: 30 }),
       cnic:            V.str(b.cnic, 'CNIC', { max: 20 }),
@@ -216,6 +223,7 @@ export class InterviewsService {
 
   async schedule(actor: Actor, b: Record<string, any>) {
     assertHrDesk(actor)
+    await assertEmailReceivesMail(typeof b.email === 'string' ? b.email.trim() : null)
     const at = this.when(b.date, b.time)
     const det = await this.details(b, 'SCHEDULED')
     const candidateId = V.str(b.candidateId, 'Candidate')
@@ -233,6 +241,7 @@ export class InterviewsService {
 
   async walkIn(actor: Actor, b: Record<string, any>) {
     assertHrDesk(actor)
+    await assertEmailReceivesMail(typeof b.email === 'string' ? b.email.trim() : null)
     const det = await this.details(b, 'WALK_IN')
     const created = await this.prisma.$transaction(async tx => {
       const cand = await tx.candidate.create({ data: { ...(this.candidateData(b, true) as any), createdById: actor.id } })
@@ -246,6 +255,7 @@ export class InterviewsService {
 
   async updateCandidate(actor: Actor, id: string, b: Record<string, any>) {
     assertHrDesk(actor)
+    await assertEmailReceivesMail(typeof b.email === 'string' ? b.email.trim() : null)
     const iv = await this.load(id)
     const data = this.candidateData(b, false)
     if (!Object.keys(data).length) fail('Nothing to update.')

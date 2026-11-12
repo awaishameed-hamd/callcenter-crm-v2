@@ -15,7 +15,7 @@ import { fmtDay, pktToday } from '@/lib/format'
 import type { FormField, Page, User } from '@/types'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import { exportTeamExcel } from './exportTeamExcel'
-import { COL_SPAN, inputCls, iStyle, readOnlyStyle, labelStyle, roleName, formatCNIC, Field, SectionCard, Modal, DynamicField } from './userFormUi'
+import { COL_SPAN, inputCls, iStyle, readOnlyStyle, labelStyle, roleName, formatCNIC, Field, SectionCard, Modal, DynamicField, DisplayNameInput } from './userFormUi'
 
 const HIERARCHY: Role[] = [Role.ADMIN, Role.DIRECTOR, Role.MANAGER, Role.AGENT]
 const VISIBLE_ROLES: Partial<Record<Role, Role[]>> = {
@@ -134,13 +134,7 @@ function UserForm({ initial, allowedRoles, onSubmit, onCancel, loading, errors }
   const accountField = (key: string) => byKey[key]
     ? <DynamicField plain field={byKey[key]} value={form[key] ?? ''} onChange={handleField} error={err(key)} />
     : <div />
-  const displayNameInput = (
-    <div key="display_name" style={{ gridColumn: 'span 2' }}>
-      <label style={labelStyle}>Display Name<span style={{ color: '#D62828' }}> *</span></label>
-      <input style={iStyle} value={form.displayName} onChange={e => setAccount('displayName', e.target.value)} placeholder="e.g. John Smith" required />
-      {err('displayName') && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#EF4444' }}>{err('displayName')}</p>}
-    </div>
-  )
+  const displayNameInput = <DisplayNameInput key="display_name" value={form.displayName} onChange={v => setAccount('displayName', v)} error={err('displayName')} />
   // Display Name goes right after Father Name (or Last Name), else at the end of the first section
   const displayAfter = byKey.father_name ? 'father_name' : 'last_name'
   const displaySection = order.find(sec => (grouped[sec] ?? []).some(f => f.fieldKey === displayAfter)) ?? order[0]

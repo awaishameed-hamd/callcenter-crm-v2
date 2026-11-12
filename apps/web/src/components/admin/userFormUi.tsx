@@ -4,7 +4,11 @@
 // (each person editing their own details): the window, grey-headed section cards, labels and the
 // field boxes drawn from CRM Management's user form. Fields only HR may change show locked.
 
-import { DEPARTMENTS } from '@crm/shared'
+import { useState } from 'react'
+import {
+  DEPARTMENTS, properCase, normalizePhone, PHONE_RE, CNIC_RE, normalizeExperience, EXPERIENCE_RE, normalizeIban, isValidIban,
+  isValidEmailFormat, PROFILE_RULE_MESSAGES as MSG,
+} from '@crm/shared'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
 import BankFields from '@/components/ui/BankFields'
@@ -66,14 +70,50 @@ export function Modal({ title, onClose, children }: { title: string; onClose: ()
   )
 }
 
+/** Name fields are corrected to "Awais Ali" case when the person leaves the box. */
+const NAME_KEYS = new Set(['first_name', 'mid_name', 'last_name', 'father_name', 'account_title'])
+
+/** The same rules the server applies, shown under the box once the person has left it. */
+function ruleError(key: string, v: string): string | undefined {
+  if (!v) return undefined
+  if (key === 'phone') return PHONE_RE.test(normalizePhone(v)) ? undefined : MSG.phone
+  if (key === 'cnic') return CNIC_RE.test(v) ? undefined : MSG.cnic
+  if (key === 'experience') return EXPERIENCE_RE.test(normalizeExperience(v)) ? undefined : MSG.experience
+  if (key === 'iban_no') return isValidIban(v) ? undefined : MSG.iban
+  if (key === 'email') return isValidEmailFormat(v) ? undefined : MSG.email
+  return undefined
+}
+
+/** Digits and one decimal point, for years of experience */
+const decimalOnly = (v: string) => v.replace(/[^\d.]/g, '').replace(/(\..*)\./g, '$1').slice(0, 5)
+
+/** The one-word Display Name box: spaces and dashes are not accepted, case is corrected on leaving. */
+export function DisplayNameInput({ value, onChange, error }: { value: string; onChange: (v: string) => void; error?: string }) {
+  return (
+    <div style={{ gridColumn: 'span 2' }}>
+      <label style={labelStyle}>Display Name<span style={{ color: '#D62828' }}> *</span></label>
+      <input style={iStyle} value={value} placeholder="One name, e.g. Awais"
+        onChange={e => onChange(e.target.value.replace(/[\s-]/g, ''))} onBlur={() => onChange(properCase(value))} />
+      {error
+        ? <p style={{ margin: '4px 0 0', fontSize: 12, color: '#EF4444' }}>{error}</p>
+        : <p style={{ margin: '4px 0 0', fontSize: 11.5, color: '#94A3B8' }}>One name only, no spaces</p>}
+    </div>
+  )
+}
+
 export function DynamicField({ field, value, onChange, error, plain, locked }: { field: FormField; value: string; onChange: (k: string, v: string) => void; error?: string; plain?: boolean; locked?: boolean }) {
+  const [touched, setTouched] = useState(false)
   if (locked) return (
     <div style={plain ? undefined : { gridColumn: `span ${COL_SPAN[field.colSpan] ?? 2}` }}>
       <Field label={field.label}><LockedValue value={lockedText(field, value)} /></Field>
     </div>
   )
-  const err = error ? 'border-red-400' : ''
-  const handle = (e: React.ChangeEvent<any>) => onChange(field.fieldKey, e.target.value)
+  const key = field.fieldKey
+  const shownError = error ?? (touched ? ruleError(key, value) : undefined)
+  const err = shownError ? 'border-red-400' : ''
+  const handle = (e: React.ChangeEvent<any>) => onChange(key, e.target.value)
+  const blur = () => setTouched(true)
+  const hint = (t: string) => <p className="mt-1 text-xs text-gray-400">{t}</p>
   // Bank: chosen from HR's list (its Bank Code is only in the server's banking export)
   if (field.fieldKey === 'bank') return (
     <div style={plain ? undefined : { gridColumn: `span ${COL_SPAN[field.colSpan] ?? 2}`, minWidth: 0 }}>
@@ -85,8 +125,32 @@ export function DynamicField({ field, value, onChange, error, plain, locked }: {
   if (field.fieldKey === 'cnic') {
     input = (
       <>
-        <input type="text" value={value} onChange={e => onChange(field.fieldKey, formatCNIC(e.target.value))} placeholder={field.placeholder ?? '00000-0000000-0'} maxLength={15} className={`${inputCls} ${err}`} />
-        <p className="mt-1 text-xs text-gray-400">Format: XXXXX-XXXXXXX-X</p>
+        <input type="text" inputMode="numeric" value={value} onChange={e => onChange(key, formatCNIC(e.target.value))} onBlur={blur} placeholder={field.placeholder ?? '00000-0000000-0'} maxLength={15} className={`${inputCls} ${err}`} />
+        {!shownError && hint('Format: XXXXX-XXXXXXX-X')}
+      </>
+    )
+  } else if (key === 'phone') {
+    input = (
+      <>
+        <input type="tel" inputMode="numeric" maxLength={11} value={value} placeholder="03001234567" className={`${inputCls} ${err}`}
+          onChange={e => onChange(key, e.target.value.replace(/\D/g, '').slice(0, 11))} onBlur={() => { blur(); if (value) onChange(key, normalizePhone(value)) }} />
+        {!shownError && hint('11 digits, numbers only')}
+      </>
+    )
+  } else if (key === 'experience') {
+    input = (
+      <div className="relative">
+        <input type="text" inputMode="decimal" value={value} placeholder="e.g. 1.5" className={`${inputCls} pr-14 ${err}`}
+          onChange={e => onChange(key, decimalOnly(e.target.value))} onBlur={() => { blur(); if (value) onChange(key, normalizeExperience(value)) }} />
+        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs font-semibold select-none">years</span>
+      </div>
+    )
+  } else if (key === 'iban_no') {
+    input = (
+      <>
+        <input type="text" maxLength={24} value={value} placeholder="PK36SCBL0000001123456702" className={`${inputCls} ${err}`} style={{ letterSpacing: '0.04em' }}
+          onChange={e => onChange(key, normalizeIban(e.target.value).slice(0, 24))} onBlur={blur} />
+        {!shownError && hint('24 characters starting with PK')}
       </>
     )
   } else if (field.fieldType === 'select') {
@@ -109,12 +173,13 @@ export function DynamicField({ field, value, onChange, error, plain, locked }: {
   } else if (field.fieldType === 'number') {
     input = <input type="number" value={value} onChange={handle} placeholder={field.placeholder ?? ''} className={`${inputCls} ${err}`} />
   } else {
-    const t = field.fieldKey === 'email' ? 'email' : field.fieldKey === 'phone' ? 'tel' : 'text'
-    input = <input type={t} value={value} onChange={handle} placeholder={field.placeholder ?? ''} className={`${inputCls} ${err}`} />
+    const isEmail = key === 'email'
+    input = <input type={isEmail ? 'email' : 'text'} value={value} onChange={handle} placeholder={field.placeholder ?? ''} className={`${inputCls} ${err}`}
+      onBlur={() => { blur(); if (NAME_KEYS.has(key) && value) onChange(key, properCase(value)); if (isEmail && value) onChange(key, value.trim().toLowerCase()) }} />
   }
   return (
     <div style={plain ? undefined : { gridColumn: `span ${COL_SPAN[field.colSpan] ?? 2}` }}>
-      <Field label={field.label} required={field.isRequired} error={error}>{input}</Field>
+      <Field label={field.label} required={field.isRequired} error={shownError}>{input}</Field>
     </div>
   )
 }

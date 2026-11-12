@@ -11,6 +11,7 @@ import { Role, ManagerType } from '@crm/shared'
 import { PrismaService } from '../prisma/prisma.service'
 import { AttendanceService } from '../attendance/attendance.service'
 import { readBank } from '../users/users.service'
+import { readPersonFields, assertEmailReceivesMail, profileIssues } from '../../common/utils/profile-rules'
 import { EmailService } from '../email/email.service'
 import { uploadRoot, AVATAR_RE } from '../files/files.controller'
 import { USER_SELECT } from '../users/users.service'
@@ -93,7 +94,9 @@ export class AuthService {
     if (!user) throw new UnauthorizedException()
     if (user.profileLocked) throw new ForbiddenException('Your profile is locked. Contact an administrator.')
 
-    const email = V.email(b.email, 'Email')
+    const person = readPersonFields(b, false)   // names, display name, email, phone, CNIC, experience, IBAN
+    const email = person.email
+    await assertEmailReceivesMail(email)
     if (email) {
       const taken = await this.prisma.user.findUnique({ where: { email }, select: { id: true } })
       if (taken && taken.id !== userId) fail('The email has already been taken.')
@@ -102,26 +105,23 @@ export class AuthService {
     const dob = V.date(b.dateOfBirth, 'Date of birth')
     const extra = V.obj(b.extraFields, 'Extra fields')
     const data = defined({
-      displayName:      V.str(b.displayName, 'Display name', { max: 255 }) ?? undefined,
-      firstName:        V.str(b.firstName, 'First name', { max: 100 }) ?? undefined,
-      midName:          V.str(b.midName, 'Middle name', { max: 100 }),
-      lastName:         V.str(b.lastName, 'Last name', { max: 100 }) ?? undefined,
-      fatherName:       V.str(b.fatherName, 'Father name', { max: 100 }),
-      email,
-      phone:            V.str(b.phone, 'Phone', { max: 30 }),
+      ...person,
       dateOfBirth:      dob === undefined ? undefined : dob === null ? null : dateOnly(dob),
       address:          V.str(b.address, 'Address'),
-      experience:       V.str(b.experience, 'Experience', { max: 255 }),
-      cnic:             V.str(b.cnic, 'CNIC', { max: 15 }),
       permanentAddress: V.str(b.permanentAddress, 'Permanent address'),
       currentAddress:   V.str(b.currentAddress, 'Current address'),
       bank:             readBank(b.bank, user.bank),
-      accountTitle:     V.str(b.accountTitle, 'Account title', { max: 255 }),
       bankAccountNo:    V.str(b.bankAccountNo, 'Account number', { max: 100 }),
-      ibanNo:           V.str(b.ibanNo, 'IBAN', { max: 100 }),
       extraFields:      extra === null ? Prisma.DbNull : (extra as Prisma.InputJsonValue | undefined),
     })
     return this.prisma.user.update({ where: { id: userId }, data: data as Prisma.UserUpdateInput, select: USER_SELECT })
+  }
+
+  /** Fields on this person's profile that break the rules (saved before they existed). */
+  async profileIssues(userId: string) {
+    const u = await this.prisma.user.findUnique({ where: { id: userId }, select: { displayName: true, email: true, phone: true, cnic: true, experience: true, ibanNo: true } })
+    if (!u) throw new UnauthorizedException()
+    return profileIssues(u)
   }
 
   async changePassword(userId: string, b: Record<string, any>) {

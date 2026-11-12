@@ -5,10 +5,10 @@ import { ManagerType, MANAGER_TYPES, AGENT_TYPES, DEPARTMENTS, findBank, bankCod
 import { PrismaService } from '../prisma/prisma.service'
 import { V, fail, defined, pageArgs, toPage, csvRow } from '../../common/utils/validate'
 import { dateOnly, fmtDateOnly } from '../../common/utils/time'
+import { readPersonFields, assertEmailReceivesMail } from '../../common/utils/profile-rules'
 
 const HIERARCHY: Role[] = [Role.ADMIN, Role.DIRECTOR, Role.MANAGER, Role.AGENT]
 const ROLE_PREFIX: Partial<Record<Role, string>> = { [Role.DIRECTOR]: 'D', [Role.MANAGER]: 'M', [Role.AGENT]: 'A' }
-const CNIC_RE = /^\d{5}-\d{7}-\d{1}$/
 
 export const USER_SELECT = {
   id: true, userCode: true, role: true, displayName: true,
@@ -123,31 +123,20 @@ export class UsersService {
 
   /** Field readers shared by create and update. */
   private readProfile(b: Record<string, any>, creating: boolean, currentBank?: string | null) {
-    const cnic = V.str(b.cnic, 'CNIC', { max: 15 })
-    if (cnic && !CNIC_RE.test(cnic)) fail('CNIC must be in the format 00000-0000000-0.')
     const extra = V.obj(b.extraFields, 'Extra fields')
+    const person = readPersonFields(b, creating)   // names, display name, email, phone, CNIC, experience, IBAN
     return defined({
-      displayName:          V.str(b.displayName, 'Display name', { required: creating, max: 255 }) ?? undefined,
-      firstName:            V.str(b.firstName, 'First name', { required: creating, max: 100 }) ?? undefined,
-      midName:              V.str(b.midName, 'Middle name', { max: 100 }),
-      lastName:             V.str(b.lastName, 'Last name', { required: creating, max: 100 }) ?? undefined,
-      fatherName:           V.str(b.fatherName, 'Father name', { max: 100 }),
-      email:                V.email(b.email, 'Email', { required: creating }),  // sign-in and password reset use it
-      phone:                V.str(b.phone, 'Phone', { max: 30 }),
+      ...person,
       dateOfBirth:          this.toDate(V.date(b.dateOfBirth, 'Date of birth')),
       dateOfJoining:        this.toDate(V.date(b.dateOfJoining, 'Date of joining', { required: creating })),
       address:              V.str(b.address, 'Address'),
-      cnic,
       permanentAddress:     V.str(b.permanentAddress, 'Permanent address'),
       currentAddress:       V.str(b.currentAddress, 'Current address'),
-      experience:           V.str(b.experience, 'Experience', { max: 255 }),
       department:           V.oneOf(b.department, 'Department', DEPARTMENTS),
       agentType:            V.oneOf(b.agentType, 'Agent type', AGENT_TYPES),
       managerType:          V.oneOf(b.managerType, 'Manager type', MANAGER_TYPES),
       bank:                 readBank(b.bank, currentBank),
-      accountTitle:         V.str(b.accountTitle, 'Account title', { max: 255 }),
       bankAccountNo:        V.str(b.bankAccountNo, 'Account number', { max: 100 }),
-      ibanNo:               V.str(b.ibanNo, 'IBAN', { max: 100 }),
       basicSalary:          V.num(b.basicSalary, 'Basic salary', { min: 0 }),
       punctualityAllowance: V.num(b.punctualityAllowance, 'Punctuality allowance', { min: 0 }),
       travellingAllowance:  V.num(b.travellingAllowance, 'Travelling allowance', { min: 0 }),
@@ -179,6 +168,7 @@ export class UsersService {
     const password = V.str(b.password, 'Password', { required: true, min: 8 })!
     const userCode = (V.str(b.userCode, 'Username', { max: 100 }) ?? (await this.nextCode(role)).code).toUpperCase()
     const data = this.readProfile(b, true)
+    await assertEmailReceivesMail(data.email as string | null | undefined)
     await this.assertUnique(userCode, data.email as string | null | undefined)
 
     return this.prisma.user.create({
@@ -227,6 +217,7 @@ export class UsersService {
     const userCode = V.str(b.userCode, 'Username', { max: 100 })?.toUpperCase()
     const password = V.str(b.password, 'Password', { min: 8 })
     const data = this.readProfile(b, false, user.bank)
+    await assertEmailReceivesMail(data.email as string | null | undefined)
     await this.assertUnique(userCode, data.email as string | null | undefined, id)
 
     const nextRole = role ?? user.role

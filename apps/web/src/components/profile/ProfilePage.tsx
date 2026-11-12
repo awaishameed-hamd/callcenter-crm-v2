@@ -11,7 +11,7 @@ import { STANDARD_FIELD_KEYS, snakeToCamel } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
-import { Modal, SectionCard, DynamicField, LockedValue, iStyle, labelStyle, readOnlyStyle, roleName } from '@/components/admin/userFormUi'
+import { Modal, SectionCard, DynamicField, LockedValue, DisplayNameInput, iStyle, labelStyle, readOnlyStyle, roleName } from '@/components/admin/userFormUi'
 import { useAuth } from '@/contexts/AuthContext'
 import { useCompact } from '@/hooks/useMediaQuery'
 import { apiGet, apiPut, errMsg, errFields } from '@/lib/api'
@@ -142,6 +142,12 @@ export default function ProfilePage() {
     setExtra(Object.fromEntries(Object.entries(u.extraFields ?? {}).map(([k, v]) => [k, v === null ? '' : String(v)])))
   }
   useEffect(() => { apiGet<User>('/auth/me').then(load).catch(() => {}) }, [])
+
+  // Fields saved before the profile rules existed (e.g. an email that cannot receive mail)
+  const [issues, setIssues] = useState<{ field: string; message: string }[]>([])
+  const loadIssues = () => apiGet<{ field: string; message: string }[]>('/profile/issues').then(setIssues).catch(() => {})
+  useEffect(() => { loadIssues() }, [])
+  const fixIssues = () => { setErrors(Object.fromEntries(issues.map(i => [snakeToCamel(i.field), [i.message]]))); setEditing(true) }
   useEffect(() => { apiGet<FormField[]>('/crm/form-fields/public', { formType: 'user' }).then(setFields).catch(() => {}) }, [])
 
   const byKey    = useMemo(() => Object.fromEntries(fields.map(f => [f.fieldKey, f])), [fields])
@@ -169,6 +175,7 @@ export default function ProfilePage() {
       payload.extraFields = Object.fromEntries(Object.entries(extra).filter(([, v]) => v !== ''))
       const u = await apiPut<User>('/profile', payload)
       load(u)
+      loadIssues()
       updateUser({ displayName: u.displayName })
       setEditing(false)
       setToast({ message: 'Profile updated successfully.', type: 'success' })
@@ -429,13 +436,7 @@ export default function ProfilePage() {
   const closeEdit = () => { setEditing(false); if (profile) load(profile); setErrors({}) }
   const editSalaryTotal = SALARY_KEYS.reduce((t, k) => t + (parseFloat(form[k]) || 0), 0)
   const displayAfter = byKey.father_name ? 'father_name' : 'last_name'
-  const displayNameInput = (
-    <div key="display_name" style={{ gridColumn: 'span 2' }}>
-      <label style={labelStyle}>Display Name<span style={{ color: '#D62828' }}> *</span></label>
-      <input style={iStyle} value={form.display_name ?? ''} onChange={e => onField('display_name', e.target.value)} placeholder="e.g. John Smith" />
-      {err('display_name') && <p style={{ margin: '4px 0 0', fontSize: 12, color: '#EF4444' }}>{err('display_name')}</p>}
-    </div>
-  )
+  const displayNameInput = <DisplayNameInput key="display_name" value={form.display_name ?? ''} onChange={v => onField('display_name', v)} error={err('display_name')} />
   const editSections = sections.map(s => ({ ...s, list: s.list.filter(f => !ACCOUNT_KEYS.has(f.fieldKey)) })).filter(s => s.list.length)
   const editModal = editing && profile && (
     <Modal title="Edit Profile" onClose={closeEdit}>
@@ -507,6 +508,18 @@ export default function ProfilePage() {
         @media (prefers-reduced-motion: reduce) { .mv-grow { animation: none } }
       `}</style>
       <div style={{ height: compact ? 'auto' : '100vh', display: 'flex', flexDirection: 'column', gap: 12, padding: '10px 18px 7px', overflowY: 'auto', fontFamily: FONT, background: P.bgMain }}>
+        {issues.length > 0 && (
+          <div role="alert" style={{ display: 'flex', alignItems: 'center', gap: 14, padding: '12px 16px', borderRadius: 14, background: '#FEF2F2', border: '1px solid #FECACA', flexShrink: 0 }}>
+            <span style={{ width: 34, height: 34, borderRadius: 10, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#FEE2E2', color: '#DC2626', fontWeight: 900, fontSize: 18 }}>!</span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: 14, fontWeight: 800, color: '#991B1B' }}>Please update your profile</div>
+              <ul style={{ margin: '3px 0 0', paddingLeft: 18, fontSize: 12.5, color: '#B91C1C', lineHeight: 1.5 }}>
+                {issues.map(i => <li key={i.field + i.message}>{i.message}</li>)}
+              </ul>
+            </div>
+            <button type="button" onClick={fixIssues} style={{ padding: '8px 16px', borderRadius: 9, border: 0, background: '#DC2626', color: '#fff', fontSize: 13, fontWeight: 700, cursor: 'pointer', flexShrink: 0 }}>Update Now</button>
+          </div>
+        )}
         {header}
         <div style={{ display: 'grid', gap: 12, gridTemplateColumns: compact ? '1fr' : 'repeat(3, minmax(0, 1fr))', alignContent: 'start' }}>
           <div style={{ display: 'flex', minWidth: 0 }}>{personalCard}</div>
