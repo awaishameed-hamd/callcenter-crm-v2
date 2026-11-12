@@ -6,7 +6,7 @@ export enum Role {
 }
 
 export enum ManagerType {
-  FLOOR      = 'Floor Manager/Team Lead',
+  FLOOR      = 'Floor Manager',
   QA         = 'QA Manager',
   HR         = 'HR Manager',
   ACCOUNTANT = 'Accountant',

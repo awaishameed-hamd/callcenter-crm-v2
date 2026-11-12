@@ -124,7 +124,7 @@ Count badges: 18px tall pill, red `#E53935` with white 10.5px bold text; teal wh
 
 - **Admin**: Sales Dashboard, My Team, Clients, Approvals, Sales Report, Attendance (Manage Working Days, Attendance Report, Attendance Approval, Daily Attendance), Accounting, Invoicing & Payments, CRM Management, Chats, Profile.
 - **Director**: Sales Dashboard, My Team, Clients, Approvals, Sales Report, Attendance (Report, Approval, Daily), Chats, Profile.
-- **Manager, Floor Manager / Team Lead or QA Manager**: Sales Dashboard, My Team, Approvals, Sales Report, Attendance (My Attendance, Leave, Leave Approval), Chats, Profile.
+- **Manager, Floor Manager or QA Manager**: Sales Dashboard, My Team, Approvals, Sales Report, Attendance (My Attendance, Leave, Leave Approval), Chats, Profile.
 - **Manager, HR Manager**: My Team, Attendance (Manage Working Days, My Attendance, Leave, Report, Approval, Daily), Chats, Profile. Lands on My Team after login.
 - **Manager, Accountant**: Sales Dashboard, My Team, Sales Report, Accounting, Chats, Profile.
 - **Agent** (Closer, Verifier, Self Closer, Fronter): New Sale button, Sales Dashboard, My Sales, Attendance (My Attendance, Leave), Chats, Profile.

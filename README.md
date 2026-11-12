@@ -35,7 +35,7 @@ After editing anything in `packages/shared`, run `pnpm --filter @crm/shared buil
 
 `ADMIN > DIRECTOR > MANAGER > AGENT`
 
-- **Manager types:** Floor Manager/Team Lead, QA Manager, HR Manager, Accountant
+- **Manager types:** Floor Manager, QA Manager, HR Manager, Accountant
 - **Agent types:** Closer, Verifier, Self Closer, Fronter
 
 Admins, directors and HR managers form the "HR desk" (attendance and everyone's leave). The rules live in `apps/api/src/common/utils/staff-policy.ts` (enforced) and `apps/web/src/lib/roles.ts` (what the UI shows).
@@ -49,7 +49,7 @@ director/admin approve    -> FINAL_APPROVED    director/admin reject    -> FINAL
 agent cancels on entry    -> AGENT_REJECTED
 ```
 
-Only QA Managers and Floor Managers/Team Leads act on the first stage (`isSaleReviewer` in staff-policy.ts and lib/roles.ts); directors and admins only on the final stage. Everyone else sees the Approvals queues read-only.
+Only QA Managers and Floor Managers act on the first stage (`isSaleReviewer` in staff-policy.ts and lib/roles.ts); directors and admins only on the final stage. Everyone else sees the Approvals queues read-only.
 
 When a sale is decided, its DID, client and rate are frozen onto the record (`sale_*` columns), so reports keep the values that applied at the time. Agents and managers see DID codes only; directors and admins also see client names and rates.
 

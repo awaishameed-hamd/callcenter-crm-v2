@@ -84,7 +84,7 @@ model User {
   experience       String?
   department       String? // Medicare | Final Expense | Auto | Management
   agentType        String? // Closer | Verifier | Self Closer | Fronter
-  managerType      String? // Floor Manager/Team Lead | QA Manager | HR Manager | Accountant
+  managerType      String? // Floor Manager | QA Manager | HR Manager | Accountant
 
   bank                 String?
   accountTitle         String?

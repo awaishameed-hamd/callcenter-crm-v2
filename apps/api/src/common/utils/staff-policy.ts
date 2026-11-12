@@ -6,7 +6,7 @@ import { Role, ManagerType } from '@crm/shared'
  * The modules come from argroup, but who may manage whom follows the Laravel call-center CRM:
  *   Attendance (report, daily view, approval, edits, working days, settings) is the HR desk's job:
  *     Admin, Director and the HR Manager, over every staff member.
- *   Leave approval also belongs to Floor Managers / Team Leads and QA Managers, for agents only.
+ *   Leave approval also belongs to Floor Managers and QA Managers, for agents only.
  *   Accountants and agents manage nobody, and nobody approves or edits their own records.
  */
 export type Actor = { id: string; role: Role | string; managerType?: string | null }
@@ -30,7 +30,7 @@ export function leaveRoles(a: Actor): Role[] {
 }
 
 /**
- * Sale pipeline, first stage: only Floor Managers / Team Leads and QA Managers approve or
+ * Sale pipeline, first stage: only Floor Managers and QA Managers approve or
  * reject a new sale. The final stage belongs to Directors (and Admins).
  */
 export const isSaleReviewer = (a: Actor) =>
