@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { CustomerStatus, Role } from '@crm/shared'
+import { CustomerStatus, Role, fullName } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import PillSelect from '@/components/ui/PillSelect'
 import DataTable, { type Column } from '@/components/ui/DataTable'
@@ -48,7 +48,7 @@ function buildCols(canSeeAgent: boolean, canSeeCompany: boolean): Col[] {
     { key: 'status', label: 'Status', w: 158, show: true },
     { key: 'vertical', label: 'Vertical', w: 115, show: true },
   ]
-  if (canSeeAgent) cols.push({ key: 'agent', label: 'Agent', w: 110, show: true })
+  if (canSeeAgent) cols.push({ key: 'agent', label: 'Agent', w: 165, show: true })
   cols.push({ key: 'did', label: 'DID', w: 78, show: true }, { key: 'saleType', label: 'Sale Type', w: 80, show: true })
   if (canSeeCompany) cols.push({ key: 'client', label: 'Client', w: 140, show: true }, { key: 'rateType', label: 'Rate Type', w: 88, show: true }, { key: 'rate', label: 'Rate', w: 88, show: true })
   cols.push(
@@ -75,7 +75,7 @@ function cell(col: Col, c: Customer) {
     case 'phone':    return <span className="font-mono text-xs text-gray-700 whitespace-nowrap">{c.phone || 'N/A'}</span>
     case 'status':   return <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium whitespace-nowrap ${STATUS_BADGE[c.status] ?? 'bg-gray-100 text-gray-600'}`}>{STATUS_LABEL[c.status] ?? c.status}</span>
     case 'vertical': return <span className="truncate block text-xs text-gray-600">{c.verticalType ?? 'N/A'}</span>
-    case 'agent':    return <span className="truncate block text-xs font-bold text-gray-700">{c.agent?.displayName ?? 'N/A'}</span>
+    case 'agent':    return <span className="truncate block text-xs font-bold text-gray-700" title={fullName(c.agent)}>{fullName(c.agent) || 'N/A'}</span>
     case 'did':      return <span className="font-mono text-xs text-gray-700">{snapDid(c) ?? 'N/A'}</span>
     case 'saleType': return <SaleTypePill v={c.client?.saleType} />
     case 'client':   return <span className="truncate block text-xs text-gray-700">{snapCompany(c) ?? 'N/A'}</span>
@@ -171,7 +171,7 @@ function SaleDetailModal({ c, onClose, canSeeCompany, onEdit, onDelete }: { c: C
           <MS title="Timestamps">
             <DR label="Pak Time" value={stampTime(c.submittedAtPak)} /><DR label="USA Time" value={stampTime(c.submittedAtEst)} />
             <DR label="Date (EST)" value={fmtDay(c.createdAt, BUSINESS_TZ)} />
-            {c.agent && <DR label="Agent" value={c.agent.displayName} />}
+            {c.agent && <DR label="Agent" value={fullName(c.agent)} />}
           </MS>
         </div>
         {(onEdit || onDelete) && (
@@ -198,7 +198,7 @@ export default function ReportsPage() {
   const base: Filters = { status: '', agentId: '', clientId: '', companyName: '', verticalType: '', ...periodDates('today')! }
   const [period, setPeriod]   = useState<PeriodKey>('today')
   const [filters, setFilters] = useState<Filters>(base)
-  const [agents, setAgents]   = useState<{ id: string; displayName: string }[]>([])
+  const [agents, setAgents]   = useState<{ id: string; displayName: string; firstName?: string | null; midName?: string | null; lastName?: string | null }[]>([])
   const [dids, setDids]       = useState<{ id: string; didCode: string }[]>([])
   const [companies, setCompanies] = useState<string[]>([])
   const [data, setData]       = useState<Page<Customer> | null>(null)
@@ -226,7 +226,7 @@ export default function ReportsPage() {
   }
 
   useEffect(() => {
-    if (canSeeAgent) apiGet<{ id: string; displayName: string }[]>('/users/agents').then(setAgents).catch(() => {})
+    if (canSeeAgent) apiGet<typeof agents>('/users/agents').then(setAgents).catch(() => {})
     apiGet<{ id: string; didCode: string }[]>('/clients/dropdown').then(setDids).catch(() => {})
     if (canSeeCompany) {
       apiGet<Client[]>('/clients', { perPage: 'all' })
@@ -309,7 +309,7 @@ export default function ReportsPage() {
             options={[{ value: '', label: 'All Verticals' }, ...verticals.map(v => ({ value: v.name, label: v.name }))]} />
           {canSeeAgent && (
             <PillSelect value={filters.agentId} onChange={v => setF('agentId', v)} dimValue="" minWidth={140}
-              options={[{ value: '', label: 'All Agents' }, ...agents.map(a => ({ value: a.id, label: a.displayName }))]} />
+              options={[{ value: '', label: 'All Agents' }, ...agents.map(a => ({ value: a.id, label: fullName(a) }))]} />
           )}
           <PillSelect value={filters.clientId} onChange={v => setF('clientId', v)} dimValue="" minWidth={110}
             options={[{ value: '', label: 'All DIDs' }, ...dids.map(d => ({ value: d.id, label: d.didCode }))]} />

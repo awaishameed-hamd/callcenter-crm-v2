@@ -3,7 +3,7 @@
 // and rupee amounts, a totals row, filters, frozen header and name columns, and print setup.
 
 import type ExcelJS from 'exceljs'
-import { bankCodeOf } from '@crm/shared'
+import { bankCodeOf, fullName } from '@crm/shared'
 import type { User } from '@/types'
 
 const NAVY = '132E57', GOLD = 'F2AC18', TEAL = '1E8496', LIGHT_GOLD = 'FEF3C7', STRIPE = 'F0F9FA', LINE = 'E2E8F0'
@@ -15,7 +15,6 @@ type Col = { header: string; width: number; kind?: Kind; value: (u: User) => unk
 type Group = { title: string; color: string; cols: Col[] }
 
 const roleName = (r: string) => r.charAt(0) + r.slice(1).toLowerCase()
-const fullName = (u: User) => [u.firstName, u.midName, u.lastName].map(s => (s ?? '').trim()).filter(Boolean).join(' ')
 /** "2026-03-01" (or an ISO date) as a date Excel can sort and filter */
 const asDate = (v?: string | null) => {
   if (!v) return null

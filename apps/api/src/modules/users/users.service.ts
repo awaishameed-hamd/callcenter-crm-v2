@@ -302,7 +302,7 @@ export class UsersService {
   agentsDropdown() {
     return this.prisma.user.findMany({
       where:   { role: Role.AGENT },
-      select:  { id: true, displayName: true, userCode: true, isActive: true },
+      select:  { id: true, displayName: true, firstName: true, midName: true, lastName: true, userCode: true, isActive: true },
       orderBy: { userCode: 'asc' },
     })
   }

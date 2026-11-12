@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { Role, AGENT_TYPES, MANAGER_TYPES, DEPARTMENTS, STANDARD_FIELD_KEYS, snakeToCamel } from '@crm/shared'
+import { Role, AGENT_TYPES, MANAGER_TYPES, DEPARTMENTS, STANDARD_FIELD_KEYS, snakeToCamel, fullName } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import DateInput from '@/components/ui/DateInput'
 import StyledSelect from '@/components/ui/StyledSelect'
@@ -357,7 +357,7 @@ export default function UsersPage() {
       case 'name': return (
         <div style={{ display: 'flex', alignItems: 'center', gap: 9 }}>
           <div style={{ width: 20, height: 20, borderRadius: '50%', background: inactive ? '#9CA3AF' : P.navy, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontSize: 12, fontWeight: 700, flexShrink: 0 }}>{(u.displayName || u.userCode)[0].toUpperCase()}</div>
-          <span style={{ fontWeight: 600, color: P.textHeading }}>{u.displayName}</span>
+          <span style={{ fontWeight: 600, color: P.textHeading }}>{fullName(u)}</span>
         </div>
       )
       case 'role': { const b = ROLE_BADGE[u.role] ?? { bg: '#F3F4F6', color: '#6B7280' }; return pill(b.bg, b.color, roleName(u.role)) }

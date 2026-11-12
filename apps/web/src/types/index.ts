@@ -95,7 +95,7 @@ export interface Customer {
   extraFields:     Record<string, unknown> | null
   createdAt:       string
   client?:         ClientRef | null
-  agent?:          { id: string; userCode: string; displayName: string } | null
+  agent?:          { id: string; userCode: string; displayName: string; firstName?: string | null; midName?: string | null; lastName?: string | null } | null
 }
 
 export interface Client {

@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
-import { CustomerStatus, Role } from '@crm/shared'
+import { CustomerStatus, Role, fullName } from '@crm/shared'
 import { PrismaService } from '../prisma/prisma.service'
 import { clientSelect } from '../customers/customers.service'
 import { V, pageArgs, toPage, csvRow } from '../../common/utils/validate'
@@ -34,7 +34,7 @@ export class ReportsService {
 
   private include(role: Role) {
     return {
-      agent:  { select: { id: true, userCode: true, displayName: true } },
+      agent:  { select: { id: true, userCode: true, displayName: true, firstName: true, midName: true, lastName: true } },
       client: clientSelect(role),
     } satisfies Prisma.CustomerInclude
   }
@@ -60,7 +60,7 @@ export class ReportsService {
     const rows = await this.prisma.customer.findMany({
       where: this.where(actor, q),
       include: {
-        agent:  { select: { displayName: true } },
+        agent:  { select: { displayName: true, firstName: true, midName: true, lastName: true } },
         client: { select: { didCode: true, companyName: true, rateOfSaleAmount: true, rateType: true, saleType: true } },
       },
       orderBy: { createdAt: 'desc' },
@@ -86,7 +86,7 @@ export class ReportsService {
         c.status === CustomerStatus.FINAL_DISAPPROVED ? c.finalNote :
         c.status === CustomerStatus.AGENT_REJECTED    ? c.reason : ''
       lines.push(csvRow([
-        c.agent?.displayName, c.firstName, c.midName, c.lastName,
+        fullName(c.agent), c.firstName, c.midName, c.lastName,
         c.age, fmtDateOnly(c.dateOfBirth), c.phone, c.address, c.city, c.state, c.postalCode,
         c.verticalType, c.verticalOther, c.didComments, c.transferredFrom, c.qaComments,
         c.reason, rejection, did, c.client?.saleType,

@@ -3,6 +3,18 @@
 // String/Array methods because this package compiles for an older JS target.
 
 /** "AWAIS  ali" -> "Awais Ali": every word starts with a capital, the rest is small. */
+/** "First Middle Last" as on the CNIC (the team sheet's Name); the display name only when none is saved. */
+export function fullName(u?: { firstName?: string | null; midName?: string | null; lastName?: string | null; displayName?: string | null } | null): string {
+  if (!u) return ''
+  const parts = [u.firstName, u.midName, u.lastName]
+  const out: string[] = []
+  for (let i = 0; i < parts.length; i++) {
+    const p = (parts[i] || '').replace(/^\s+|\s+$/g, '')
+    if (p) out.push(p)
+  }
+  return out.length ? out.join(' ') : (u.displayName || '')
+}
+
 export function properCase(value?: string | null): string {
   const words = (value || '').replace(/\s+/g, ' ').replace(/^ | $/g, '').split(' ')
   const out: string[] = []
