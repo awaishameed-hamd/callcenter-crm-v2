@@ -16,6 +16,7 @@ import { fmtWithPKT, fullName } from '@/lib/format'
 import { isFinalApprover as finalRole, isSaleReviewer } from '@/lib/roles'
 import { P } from '@/lib/palette'
 import type { Customer, Page } from '@/types'
+import { useSaleViewers } from '@/hooks/useSaleViewers'
 import BatchApprove from './batch/BatchApprove'
 import BatchReject from './batch/BatchReject'
 
@@ -29,6 +30,15 @@ const STATUS_COLOR: Record<string, string> = {
   [CustomerStatus.APPROVED]: '#1E8496',
   [AWAITING]:                '#C25A1F',
 }
+
+// A sale another reviewer has open: green in the list, so nobody works it twice
+const VIEWED = '#15803D', VIEWED_BG = '#DCFCE7', VIEWED_BORDER = '#86EFAC'
+const EyeIcon = ({ size = 12 }: { size?: number }) => (
+  <svg width={size} height={size} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2} style={{ flexShrink: 0 }}>
+    <path strokeLinecap="round" strokeLinejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.638 0-8.573-3.007-9.963-7.178Z" />
+    <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" />
+  </svg>
+)
 
 type EditForm = Record<string, string>
 type DidOption = { id: string; didCode: string; saleType: string | null }
@@ -125,6 +135,9 @@ export default function ApprovalsPage() {
   const [searchInput, setSearchInput]   = useState('')
   const [counts, setCounts]             = useState<Record<string, number>>({})
   const [batch, setBatch]               = useState<'approve' | 'reject' | null>(null)
+  // Who else has which sale open right now (live), so two reviewers do not work the same sale
+  const viewers = useSaleViewers(batch ? null : selected?.id ?? null)
+  const othersOn = (id: string) => (viewers[id] ?? []).filter(v => v.userId !== user?.id)
 
   const loadCounts = useCallback(() =>
     apiGet<Record<string, number>>('/customers/counts').then(setCounts).catch(() => {}), [])
@@ -354,11 +367,15 @@ export default function ApprovalsPage() {
             {!loading && customers.length === 0 && <div style={{ padding: 24, textAlign: 'center', color: P.textMuted, fontSize: 12 }}>No records found.</div>}
             {!loading && customers.map((c, idx) => {
               const isActive = selected?.id === c.id
+              const others = othersOn(c.id)
+              const taken = others.length > 0
+              const rest = isActive ? '#E8EEF7' : taken ? VIEWED_BG : '#F8FAFC'
               return (
                 <button key={c.id} onClick={() => selectCustomer(c)}
-                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '4px 6px', border: `1px solid ${isActive ? P.teal : P.border}`, borderRadius: 8, cursor: 'pointer', marginBottom: 4, background: isActive ? '#E8EEF7' : '#F8FAFC', fontFamily: FONT }}
-                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = '#EEF2F7' }}
-                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = '#F8FAFC' }}>
+                  title={taken ? `${others.map(o => o.fullName).join(', ')} ${others.length === 1 ? 'has' : 'have'} this sale open` : undefined}
+                  style={{ display: 'block', width: '100%', textAlign: 'left', padding: '4px 6px', border: `1px solid ${isActive ? P.teal : taken ? VIEWED_BORDER : P.border}`, borderRadius: 8, cursor: 'pointer', marginBottom: 4, background: rest, fontFamily: FONT, boxShadow: taken ? `inset 3px 0 0 ${VIEWED}` : undefined }}
+                  onMouseEnter={e => { if (!isActive) e.currentTarget.style.background = taken ? '#BBF7D0' : '#EEF2F7' }}
+                  onMouseLeave={e => { if (!isActive) e.currentTarget.style.background = rest }}>
                   <div style={{ display: 'flex', gap: 9, alignItems: 'center' }}>
                     <span style={{ flexShrink: 0, minWidth: 16, height: 16, padding: '0 3px', borderRadius: 5, background: '#A5D8DD', color: '#000', fontSize: 9, fontWeight: 900, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>{((meta?.currentPage ?? 1) - 1) * (meta?.perPage ?? 20) + idx + 1}</span>
                     <span style={{ fontSize: 12, fontWeight: 700, color: '#000', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{c.firstName} {c.lastName}</span>
@@ -367,6 +384,12 @@ export default function ApprovalsPage() {
                       {c.agent?.displayName ?? 'No agent'}
                     </span>
                   </div>
+                  {taken && (
+                    <div style={{ marginTop: 3, marginLeft: 25, display: 'flex', alignItems: 'center', gap: 4, fontSize: 10.5, fontWeight: 700, color: VIEWED, overflow: 'hidden', whiteSpace: 'nowrap', textOverflow: 'ellipsis' }}>
+                      <EyeIcon />
+                      {others.map(o => o.name).join(', ')} {others.length === 1 ? 'is' : 'are'} viewing
+                    </div>
+                  )}
                 </button>
               )
             })}
@@ -465,6 +488,19 @@ export default function ApprovalsPage() {
                     )}
                   </div>
                 </div>
+
+                {/* Someone else has this sale open too */}
+                {othersOn(selected.id).length > 0 && (() => {
+                  const others = othersOn(selected.id)
+                  return (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderRadius: 12, background: VIEWED_BG, border: `1px solid ${VIEWED_BORDER}`, color: VIEWED, fontSize: 13 }}>
+                      <span style={{ width: 26, height: 26, borderRadius: '50%', background: VIEWED, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><EyeIcon size={14} /></span>
+                      <span>
+                        <b>{others.map(o => o.fullName).join(', ')}</b> {others.length === 1 ? 'is' : 'are'} also viewing this sale. Check with {others.length === 1 ? 'them' : 'each other'} before you approve or reject it.
+                      </span>
+                    </div>
+                  )
+                })()}
 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gridAutoRows: '1fr', gap: 12 }}>
                   <SectionCard title="QA Comments" icon={ICONS.notes} done={0} total={0} complete={false}>

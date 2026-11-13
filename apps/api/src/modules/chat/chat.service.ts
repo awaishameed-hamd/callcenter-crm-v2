@@ -1,5 +1,6 @@
 import { Injectable, ForbiddenException, NotFoundException, BadRequestException } from '@nestjs/common'
 import { Role } from '@prisma/client'
+import { fullName } from '@crm/shared'
 import { PrismaService } from '../prisma/prisma.service'
 import { PresenceService } from './presence.service'
 
@@ -342,6 +343,14 @@ export class ChatService {
       select: { participants: { select: { userId: true } } },
     })
     return conv?.participants ?? []
+  }
+
+  /** Short and full name of a user, for "who has this sale open" in Approvals. */
+  async userNames(userId: string): Promise<{ name: string; fullName: string }> {
+    const u = await this.prisma.user.findUnique({ where: { id: userId }, select: { displayName: true, firstName: true, midName: true, lastName: true } })
+    if (!u) return { name: 'Someone', fullName: 'Someone' }
+    const full = fullName(u)
+    return { name: u.displayName || full, fullName: full || u.displayName }
   }
 
   async updateLastSeen(userId: string): Promise<Date> {

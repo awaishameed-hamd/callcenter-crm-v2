@@ -62,6 +62,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
       client.userId   = payload.sub
       client.userRole = payload.role
       client.join(`user:${payload.sub}`)
+      if (payload.role !== 'AGENT') client.join('reviewers')   // who-has-which-sale-open in Approvals
 
       this.presence.addSocket(payload.sub, client.id)
       this.server.emit('presence_update', { userId: payload.sub, online: true })
@@ -72,6 +73,7 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
 
   async handleDisconnect(client: AuthenticatedSocket) {
     if (!client.userId) return
+    if (this.viewing.delete(client.id)) this.broadcastViewers()   // a closed tab lets go of its sale
     const wentOffline = this.presence.removeSocket(client.userId, client.id)
     if (!wentOffline) return
     // Lifecycle hooks run outside Nest's exception filters: an error here would be an
@@ -82,6 +84,47 @@ export class ChatGateway implements OnGatewayInit, OnGatewayConnection, OnGatewa
     } catch (err) {
       console.error('presence update on disconnect failed', err)
     }
+  }
+
+  // ── Approvals: which sale each reviewer has open, so two managers do not work the same sale ──
+  // Kept per connection in memory (one API process). Only managers and above take part.
+  private viewing = new Map<string, { userId: string; customerId: string; name: string; fullName: string }>()
+  private names = new Map<string, { name: string; fullName: string }>()
+
+  private viewersSnapshot() {
+    const out: Record<string, { userId: string; name: string; fullName: string }[]> = {}
+    for (const v of this.viewing.values()) {
+      const list = out[v.customerId] ?? (out[v.customerId] = [])
+      if (!list.some(x => x.userId === v.userId)) list.push({ userId: v.userId, name: v.name, fullName: v.fullName })
+    }
+    return out
+  }
+
+  private broadcastViewers() { this.server.to('reviewers').emit('sale_viewers', this.viewersSnapshot()) }
+
+  /** The sale this tab has open in Approvals (null when none). */
+  @SubscribeMessage('sale_view')
+  async saleView(@MessageBody() data: { customerId?: string | null }, @ConnectedSocket() client: AuthenticatedSocket) {
+    if (!client.userId || client.userRole === 'AGENT') return { ok: false }
+    const id = typeof data?.customerId === 'string' && data.customerId.length <= 40 ? data.customerId : null
+    if ((this.viewing.get(client.id)?.customerId ?? null) === id) return { ok: true }
+    if (id) {
+      let n = this.names.get(client.userId)
+      if (!n) {
+        try { n = await this.chatService.userNames(client.userId) } catch { n = { name: 'Someone', fullName: 'Someone' } }
+        this.names.set(client.userId, n)
+      }
+      this.viewing.set(client.id, { userId: client.userId, customerId: id, ...n })
+    } else {
+      this.viewing.delete(client.id)
+    }
+    this.broadcastViewers()
+    return { ok: true }
+  }
+
+  @SubscribeMessage('sale_viewers_get')
+  saleViewersGet(@ConnectedSocket() client: AuthenticatedSocket) {
+    return client.userRole === 'AGENT' ? {} : this.viewersSnapshot()
   }
 
   @SubscribeMessage('join_conversation')
