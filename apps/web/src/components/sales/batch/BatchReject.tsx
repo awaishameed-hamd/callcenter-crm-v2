@@ -10,11 +10,13 @@ import { apiGet, apiPost, errMsg } from '@/lib/api'
 import { fmtDay, periodDates } from '@/lib/format'
 import { P } from '@/lib/palette'
 import { FONT } from '../saleUi'
-import { BatchShell, Btn, Pill, Label, Confirm, ClientPicker, RateTag, useClients, RED } from './batchUi'
+import { BatchShell, Card, Btn, Pill, Confirm, ClientPicker, RateTag, useClients, RED } from './batchUi'
 
 type Row = { id: string; name: string; phone: string | null; verticalType: string | null; agent: string; saleDate: string; saleTimeEst: string | null }
 
-const dateStyle: React.CSSProperties = { padding: '8px 10px', borderRadius: 8, border: '1.5px solid #E0DDD5', fontSize: 13, fontFamily: FONT, color: P.navy, outline: 'none', background: '#fff' }
+// Glass pills on the red header, like the filter bar's date and search fields
+const glass: React.CSSProperties = { padding: '7px 12px', borderRadius: 30, border: '1px solid rgba(255,255,255,0.45)', fontSize: 12.5, fontWeight: 600, fontFamily: FONT, color: '#fff', outline: 'none', background: 'rgba(255,255,255,0.16)', colorScheme: 'dark' }
+const glassLabel: React.CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', opacity: 0.85, whiteSpace: 'nowrap' }
 const th: React.CSSProperties = { position: 'sticky', top: 0, zIndex: 1, background: '#F1F5F9', color: '#475569', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap' }
 const td: React.CSSProperties = { padding: '7px 10px', borderBottom: '1px solid #EEF2F6', whiteSpace: 'nowrap', fontSize: 12.5 }
 
@@ -76,10 +78,27 @@ export default function BatchReject({ onClose, onChanged }: { onClose: () => voi
     }
   }
 
-  const sub = client ? `${client.companyName}${client.didCode ? ` (${client.didCode})` : ''}` : 'Reject a client\'s waiting sales in one go'
-
   return (
-    <BatchShell tone={RED} caption="FINAL APPROVAL" title="Batch Reject" sub={sub} onClose={onClose}
+    <BatchShell tone="#DC2626" toneTo="#9F1239" caption="FINAL APPROVAL" title="Batch Reject" onClose={onClose}
+      controls={
+        <>
+          <ClientPicker clients={clients} value={clientId} onChange={setClientId} />
+          <RateTag client={client} />
+          <span style={glassLabel}>From</span>
+          <div style={{ width: 150 }}><DateInput value={from} max={to} onChange={e => setFrom(e.target.value)} style={glass} /></div>
+          <span style={glassLabel}>To</span>
+          <div style={{ width: 150 }}><DateInput value={to} min={from} onChange={e => setTo(e.target.value)} style={glass} /></div>
+        </>
+      }
+      actions={
+        <div style={{ position: 'relative', width: 240 }}>
+          <svg style={{ position: 'absolute', left: 12, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width={13} height={13} fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.85)" strokeWidth={2}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+          </svg>
+          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Name, phone or agent" className="completed-search"
+            style={{ ...glass, width: '100%', boxSizing: 'border-box', paddingLeft: 32 }} />
+        </div>
+      }
       footer={
         <>
           <div style={{ fontSize: 12.5, color: P.slate, display: 'flex', gap: 8, alignItems: 'center' }}>
@@ -93,28 +112,7 @@ export default function BatchReject({ onClose, onChanged }: { onClose: () => voi
       }>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      <div style={{ flexShrink: 0, padding: '12px 20px', borderBottom: `1px solid ${P.border}`, display: 'flex', alignItems: 'flex-end', gap: 14, flexWrap: 'wrap' }}>
-        <div style={{ width: 300 }}>
-          <Label>Client</Label>
-          <ClientPicker clients={clients} value={clientId} onChange={setClientId} />
-        </div>
-        <div style={{ paddingBottom: 8 }}><RateTag client={client} /></div>
-        <div style={{ width: 160 }}>
-          <Label>Sale date from</Label>
-          <DateInput value={from} max={to} onChange={e => setFrom(e.target.value)} style={dateStyle} />
-        </div>
-        <div style={{ width: 160 }}>
-          <Label>To</Label>
-          <DateInput value={to} min={from} onChange={e => setTo(e.target.value)} style={dateStyle} />
-        </div>
-        <div style={{ marginLeft: 'auto', width: 260 }}>
-          <Label>Search</Label>
-          <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Name, phone or agent"
-            style={{ ...dateStyle, width: '100%', boxSizing: 'border-box' }} />
-        </div>
-      </div>
-
-      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', background: clientId ? '#fff' : '#F7F8FA' }}>
+      <Card muted={!clientId}>
         {err && <div style={{ margin: '14px 20px', padding: '10px 14px', borderRadius: 10, border: '1px solid #FECACA', background: '#FEF2F2', color: RED, fontSize: 13, fontWeight: 600 }}>{err}</div>}
         {!clientId && <p style={{ textAlign: 'center', color: P.textMuted, fontSize: 13, marginTop: 60 }}>Pick a client to see its sales waiting for final approval.</p>}
         {clientId && (
@@ -149,7 +147,7 @@ export default function BatchReject({ onClose, onChanged }: { onClose: () => voi
             </tbody>
           </table>
         )}
-      </div>
+      </Card>
 
       {confirm && (
         <Confirm tone={RED} title={`Reject ${picked.size} Sale${picked.size === 1 ? '' : 's'}`} busy={busy} okLabel="Confirm Final Reject" onOk={reject} onCancel={() => setConfirm(false)}>

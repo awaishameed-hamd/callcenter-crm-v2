@@ -12,7 +12,7 @@ import { apiPost, errMsg } from '@/lib/api'
 import { fmtDay } from '@/lib/format'
 import { P } from '@/lib/palette'
 import { FONT, withAlpha } from '../saleUi'
-import { BatchShell, Btn, Pill, Label, Confirm, ClientPicker, RateTag, useClients, money, GREEN, RED, AMBER } from './batchUi'
+import { BatchShell, Bar, BarField, Card, HeadBtn, HeadChip, Btn, Pill, Confirm, ClientPicker, RateTag, useClients, money, GREEN, RED, AMBER } from './batchUi'
 import { readWorkbook, guessMapping, downloadTemplate, colLetter, type Sheet, type Mapping } from './batchSheet'
 
 type SaleLite = { id: string; name: string; phone: string | null; status: string; saleDate: string; agent: string }
@@ -198,10 +198,31 @@ export default function BatchApprove({ onClose, onChanged }: { onClose: () => vo
   ]
   const tagOf = (j: number) => (map?.phone === j ? { t: 'Phone', c: P.teal } : map?.rate === j ? { t: 'Rate', c: AMBER } : map?.date === j ? { t: 'Date', c: P.navy } : null)
 
-  const sub = preview ? `${preview.client.companyName}${preview.client.didCode ? ` (${preview.client.didCode})` : ''}` : 'Approve the sales on the client\'s sheet in one go'
-
   return (
-    <BatchShell tone={GREEN} caption="FINAL APPROVAL" title="Batch Approve" sub={sub} onClose={onClose}
+    <BatchShell tone="#15803D" toneTo="#0E7490" caption="FINAL APPROVAL" title="Batch Approve" onClose={onClose}
+      controls={
+        <>
+          <ClientPicker clients={clients} value={clientId} onChange={setClientId} />
+          <RateTag client={client} />
+          <input ref={fileRef} type="file" accept=".xlsx,.csv" style={{ display: 'none' }} onChange={e => onFile(e.target.files?.[0])} />
+          <HeadBtn solid tone="#15803D" onClick={() => fileRef.current?.click()} title="Import the filled template or the client's report (.xlsx or .csv)">
+            <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" /></svg>
+            {fileName ? 'Import Another File' : 'Import Excel File'}
+          </HeadBtn>
+          {fileName && (
+            <HeadChip title={fileName}>
+              <svg width={13} height={13} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} style={{ flexShrink: 0 }}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m2.25 0H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z" /></svg>
+              <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{fileName}</span>
+            </HeadChip>
+          )}
+        </>
+      }
+      actions={
+        <HeadBtn onClick={() => downloadTemplate().catch(() => setToast({ message: 'Could not create the template.', type: 'error' }))} title="Blank sheet to paste the client's numbers and rates into">
+          <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
+          Download Template
+        </HeadBtn>
+      }
       footer={
         <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', fontSize: 12.5, color: P.slate }}>
@@ -232,72 +253,42 @@ export default function BatchApprove({ onClose, onChanged }: { onClose: () => vo
       }>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* Step bar: client, file, template */}
-      <div style={{ flexShrink: 0, padding: '12px 20px', borderBottom: `1px solid ${P.border}`, display: 'flex', alignItems: 'flex-end', gap: 14, flexWrap: 'wrap' }}>
-        <div style={{ width: 300 }}>
-          <Label>Client</Label>
-          <ClientPicker clients={clients} value={clientId} onChange={setClientId} />
-        </div>
-        <div style={{ paddingBottom: 8 }}><RateTag client={client} /></div>
-        <div>
-          <Label>Client sheet</Label>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <input ref={fileRef} type="file" accept=".xlsx,.csv" style={{ display: 'none' }} onChange={e => onFile(e.target.files?.[0])} />
-            <Btn tone="primary" onClick={() => fileRef.current?.click()}>
-              <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" /></svg>
-              {fileName ? 'Choose Another File' : 'Choose Excel File'}
-            </Btn>
-            {fileName && <span style={{ fontSize: 12.5, color: P.navy, fontWeight: 600, maxWidth: 260, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fileName}</span>}
-          </div>
-        </div>
-        <div style={{ marginLeft: 'auto' }}>
-          <Btn tone="ghost" onClick={() => downloadTemplate().catch(() => setToast({ message: 'Could not create the template.', type: 'error' }))}>
-            <svg width={14} height={14} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.2}><path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" /></svg>
-            Download Template
-          </Btn>
-        </div>
-      </div>
-
-      {/* Column mapping and filters, once a sheet is open */}
+      {/* Column choices and filters, once a sheet is open */}
       {sheet && map && (
-        <div style={{ flexShrink: 0, padding: '10px 20px', borderBottom: `1px solid ${P.border}`, display: 'flex', alignItems: 'flex-end', gap: 12, flexWrap: 'wrap', background: '#FAFBFC' }}>
+        <Bar>
           {sheets.length > 1 && (
-            <div style={{ width: 170 }}>
-              <Label>Sheet</Label>
+            <BarField label="Sheet" width={160}>
               <StyledSelect compact value={String(sheetIdx)} onChange={v => setSheetIdx(Number(v))} options={sheets.map((s, i) => ({ value: String(i), label: s.name }))} />
-            </div>
+            </BarField>
           )}
-          <div style={{ width: 190 }}>
-            <Label>Phone column</Label>
+          <BarField label="Phone" width={180}>
             <StyledSelect compact value={String(map.phone)} onChange={v => setMap({ ...map, phone: Number(v) })} options={colOptions(false)} />
-          </div>
-          <div style={{ width: 190 }}>
-            <Label>Rate column{variable ? '' : ' (not used)'}</Label>
+          </BarField>
+          <BarField label={variable || !preview ? 'Rate' : 'Rate (not used)'} width={180}>
             <StyledSelect compact value={String(map.rate)} onChange={v => setMap({ ...map, rate: Number(v) })} options={colOptions(true)} disabled={!!preview && !variable} />
-          </div>
-          <div style={{ width: 190 }}>
-            <Label>Date column (optional)</Label>
+          </BarField>
+          <BarField label="Date" width={170}>
             <StyledSelect compact value={String(map.date)} onChange={v => setMap({ ...map, date: Number(v) })} options={colOptions(true)} />
-          </div>
+          </BarField>
           {preview && (
-            <div style={{ marginLeft: 'auto', display: 'flex', gap: 2, background: '#fff', border: `1px solid ${P.border}`, borderRadius: 8, padding: 3 }}>
+            <div style={{ marginLeft: 'auto', display: 'flex', gap: 2, background: P.teal, borderRadius: 40, padding: 3 }}>
               {GROUPS.filter(g => g.key === 'all' || counts[g.key] > 0).map(g => {
                 const on = filter === g.key
                 return (
                   <button key={g.key} onClick={() => setFilter(g.key)}
-                    style={{ padding: '4px 10px', borderRadius: 6, border: 'none', cursor: 'pointer', fontFamily: FONT, fontSize: 12, fontWeight: on ? 700 : 500, background: on ? g.color : 'transparent', color: on ? '#fff' : '#5C5C5C', display: 'flex', alignItems: 'center', gap: 5 }}>
+                    style={{ padding: '4px 11px', borderRadius: 40, border: 'none', cursor: 'pointer', fontFamily: FONT, fontSize: 12, fontWeight: on ? 700 : 600, background: on ? (g.key === 'all' ? P.navy : g.color) : 'transparent', color: on ? '#fff' : 'rgba(255,255,255,0.88)', display: 'flex', alignItems: 'center', gap: 6, whiteSpace: 'nowrap' }}>
                     {g.label}
-                    <span style={{ background: on ? 'rgba(255,255,255,0.25)' : withAlpha(g.color, 0.14), color: on ? '#fff' : g.color, fontSize: 10, fontWeight: 700, padding: '1px 6px', borderRadius: 3 }}>{counts[g.key]}</span>
+                    <span style={{ background: on ? 'rgba(255,255,255,0.25)' : '#fff', color: on ? '#fff' : g.key === 'all' ? P.navy : g.color, fontSize: 10, fontWeight: 800, padding: '1px 7px', borderRadius: 20 }}>{counts[g.key]}</span>
                   </button>
                 )
               })}
             </div>
           )}
-        </div>
+        </Bar>
       )}
 
       {/* The sheet */}
-      <div style={{ flex: 1, minHeight: 0, overflow: 'auto', background: sheet ? '#fff' : '#F7F8FA', position: 'relative' }}>
+      <Card muted={!sheet}>
         {readErr && <Notice color={RED}>{readErr}</Notice>}
         {checkErr && <Notice color={RED}>{checkErr}</Notice>}
         {!sheet && !readErr && <Steps hasClient={!!clientId} />}
@@ -381,7 +372,7 @@ export default function BatchApprove({ onClose, onChanged }: { onClose: () => vo
         {checking && (
           <div style={{ position: 'absolute', top: 10, left: '50%', transform: 'translateX(-50%)', zIndex: 5, background: P.navy, color: '#fff', fontSize: 12, padding: '5px 12px', borderRadius: 99 }}>Checking against our records</div>
         )}
-      </div>
+      </Card>
 
       {confirm && preview && (
         <Confirm tone={GREEN} title={`Approve ${ready.length} Sale${ready.length === 1 ? '' : 's'}`} busy={busy} okLabel="Confirm Final Approve" onOk={approve} onCancel={() => setConfirm(false)}>
@@ -417,7 +408,7 @@ function Steps({ hasClient }: { hasClient: boolean }) {
   const steps = [
     ['Pick the client', 'The sheet is matched only to that client\'s sales.'],
     ['Fill the template', 'Download Template, then paste the phone numbers and rates from the client\'s report. Masked numbers like 478-836-XXXX are fine: the first 6 digits must be there.'],
-    ['Choose the file', 'The sheet opens here. Every row shows whether it is ready, not in our record, or needs a look. Nothing is approved until you confirm.'],
+    ['Import the file', 'The sheet opens here. Every row shows whether it is ready, not in our record, or needs a look. Nothing is approved until you confirm.'],
   ]
   return (
     <div style={{ maxWidth: 640, margin: '40px auto', padding: '0 20px' }}>

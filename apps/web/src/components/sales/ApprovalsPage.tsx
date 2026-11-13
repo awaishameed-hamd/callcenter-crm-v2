@@ -305,6 +305,14 @@ export default function ApprovalsPage() {
     </div>
   )
 
+  // Batch Approve / Batch Reject take this page's place; the sidebar stays
+  if (batch) {
+    const changed = () => { load(true); loadCounts(); setSelected(null) }
+    return batch === 'approve'
+      ? <BatchApprove onClose={() => setBatch(null)} onChanged={changed} />
+      : <BatchReject onClose={() => setBatch(null)} onChanged={changed} />
+  }
+
   const pageBtn = (label: string, to: number, off: boolean) => (
     <button key={label} disabled={off} onClick={() => setPage(to)}
       style={{ padding: '3px 10px', borderRadius: 6, border: `1px solid ${P.border}`, background: '#fff', color: P.navy, fontSize: 11, fontWeight: 600, cursor: off ? 'not-allowed' : 'pointer', opacity: off ? 0.4 : 1, fontFamily: FONT }}>
@@ -315,8 +323,6 @@ export default function ApprovalsPage() {
   return (
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-      {batch === 'approve' && <BatchApprove onClose={() => setBatch(null)} onChanged={() => { load(true); loadCounts(); setSelected(null) }} />}
-      {batch === 'reject' && <BatchReject onClose={() => setBatch(null)} onChanged={() => { load(true); loadCounts(); setSelected(null) }} />}
 
       <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: P.bgMain, fontFamily: FONT }}>
         {/* Left panel: records in the selected status */}
