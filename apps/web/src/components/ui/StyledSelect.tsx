@@ -11,7 +11,7 @@ const inputStyle: React.CSSProperties = {
   outline: 'none', color: NAVY, background: '#fff',
 }
 
-export default function StyledSelect({ value, onChange, options, placeholder, loading, borderColor, disabled, required, compact }: {
+export default function StyledSelect({ value, onChange, options, placeholder, loading, borderColor, disabled, required, compact, slim }: {
   value: string
   onChange: (val: string) => void
   options: { value: string; label: string }[]
@@ -23,6 +23,8 @@ export default function StyledSelect({ value, onChange, options, placeholder, lo
   required?: boolean
   /** 24px-high variant for dense, spreadsheet-style forms. */
   compact?: boolean
+  /** 30px-high variant for toolbars and header pills. */
+  slim?: boolean
 }) {
   const [query,   setQuery]   = useState('')
   const [open,    setOpen]    = useState(false)
@@ -73,7 +75,8 @@ export default function StyledSelect({ value, onChange, options, placeholder, lo
     setQuery(''); setOpen(false); setFocused(false)
   }
 
-  const size: React.CSSProperties = compact ? { padding: '3px 7px', fontSize: 11, height: 24, borderWidth: 1, borderRadius: 4 } : {}
+  const size: React.CSSProperties = compact ? { padding: '3px 7px', fontSize: 11, height: 24, borderWidth: 1, borderRadius: 4 }
+    : slim ? { padding: '0 12px', fontSize: 12.5, height: 30 } : {}
 
   return (
     <div ref={wrapRef} style={{ position: 'relative' }}>

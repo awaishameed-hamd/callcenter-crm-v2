@@ -24,12 +24,12 @@ export function BatchShell({ tone, toneTo, caption, title, controls, actions, on
   return (
     <div style={{ height: '100vh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 10, padding: `12px 20px 14px ${sidebarCollapsed ? 56 : 20}px`, background: P.bgMain, fontFamily: FONT, transition: 'padding .2s' }}>
       <div style={{
-        flexShrink: 0, height: 54, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'nowrap', padding: '0 10px', borderRadius: 40, color: '#fff', minWidth: 0, overflow: 'hidden',
+        flexShrink: 0, height: 50, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'nowrap', padding: '0 10px', borderRadius: 40, color: '#fff', minWidth: 0, overflow: 'hidden',
         background: `radial-gradient(120% 220% at 88% -60%, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0) 46%), linear-gradient(100deg, ${tone} 0%, ${toneTo} 100%)`,
         boxShadow: `0 12px 26px -16px ${withAlpha(tone, 0.95)}`,
       }}>
         <button onClick={onClose} title="Back to Approvals"
-          style={{ width: 34, height: 34, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.45)', background: 'rgba(255,255,255,0.16)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          style={{ width: 30, height: 30, borderRadius: '50%', border: '1px solid rgba(255,255,255,0.45)', background: 'rgba(255,255,255,0.16)', color: '#fff', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
           <svg width={15} height={15} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" /></svg>
         </button>
         <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1, flexShrink: 0, paddingRight: 4 }}>
@@ -84,10 +84,10 @@ export function HeadBtn({ children, onClick, solid, tone, title, disabled }: {
 }) {
   return (
     <button type="button" onClick={onClick} title={title} disabled={disabled}
-      style={{ display: 'inline-flex', alignItems: 'center', gap: 7, padding: '8px 16px', borderRadius: 30, cursor: disabled ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
+      style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 30, boxSizing: 'border-box', padding: '0 14px', borderRadius: 30, cursor: disabled ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', flexShrink: 0,
         border: solid ? 0 : '1px solid rgba(255,255,255,0.5)', background: solid ? '#fff' : 'rgba(255,255,255,0.16)', color: solid ? tone ?? P.navy : '#fff',
         boxShadow: solid ? '0 4px 12px -6px rgba(0,0,0,0.35)' : 'none', opacity: disabled ? 0.6 : 1,
-        fontFamily: RAJDHANI, fontSize: 13, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+        fontFamily: RAJDHANI, fontSize: 12.5, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase' }}>
       {children}
     </button>
   )
@@ -95,7 +95,7 @@ export function HeadBtn({ children, onClick, solid, tone, title, disabled }: {
 
 /** Glass chip in the header, e.g. the chosen file's name. */
 export const HeadChip = ({ children, title }: { children: React.ReactNode; title?: string }) => (
-  <span title={title} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 30, background: 'rgba(0,0,0,0.14)', color: '#fff', fontSize: 12, fontWeight: 600, maxWidth: 220, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', flexShrink: 1 }}>{children}</span>
+  <span title={title} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, height: 28, boxSizing: 'border-box', padding: '0 12px', borderRadius: 30, background: 'rgba(0,0,0,0.14)', color: '#fff', fontSize: 12, fontWeight: 600, maxWidth: 220, minWidth: 0, overflow: 'hidden', whiteSpace: 'nowrap', flexShrink: 1 }}>{children}</span>
 )
 
 export function Btn({ tone = 'primary', children, disabled, onClick, title }: {
@@ -131,7 +131,7 @@ export function ClientPicker({ clients, value, onChange }: { clients: Client[]; 
   const options = clients
     .slice().sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.companyName.localeCompare(b.companyName))
     .map(c => ({ value: c.id, label: `${c.companyName}${c.didCode ? ` (${c.didCode})` : ''}${c.isActive ? '' : ' (inactive)'}` }))
-  return <HeadSelect width={250}><StyledSelect value={value} onChange={onChange} options={options} placeholder="Select client" borderColor="#fff" /></HeadSelect>
+  return <HeadSelect width={240}><StyledSelect slim value={value} onChange={onChange} options={options} placeholder="Select client" borderColor="#fff" /></HeadSelect>
 }
 
 /** The client's rate type, as a white chip on the gradient header. */
@@ -139,7 +139,7 @@ export function RateTag({ client }: { client?: Client }) {
   if (!client) return null
   const variable = client.rateType === 'variable'
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '5px 11px', borderRadius: 30, background: '#fff', color: variable ? AMBER : P.teal, fontSize: 11.5, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, boxSizing: 'border-box', padding: '0 11px', borderRadius: 30, background: '#fff', color: variable ? AMBER : P.teal, fontSize: 11.5, fontWeight: 800, whiteSpace: 'nowrap', flexShrink: 0 }}>
       <span style={{ width: 7, height: 7, borderRadius: '50%', background: variable ? AMBER : P.teal }} />
       {variable ? 'Variable rate' : `Fixed rate${client.rateOfSaleAmount ? ` ${money(Number(client.rateOfSaleAmount))}` : ''}`}
     </span>

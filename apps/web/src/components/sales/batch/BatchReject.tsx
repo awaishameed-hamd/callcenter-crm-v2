@@ -15,7 +15,7 @@ import { BatchShell, Card, Btn, Pill, Confirm, ClientPicker, RateTag, useClients
 type Row = { id: string; name: string; phone: string | null; verticalType: string | null; agent: string; saleDate: string; saleTimeEst: string | null }
 
 // Glass pills on the red header, like the filter bar's date and search fields
-const glass: React.CSSProperties = { padding: '7px 12px', borderRadius: 30, border: '1px solid rgba(255,255,255,0.45)', fontSize: 12.5, fontWeight: 600, fontFamily: FONT, color: '#fff', outline: 'none', background: 'rgba(255,255,255,0.16)', colorScheme: 'dark' }
+const glass: React.CSSProperties = { height: 30, boxSizing: 'border-box', padding: '0 12px', borderRadius: 30, border: '1px solid rgba(255,255,255,0.45)', fontSize: 12.5, fontWeight: 600, fontFamily: FONT, color: '#fff', outline: 'none', background: 'rgba(255,255,255,0.16)', colorScheme: 'dark' }
 const glassLabel: React.CSSProperties = { fontSize: 10, fontWeight: 800, letterSpacing: '0.07em', textTransform: 'uppercase', opacity: 0.85, whiteSpace: 'nowrap' }
 const th: React.CSSProperties = { position: 'sticky', top: 0, zIndex: 1, background: '#F1F5F9', color: '#475569', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap' }
 const td: React.CSSProperties = { padding: '7px 10px', borderBottom: '1px solid #EEF2F6', whiteSpace: 'nowrap', fontSize: 12.5 }
