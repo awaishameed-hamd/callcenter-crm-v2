@@ -11,7 +11,7 @@ export const GREEN = '#16A34A'
 export const RED   = '#DC2626'
 export const AMBER = '#B45309'
 
-/** Full-screen working panel with the Approvals fade header (green for approve, red for reject). */
+/** Full-screen working page with the Approvals fade header (green for approve, red for reject). */
 export function BatchShell({ tone, caption, title, sub, onClose, children, footer }: {
   tone: string; caption: string; title: string; sub?: string; onClose: () => void; children: React.ReactNode; footer?: React.ReactNode
 }) {
@@ -21,8 +21,8 @@ export function BatchShell({ tone, caption, title, sub, onClose, children, foote
     return () => window.removeEventListener('keydown', esc)
   }, [onClose])
   return (
-    <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(2px)', fontFamily: FONT }}>
-      <div style={{ position: 'absolute', inset: 16, background: '#fff', borderRadius: 16, overflow: 'hidden', display: 'flex', flexDirection: 'column', boxShadow: '0 30px 60px -20px rgba(19,46,87,0.45)' }}>
+    <div style={{ position: 'fixed', inset: 0, zIndex: 60, background: '#fff', fontFamily: FONT }}>
+      <div style={{ position: 'absolute', inset: 0, background: '#fff', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, padding: '11px 20px', color: '#fff',
           background: `linear-gradient(90deg, ${tone} 0%, ${tone} 30%, ${withAlpha(tone, 0.78)} 55%, ${withAlpha(tone, 0.45)} 78%, ${withAlpha(tone, 0.18)} 100%)` }}>
           <div style={{ minWidth: 0, flex: 1 }}>
