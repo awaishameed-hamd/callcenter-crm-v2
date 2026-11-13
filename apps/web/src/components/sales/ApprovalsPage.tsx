@@ -16,6 +16,8 @@ import { fmtWithPKT, fullName } from '@/lib/format'
 import { isFinalApprover as finalRole, isSaleReviewer } from '@/lib/roles'
 import { P } from '@/lib/palette'
 import type { Customer, Page } from '@/types'
+import BatchApprove from './batch/BatchApprove'
+import BatchReject from './batch/BatchReject'
 
 
 // Pending plus manager-approved: everything still waiting on someone
@@ -122,6 +124,7 @@ export default function ApprovalsPage() {
   const [listCollapsed, setListCollapsed] = useState(false)
   const [searchInput, setSearchInput]   = useState('')
   const [counts, setCounts]             = useState<Record<string, number>>({})
+  const [batch, setBatch]               = useState<'approve' | 'reject' | null>(null)
 
   const loadCounts = useCallback(() =>
     apiGet<Record<string, number>>('/customers/counts').then(setCounts).catch(() => {}), [])
@@ -262,7 +265,8 @@ export default function ApprovalsPage() {
   // Status pills with live counts, centred at the top of the detail pane (argroup Tasks layout).
   const PillsRow = (
     <div style={{ flexShrink: 0 }}>
-      <div style={{ display: 'flex', justifyContent: 'center', padding: '14px 24px 8px', background: '#f7f8fa', overflowX: 'auto' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr auto 1fr', alignItems: 'center', gap: 12, padding: '14px 20px 8px', background: '#f7f8fa', overflowX: 'auto' }}>
+        <span />
         <div style={{ display: 'flex', gap: 2, background: '#fff', border: `1px solid ${P.border}`, borderRadius: 8, padding: 3 }}>
           {TABS.map(tab => {
             const active = statusFilter === tab.key
@@ -283,6 +287,15 @@ export default function ApprovalsPage() {
             )
           })}
         </div>
+        {/* Final stage in bulk: approve from the client's sheet, reject a client's sales by date */}
+        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 6 }}>
+          {isFinalApprover && (
+            <>
+              <button onClick={() => setBatch('approve')} style={barBtn(GREEN)} title="Approve the sales on the client's sheet">Batch Approve</button>
+              <button onClick={() => setBatch('reject')} style={barBtn(RED)} title="Reject a client's waiting sales by date">Batch Reject</button>
+            </>
+          )}
+        </div>
       </div>
       <div style={{ display: 'flex', gap: 3, padding: '0 20px', height: 3 }}>
         {TABS.map(tab => (
@@ -302,6 +315,8 @@ export default function ApprovalsPage() {
   return (
     <>
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {batch === 'approve' && <BatchApprove onClose={() => setBatch(null)} onChanged={() => { load(true); loadCounts(); setSelected(null) }} />}
+      {batch === 'reject' && <BatchReject onClose={() => setBatch(null)} onChanged={() => { load(true); loadCounts(); setSelected(null) }} />}
 
       <div style={{ display: 'flex', height: '100vh', overflow: 'hidden', background: P.bgMain, fontFamily: FONT }}>
         {/* Left panel: records in the selected status */}

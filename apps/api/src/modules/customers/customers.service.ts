@@ -273,12 +273,17 @@ export class CustomersService {
     return { message: 'Record permanently deleted.' }
   }
 
-  private snapshot(client: { didCode: string | null; companyName: string; rateOfSaleAmount: Prisma.Decimal | null; rateType: string } | null) {
-    return {
-      saleDidCode:     client?.didCode ?? null,
-      saleCompanyName: client?.companyName ?? null,
-      saleRateAmount:  client?.rateOfSaleAmount ?? null,
-      saleRateType:    client?.rateType ?? null,
-    }
+  private snapshot(client: SnapshotClient | null) { return clientSnapshot(client) }
+}
+
+type SnapshotClient = { didCode: string | null; companyName: string; rateOfSaleAmount: Prisma.Decimal | null; rateType: string }
+
+/** The client as it was at the moment of a reject or final action, frozen on the sale. */
+export function clientSnapshot(client: SnapshotClient | null) {
+  return {
+    saleDidCode:     client?.didCode ?? null,
+    saleCompanyName: client?.companyName ?? null,
+    saleRateAmount:  client?.rateOfSaleAmount ?? null,
+    saleRateType:    client?.rateType ?? null,
   }
 }
