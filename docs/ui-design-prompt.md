@@ -137,7 +137,7 @@ Count badges: 18px tall pill, red `#E53935` with white 10.5px bold text; teal wh
 
 ### 2.5 Live behaviour
 
-Every list and dashboard refetches silently every 10 seconds, on socket push (new notification, new chat message, any sale change), when the tab regains focus, and when Refresh is pressed. No loading flash on silent refetches. A user is signed out after **10 minutes** of no mouse, key, scroll or touch activity, checked against the clock so it works after sleep. Sessions are per browser tab.
+Every list and dashboard refetches silently every 10 seconds, on socket push (new notification, new chat message, any sale change), when the tab regains focus, and when Refresh is pressed. No loading flash on silent refetches. A user is signed out after **20 minutes** of no mouse, key, scroll or touch activity, checked against the clock so it works after sleep. Sessions are per browser tab.
 
 ### 2.6 Responsive rules
 

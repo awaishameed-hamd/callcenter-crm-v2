@@ -93,7 +93,7 @@ Every route is under `/api` and needs a Bearer token, except `POST /api/auth/log
 - `lib/`: `api.ts` (axios with token refresh), `roles.ts`, `format.tsx`, `palette.ts` (all colours), `socket.ts`
 - `hooks/useAutoRefresh.ts`: refetches a page every 10 s, on notifications, on tab focus and when the refresh button is pressed; a hidden tab does not poll and catches up when shown. On screens without it (settings and forms) the refresh button reloads the page
 - `lib/live.ts` + API `modules/live/sales-events.ts`: any write to a sale pushes a `sales_changed` tick over the chat socket (websocket), and screens using `useAutoRefresh(..., { sales: true })` (dashboard, reports, approvals, my sales, sidebar counts) refetch at once
-- `hooks/useIdleLogout.ts`: signs a tab out after 10 minutes without mouse, keyboard, scroll or touch activity
+- `hooks/useIdleLogout.ts`: signs a tab out after 20 minutes without mouse, keyboard, scroll or touch activity
 - `lib/avatar.ts`: profile photos. The browser shrinks the picture and sends it to `PUT /api/profile/avatar`; the API keeps it under `UPLOAD_DIR/avatars` (users.avatar holds the file name) and serves it at `/api/files/avatar/:name`. The sidebar, Profile and chat all use it
 
 ### UI conventions

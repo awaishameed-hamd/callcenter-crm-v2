@@ -32,7 +32,7 @@ export default function LoginPage() {
   const [stage,      setStage]      = useState<'form' | 'attendance'>('form')
 
   // Remember me keeps the Email / User ID on this computer (never the password); the session itself
-  // stays per tab with the 10 minute idle sign-out
+  // stays per tab with the 20 minute idle sign-out
   useEffect(() => {
     try {
       const saved = localStorage.getItem(REMEMBER_KEY)
