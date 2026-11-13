@@ -47,7 +47,8 @@ const GROUPS: { key: Group; label: string; color: string }[] = [
 
 const AUTO_TICK: State[] = ['not_found', 'invalid_phone', 'already', 'rejected', 'duplicate', 'waiting_manager', 'empty']
 
-const cellBase: React.CSSProperties = { padding: '5px 9px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: 240 }
+const COL_W = 150   // every sheet column the same width, like a spreadsheet; long text ends in "…"
+const cellBase: React.CSSProperties = { padding: '5px 9px', borderRight: '1px solid #E2E8F0', borderBottom: '1px solid #E2E8F0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', maxWidth: COL_W }
 const RESULT_W = 600
 const saleLine = (s: SaleLite) => [s.phone, fmtDay(s.saleDate), s.agent].filter(Boolean).join(' · ')
 
@@ -302,7 +303,7 @@ export default function BatchApprove({ onClose, onChanged }: { onClose: () => vo
                 {Array.from({ length: sheet.cols }, (_, j) => {
                   const tag = tagOf(j)
                   return (
-                    <th key={j} style={{ ...cellBase, ...headCell, position: 'sticky', top: 0, zIndex: 2, minWidth: 90, background: tag ? withAlpha(tag.c, 0.1) : headCell.background }}>
+                    <th key={j} style={{ ...cellBase, ...headCell, position: 'sticky', top: 0, zIndex: 2, width: COL_W, minWidth: COL_W, maxWidth: COL_W, background: tag ? withAlpha(tag.c, 0.1) : headCell.background }}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>{colLetter(j)}{tag && <span style={{ fontSize: 9.5, fontWeight: 800, color: '#fff', background: tag.c, padding: '1px 6px', borderRadius: 3, letterSpacing: '0.04em' }}>{tag.t.toUpperCase()}</span>}</span>
                     </th>
                   )

@@ -24,7 +24,7 @@ export function BatchShell({ tone, toneTo, caption, title, controls, actions, on
   return (
     <div style={{ height: '100vh', boxSizing: 'border-box', display: 'flex', flexDirection: 'column', gap: 10, padding: `12px 20px 14px ${sidebarCollapsed ? 56 : 20}px`, background: P.bgMain, fontFamily: FONT, transition: 'padding .2s' }}>
       <div style={{
-        flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'nowrap', padding: '8px 10px 8px 10px', borderRadius: 40, color: '#fff', minWidth: 0,
+        flexShrink: 0, height: 54, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'nowrap', padding: '0 10px', borderRadius: 40, color: '#fff', minWidth: 0, overflow: 'hidden',
         background: `radial-gradient(120% 220% at 88% -60%, rgba(255,255,255,0.32) 0%, rgba(255,255,255,0) 46%), linear-gradient(100deg, ${tone} 0%, ${toneTo} 100%)`,
         boxShadow: `0 12px 26px -16px ${withAlpha(tone, 0.95)}`,
       }}>
@@ -43,7 +43,7 @@ export function BatchShell({ tone, toneTo, caption, title, controls, actions, on
       {children}
       {footer && (
         // The right end stays clear for the app's round floating button in the corner
-        <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', padding: '7px 64px 7px 20px', borderRadius: 40, background: '#fff', border: `1px solid ${P.border}`, boxShadow: '0 8px 20px -16px rgba(19,46,87,0.55)' }}>
+        <div style={{ flexShrink: 0, height: 50, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'nowrap', overflow: 'hidden', padding: '0 64px 0 20px', borderRadius: 40, background: '#fff', border: `1px solid ${P.border}`, boxShadow: '0 8px 20px -16px rgba(19,46,87,0.55)' }}>
           {footer}
         </div>
       )}
@@ -53,7 +53,7 @@ export function BatchShell({ tone, toneTo, caption, title, controls, actions, on
 
 /** A white rounded section bar under the header (column choices, filters). */
 export const Bar = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', padding: '6px 8px 6px 18px', borderRadius: 40, background: '#fff', border: `1px solid ${P.border}`, boxShadow: '0 6px 16px -14px rgba(19,46,87,0.5)' }}>
+  <div style={{ flexShrink: 0, height: 46, boxSizing: 'border-box', display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'nowrap', overflow: 'hidden', padding: '0 8px 0 18px', borderRadius: 40, background: '#fff', border: `1px solid ${P.border}`, boxShadow: '0 6px 16px -14px rgba(19,46,87,0.5)' }}>
     {children}
   </div>
 )
