@@ -102,12 +102,18 @@ const gaugeArc = (f1: number, f2: number) => {
   const [x1, y1] = gaugeAt(f1), [x2, y2] = gaugeAt(f2)
   return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${G.r} ${G.r} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`
 }
-// The needle drawn pointing at 0% (left): a long, thin, tapering pointer with a sharp tip just past
-// the outer edge of the arc and a flat base behind the centre. It is turned to the value by CSS,
-// so it sweeps up from 0% when the dashboard loads and glides when the figure changes.
+// The needle drawn pointing at 0% (left): a slim kite, sharp at both ends, with the tip just past
+// the outer edge of the arc and a short pointed tail behind the centre. Its two halves are two
+// shades of navy, so it reads crisp and solid without a blurred shadow. It is turned to the
+// value by CSS, so it sweeps up from 0% when the dashboard loads and glides when the figure changes.
 const NEEDLE = (() => {
-  const tip = G.r + G.stroke / 2 + 4, back = 7, half = 4.6
-  return [[G.cx - tip, G.cy], [G.cx + back, G.cy - half], [G.cx + back, G.cy + half]].map(p => p.join(',')).join(' ')
+  const tip = G.r + G.stroke / 2 + 4, tail = 13, wide = 5.2
+  const pt = (x: number, y: number) => `${x},${y}`
+  const T = pt(G.cx - tip, G.cy), B = pt(G.cx + tail, G.cy)
+  return {
+    top:    [T, pt(G.cx, G.cy - wide), B].join(' '),   // upper half, lit
+    bottom: [T, pt(G.cx, G.cy + wide), B].join(' '),   // lower half, in shade
+  }
 })()
 
 function AcceptanceGauge({ accepted, rejected }: { accepted: number; rejected: number }) {
@@ -135,9 +141,6 @@ function AcceptanceGauge({ accepted, rejected }: { accepted: number; rejected: n
             <stop offset="0%" stopColor="#2AA3B5" />
             <stop offset="100%" stopColor="#146C7A" />
           </linearGradient>
-          <filter id="needleShadow" x="-20%" y="-60%" width="140%" height="220%">
-            <feDropShadow dx="0" dy="1.4" stdDeviation="1.3" floodColor="#0F172A" floodOpacity="0.32" />
-          </filter>
         </defs>
         {GAUGE_ZONES.map((z, i) => (
           <path key={z.label} d={gaugeArc(z.from + (i ? gap : 0), z.to - (i < GAUGE_ZONES.length - 1 ? gap : 0))}
@@ -149,8 +152,9 @@ function AcceptanceGauge({ accepted, rejected }: { accepted: number; rejected: n
         {tick(0.8, '80%')}
         <text x={G.cx - G.r} y={G.cy + 11} textAnchor="middle" fontSize={7.5} fontWeight={600} fill="#94A3B8">0%</text>
         <text x={G.cx + G.r} y={G.cy + 11} textAnchor="middle" fontSize={7.5} fontWeight={600} fill="#94A3B8">100%</text>
-        <g style={{ transform: `rotate(${shown * 180}deg)`, transformOrigin: `${G.cx}px ${G.cy}px`, transition: 'transform 1.1s cubic-bezier(0.22, 1, 0.36, 1)' }} filter="url(#needleShadow)">
-          <polygon points={NEEDLE} fill="#2E333A" />
+        <g style={{ transform: `rotate(${shown * 180}deg)`, transformOrigin: `${G.cx}px ${G.cy}px`, transition: 'transform 1.1s cubic-bezier(0.22, 1, 0.36, 1)' }} shapeRendering="geometricPrecision">
+          <polygon points={NEEDLE.top} fill="#2B5A96" stroke="#2B5A96" strokeWidth={0.3} strokeLinejoin="miter" strokeMiterlimit={20} />
+          <polygon points={NEEDLE.bottom} fill="#132E57" stroke="#132E57" strokeWidth={0.3} strokeLinejoin="miter" strokeMiterlimit={20} />
         </g>
       </svg>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 1 }}>
