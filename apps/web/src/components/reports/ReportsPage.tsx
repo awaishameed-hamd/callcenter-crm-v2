@@ -5,7 +5,7 @@ import { CustomerStatus, Role, fullName } from '@crm/shared'
 import Toast from '@/components/ui/Toast'
 import PillSelect from '@/components/ui/PillSelect'
 import DataTable, { type Column } from '@/components/ui/DataTable'
-import { PageShell, PageHeader, FilterBar, FilterSep, FilterPills, FilterDate, FilterButton, FilterCount, SecondaryButton, DownloadIcon, ColumnPicker, Pager } from '@/components/ui/PageChrome'
+import { PageShell, PageHeader, FilterBar, FilterSep, FilterSearch, FilterDate, FilterButton, FilterCount, SecondaryButton, DownloadIcon, ColumnPicker, Pager } from '@/components/ui/PageChrome'
 import { P } from '@/lib/palette'
 import { useAuth } from '@/contexts/AuthContext'
 import { apiGet, downloadBlob } from '@/lib/api'
@@ -23,7 +23,7 @@ const PERIODS: { key: PeriodKey; label: string }[] = [
 ]
 const FROZEN: string[] = [CustomerStatus.FINAL_APPROVED, CustomerStatus.DISAPPROVED, CustomerStatus.FINAL_DISAPPROVED]
 type Col = { key: string; label: string; w: number; show: boolean; minW?: number }
-type Filters = { status: string; agentId: string; clientId: string; companyName: string; verticalType: string; dateFrom: string; dateTo: string }
+type Filters = { search: string; status: string; agentId: string; clientId: string; companyName: string; verticalType: string; dateFrom: string; dateTo: string }
 
 const snapDid     = (c: Customer) => (FROZEN.includes(c.status) && c.saleDidCode ? c.saleDidCode : c.client?.didCode) ?? null
 const snapCompany = (c: Customer) => (FROZEN.includes(c.status) && c.saleCompanyName ? c.saleCompanyName : c.client?.companyName) ?? null
@@ -195,8 +195,10 @@ export default function ReportsPage() {
   // v6: the Phone column was added, so saved column choices from before start fresh
   const LS_KEY = `reports_cols_v6_${user?.role ?? ''}`
 
-  const base: Filters = { status: '', agentId: '', clientId: '', companyName: '', verticalType: '', ...periodDates('today')! }
-  const [period, setPeriod]   = useState<PeriodKey>('today')
+  // Opens on This Week (user, 2026-11-14)
+  const base: Filters = { search: '', status: '', agentId: '', clientId: '', companyName: '', verticalType: '', ...periodDates('week')! }
+  const [period, setPeriod]   = useState<PeriodKey>('week')
+  const [searchInput, setSearchInput] = useState('')
   const [filters, setFilters] = useState<Filters>(base)
   const [agents, setAgents]   = useState<{ id: string; displayName: string; firstName?: string | null; midName?: string | null; lastName?: string | null }[]>([])
   const [dids, setDids]       = useState<{ id: string; didCode: string }[]>([])
@@ -251,13 +253,18 @@ export default function ReportsPage() {
 
   // Every filter applies as soon as it changes, the way argroup's filter bars work.
   const setF = (name: keyof Filters, value: string) => { setFilters(p => ({ ...p, [name]: value })); setPage(1) }
+  // The search box applies a moment after typing stops, not on every key
+  useEffect(() => {
+    const t = setTimeout(() => { if (searchInput.trim() !== filters.search) setF('search', searchInput.trim()) }, 350)
+    return () => clearTimeout(t)
+  }, [searchInput]) // eslint-disable-line react-hooks/exhaustive-deps
   const handlePeriod = (p: PeriodKey) => {
     setPeriod(p)
     const dates = periodDates(p)
     if (dates) { setFilters(prev => ({ ...prev, ...dates })); setPage(1) }
   }
-  const handleReset = () => { setFilters({ ...base, ...periodDates('today')! }); setPeriod('today'); setPage(1) }
-  const dirty = period !== 'today' || filters.status || filters.agentId || filters.clientId || filters.companyName || filters.verticalType
+  const handleReset = () => { setFilters({ ...base, ...periodDates('week')! }); setPeriod('week'); setSearchInput(''); setPage(1) }
+  const dirty = period !== 'week' || filters.search || filters.status || filters.agentId || filters.clientId || filters.companyName || filters.verticalType
 
   const handleExport = async () => {
     setExporting(true)
@@ -295,7 +302,10 @@ export default function ReportsPage() {
         } />
 
         <FilterBar>
-          <FilterPills value={period} onChange={handlePeriod} options={PERIODS.map(p => ({ value: p.key, label: p.label }))} />
+          <FilterSearch value={searchInput} onChange={setSearchInput} placeholder="Search name or phone..." width={210} />
+          <FilterSep />
+          <PillSelect value={period} onChange={v => handlePeriod(v as PeriodKey)} dimValue="week" minWidth={150} searchable={false}
+            options={PERIODS.map(p => ({ value: p.key, label: p.label }))} />
           {period === 'custom' && (
             <>
               <FilterDate value={filters.dateFrom} onChange={v => setF('dateFrom', v)} title="From" />
@@ -303,18 +313,18 @@ export default function ReportsPage() {
             </>
           )}
           <FilterSep />
-          <PillSelect value={filters.status} onChange={v => setF('status', v)} dimValue="" minWidth={160}
+          <PillSelect value={filters.status} onChange={v => setF('status', v)} dimValue="" minWidth={160} searchable
             options={[{ value: '', label: 'All Statuses' }, ...STATUS_OPTIONS.map(s => ({ value: s, label: STATUS_LABEL[s] }))]} />
-          <PillSelect value={filters.verticalType} onChange={v => setF('verticalType', v)} dimValue="" minWidth={130}
+          <PillSelect value={filters.verticalType} onChange={v => setF('verticalType', v)} dimValue="" minWidth={130} searchable
             options={[{ value: '', label: 'All Verticals' }, ...verticals.map(v => ({ value: v.name, label: v.name }))]} />
           {canSeeAgent && (
-            <PillSelect value={filters.agentId} onChange={v => setF('agentId', v)} dimValue="" minWidth={140}
+            <PillSelect value={filters.agentId} onChange={v => setF('agentId', v)} dimValue="" minWidth={140} searchable
               options={[{ value: '', label: 'All Agents' }, ...agents.map(a => ({ value: a.id, label: fullName(a) }))]} />
           )}
-          <PillSelect value={filters.clientId} onChange={v => setF('clientId', v)} dimValue="" minWidth={110}
+          <PillSelect value={filters.clientId} onChange={v => setF('clientId', v)} dimValue="" minWidth={110} searchable
             options={[{ value: '', label: 'All DIDs' }, ...dids.map(d => ({ value: d.id, label: d.didCode }))]} />
           {canSeeCompany && (
-            <PillSelect value={filters.companyName} onChange={v => setF('companyName', v)} dimValue="" minWidth={150}
+            <PillSelect value={filters.companyName} onChange={v => setF('companyName', v)} dimValue="" minWidth={150} searchable
               options={[{ value: '', label: 'All Clients' }, ...companies.map(c => ({ value: c, label: c }))]} />
           )}
           <FilterSep />

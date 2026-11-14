@@ -29,6 +29,21 @@ export class ReportsService {
     if (q.clientId) where.clientId = q.clientId
     if (q.companyName && FINAL_ROLES.includes(actor.role)) where.client = { companyName: q.companyName }
     if (q.verticalType) where.verticalType = q.verticalType
+    // The search box: customer name (any part) or phone, as typed or as digits only
+    const search = q.search?.trim().slice(0, 80)
+    if (search) {
+      const s = { contains: search, mode: 'insensitive' as const }
+      const digits = search.replace(/\D/g, '')
+      const words = search.split(/\s+/).filter(Boolean)
+      where.AND = [{
+        OR: [
+          { firstName: s }, { midName: s }, { lastName: s }, { phone: s },
+          ...(digits.length >= 3 && digits !== search ? [{ phone: { contains: digits } }] : []),
+          // "john smith": every word in some part of the name
+          ...(words.length > 1 ? [{ AND: words.map(w => ({ OR: [{ firstName: { contains: w, mode: 'insensitive' as const } }, { midName: { contains: w, mode: 'insensitive' as const } }, { lastName: { contains: w, mode: 'insensitive' as const } }] })) }] : []),
+        ],
+      }]
+    }
     return where
   }
 
