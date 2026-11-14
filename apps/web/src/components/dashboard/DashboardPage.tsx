@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, ComposedChart, Bar, Line, Area,
+  PieChart, Pie, Cell, ComposedChart, Bar, Line,
 } from 'recharts'
 import { Role } from '@crm/shared'
 import { useAuth } from '@/contexts/AuthContext'
@@ -52,9 +52,10 @@ const Empty = ({ text = 'No data' }: { text?: string }) => (
   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: 148, color: P.textMuted, fontSize: 11 }}>{text}</div>
 )
 const pct = (v: number, total: number) => (total > 0 ? Math.round((v / total) * 100) : 0)
+const sum = (data: Slice[]) => data.reduce((s, x) => s + x.value, 0)
 
-function Legendary({ data, colors, max = 85 }: { data: Slice[]; colors: string[]; max?: number }) {
-  const total = data.reduce((s, d) => s + d.value, 0)
+function Legendary({ data, colors, max = 85, of }: { data: Slice[]; colors: string[]; max?: number; of?: number }) {
+  const total = of ?? data.reduce((s, d) => s + d.value, 0)
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 7 }}>
       {data.map((d, i) => (
@@ -171,9 +172,9 @@ function AcceptanceGauge({ accepted, rejected }: { accepted: number; rejected: n
   )
 }
 
-function SaleTypeTreemap({ data }: { data: Slice[] }) {
+function SaleTypeTreemap({ data, of }: { data: Slice[]; of?: number }) {
   if (!data.length) return <Empty />
-  const total = data.reduce((s, d) => s + d.value, 0)
+  const total = of ?? sum(data)
   return (
     <div style={{ display: 'flex', height: 148, gap: 2, borderRadius: 4, overflow: 'hidden' }}>
       {data.map((d, i) => (
@@ -233,6 +234,21 @@ export default function DashboardPage() {
       breakdown: [{ label: 'By Agent', value: stats.rejectedByAgent }, { label: 'By Manager', value: stats.rejectedByManager }, { label: 'By Director', value: stats.rejectedByDirector }] },
   ]
 
+  // The first chart follows the period: today's shift by hour, this month's view by month (last
+  // 12), otherwise the last 7 days. All three share one look: navy bars and a gold approvals line.
+  const perf = period === 'daily'
+    ? { title: "Hourly Performance: Today's Shift (7 PM to 4 AM PKT)", data: d?.hourlyTrend ?? [], x: 'label', approvals: 'approved', bar: 18 }
+    : period === 'monthly'
+      ? { title: 'Monthly Performance: Submissions and Approvals (Last 12 Months)', data: d?.monthlyTrend ?? [], x: 'month', approvals: 'approvals', bar: 24 }
+      : { title: 'Daily Performance: Submissions and Approvals (Last 7 Days)', data: d?.trend ?? [], x: 'date', approvals: 'approved', bar: 24 }
+
+  // Pie slices too small to register (rounding to 0% of the chart) are left out of every chart
+  const visible = (data: Slice[]) => data.filter(x => pct(x.value, sum(data)) > 0)
+  const verticalPie = visible(d?.verticalPie ?? [])
+  const clientPie   = visible(d?.clientPie ?? [])
+  const cancelPie   = visible(d?.cancellationPie ?? [])
+  const saleTypes   = visible(d?.saleTypePie ?? [])
+
   return (
     <div style={{ background: P.bgMain, minHeight: '100vh', padding: '0 18px 14px', boxSizing: 'border-box', fontFamily: F }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', minHeight: 52, marginBottom: 8, flexWrap: 'wrap', gap: 8 }}>
@@ -276,37 +292,18 @@ export default function DashboardPage() {
 
       <div className={showLeaderboard ? 'grid grid-cols-1 lg:grid-cols-[1.5fr_1fr]' : 'grid grid-cols-1'} style={{ gap: 10, marginBottom: 10 }}>
         <div style={cardStyle}>
-          {period === 'daily' ? (
-            <>
-              <div style={titleStyle}>Hourly Performance: Today&apos;s Shift (7 PM to 4 AM PKT)</div>
-              <ResponsiveContainer width="100%" height={168}>
-                <ComposedChart data={d?.hourlyTrend ?? []} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={P.gridLine} vertical={false} />
-                  <XAxis dataKey="label" {...axisProps} />
-                  <YAxis {...axisProps} allowDecimals={false} />
-                  <Tooltip {...tooltipProps} />
-                  <Legend wrapperStyle={{ fontSize: 10, color: P.textLabel, paddingTop: 2 }} iconSize={8} />
-                  <Bar dataKey="submissions" name="Submissions" fill={P.navy} barSize={18} radius={[3, 3, 0, 0]} />
-                  <Line dataKey="approved" name="Approvals" stroke={P.gold} strokeWidth={2.5} dot={{ r: 3, fill: P.gold, strokeWidth: 0 }} activeDot={{ r: 4 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </>
-          ) : (
-            <>
-              <div style={titleStyle}>Daily Performance: Submissions and Approvals (Last 7 Days)</div>
-              <ResponsiveContainer width="100%" height={168}>
-                <ComposedChart data={d?.trend ?? []} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke={P.gridLine} vertical={false} />
-                  <XAxis dataKey="date" {...axisProps} />
-                  <YAxis {...axisProps} allowDecimals={false} />
-                  <Tooltip {...tooltipProps} labelFormatter={(l, payload) => (payload?.[0]?.payload as { full?: string })?.full ?? String(l)} />
-                  <Legend wrapperStyle={{ fontSize: 10, color: P.textLabel, paddingTop: 2 }} iconSize={8} />
-                  <Bar dataKey="submissions" name="Submissions" fill={P.navy} barSize={24} radius={[3, 3, 0, 0]} />
-                  <Line dataKey="approved" name="Approvals" stroke={P.gold} strokeWidth={2.5} dot={{ r: 3, fill: P.gold, strokeWidth: 0 }} activeDot={{ r: 4 }} />
-                </ComposedChart>
-              </ResponsiveContainer>
-            </>
-          )}
+          <div style={titleStyle}>{perf.title}</div>
+          <ResponsiveContainer width="100%" height={168}>
+            <ComposedChart data={perf.data} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke={P.gridLine} vertical={false} />
+              <XAxis dataKey={perf.x} {...axisProps} />
+              <YAxis {...axisProps} allowDecimals={false} />
+              <Tooltip {...tooltipProps} labelFormatter={(l, payload) => (payload?.[0]?.payload as { full?: string })?.full ?? String(l)} />
+              <Legend wrapperStyle={{ fontSize: 10, color: P.textLabel, paddingTop: 2 }} iconSize={8} />
+              <Bar dataKey="submissions" name="Submissions" fill={P.navy} maxBarSize={perf.bar} radius={[3, 3, 0, 0]} />
+              <Line dataKey={perf.approvals} name="Approvals" stroke={P.gold} strokeWidth={2.5} dot={{ r: 3, fill: P.gold, strokeWidth: 0 }} activeDot={{ r: 4 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
         </div>
 
         {showLeaderboard && (
@@ -360,21 +357,21 @@ export default function DashboardPage() {
 
         <div style={cardStyle}>
           <div style={titleStyle}>Sales by Vertical</div>
-          {(d?.verticalPie ?? []).length === 0 ? <Empty /> : (
+          {verticalPie.length === 0 ? <Empty /> : (
             <div style={{ display: 'flex', gap: 12, alignItems: 'center', justifyContent: 'center' }}>
-              <PieBox data={d!.verticalPie} colors={d!.verticalPie.map(s => colorOf(verticals, s.name))} inner={46}
-                center={<><div style={{ fontSize: 22, fontWeight: 700, color: P.navy, lineHeight: 1 }}>{d!.verticalPie.reduce((s, x) => s + x.value, 0)}</div><div style={{ fontSize: 7.5, color: P.textMuted, letterSpacing: '0.08em', marginTop: 2 }}>TOTAL</div></>} />
-              <Legendary data={d!.verticalPie} colors={d!.verticalPie.map(s => colorOf(verticals, s.name))} max={120} />
+              <PieBox data={verticalPie} colors={verticalPie.map(s => colorOf(verticals, s.name))} inner={46}
+                center={<><div style={{ fontSize: 22, fontWeight: 700, color: P.navy, lineHeight: 1 }}>{sum(d!.verticalPie)}</div><div style={{ fontSize: 7.5, color: P.textMuted, letterSpacing: '0.08em', marginTop: 2 }}>TOTAL</div></>} />
+              <Legendary data={verticalPie} colors={verticalPie.map(s => colorOf(verticals, s.name))} max={120} of={sum(d!.verticalPie)} />
             </div>
           )}
         </div>
 
         <div style={cardStyle}>
           <div style={titleStyle}>Sales by Client (Approved)</div>
-          {(d?.clientPie ?? []).length === 0 ? <Empty text="No approved sales" /> : (
+          {clientPie.length === 0 ? <Empty text="No approved sales" /> : (
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'center' }}>
-              <PieBox data={d!.clientPie} colors={CHART_COLORS} />
-              <Legendary data={d!.clientPie} colors={CHART_COLORS} />
+              <PieBox data={clientPie} colors={CHART_COLORS} />
+              <Legendary data={clientPie} colors={CHART_COLORS} of={sum(d!.clientPie)} />
             </div>
           )}
         </div>
@@ -383,14 +380,14 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3" style={{ gap: 10, marginBottom: 10 }}>
         <div style={cardStyle}>
           <div style={titleStyle}>Sale Type (CPA vs CPL)</div>
-          <SaleTypeTreemap data={d?.saleTypePie ?? []} />
+          <SaleTypeTreemap data={saleTypes} of={sum(d?.saleTypePie ?? [])} />
         </div>
         <div style={cardStyle}>
           <div style={titleStyle}>Cancellation Reasons</div>
-          {(d?.cancellationPie ?? []).length === 0 ? <Empty text="No cancellation data" /> : (
+          {cancelPie.length === 0 ? <Empty text="No cancellation data" /> : (
             <div style={{ display: 'flex', gap: 10, alignItems: 'center', justifyContent: 'center' }}>
-              <PieBox data={d!.cancellationPie} colors={CANCEL_COLORS} />
-              <Legendary data={d!.cancellationPie} colors={CANCEL_COLORS} />
+              <PieBox data={cancelPie} colors={CANCEL_COLORS} />
+              <Legendary data={cancelPie} colors={CANCEL_COLORS} of={sum(d!.cancellationPie)} />
             </div>
           )}
         </div>
@@ -399,23 +396,6 @@ export default function DashboardPage() {
           <AcceptanceGauge accepted={stats.approvedByDirector} rejected={stats.rejectedByDirector} />
         </div>
       </div>
-
-      {period === 'monthly' && (
-        <div style={{ ...cardStyle, marginBottom: 10 }}>
-          <div style={titleStyle}>Monthly Performance: Last 12 Months</div>
-          <ResponsiveContainer width="100%" height={148}>
-            <ComposedChart data={d?.monthlyTrend ?? []} margin={{ top: 6, right: 8, left: -22, bottom: 0 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke={P.gridLine} vertical={false} />
-              <XAxis dataKey="month" {...axisProps} />
-              <YAxis {...axisProps} allowDecimals={false} />
-              <Tooltip {...tooltipProps} />
-              <Legend wrapperStyle={{ fontSize: 10, color: P.textLabel, paddingTop: 2 }} iconSize={8} />
-              <Area type="monotone" dataKey="approvals" name="Approvals" fill={P.teal} fillOpacity={0.12} stroke={P.teal} strokeWidth={2} />
-              <Bar dataKey="submissions" name="Submissions" fill={P.navy} barSize={16} radius={[2, 2, 0, 0]} />
-            </ComposedChart>
-          </ResponsiveContainer>
-        </div>
-      )}
 
       {showDateModal && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(6,19,33,0.55)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 9999 }} onClick={() => setShowDateModal(false)}>
