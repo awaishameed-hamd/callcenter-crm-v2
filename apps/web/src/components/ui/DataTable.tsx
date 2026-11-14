@@ -106,7 +106,7 @@ export default function DataTable<T>({
         <thead style={stickyHeader ? { position: 'sticky', top: 0, zIndex: 10 } : undefined}>
           <tr style={{ background: '#F2AC18' }}>
             {columns.map(c => (
-              <th key={c.key} style={{ ...th, textAlign: c.align ?? 'left', ...c.headerStyle }}>
+              <th key={c.key} style={{ ...th, ...c.headerStyle, textAlign: 'center' }}>
                 {c.label}
                 {c.resizable !== false && (
                   <span onMouseDown={e => onResizeStart(c.key, e)} style={{
