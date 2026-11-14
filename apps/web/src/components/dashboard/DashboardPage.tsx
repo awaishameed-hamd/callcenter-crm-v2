@@ -84,6 +84,60 @@ function PieBox({ data, colors, inner, center }: { data: Slice[]; colors: string
   )
 }
 
+// ── Client acceptance gauge ─────────────────────────────────────────────────────
+// Of the sales the client decided on in the period (final approved or final rejected by the
+// director after the client's report), the share it accepted. Zones: under 60% low, 60 to 80%
+// watch, 80% and over good; the word under the figure says which, so colour is never alone.
+const GAUGE_ZONES = [
+  { from: 0,    to: 0.6, color: '#E3E7EC', label: 'Low',   hint: 'Under 60%' },
+  { from: 0.6,  to: 0.8, color: '#A5D8DD', label: 'Watch', hint: '60% to 80%' },
+  { from: 0.8,  to: 1,   color: P.teal,    label: 'Good',  hint: '80% and over' },
+]
+function AcceptanceGauge({ accepted, rejected }: { accepted: number; rejected: number }) {
+  const decided = accepted + rejected
+  if (!decided) return <Empty text="No client decisions in this period" />
+  const share = accepted / decided
+  const rate  = Math.round(share * 100)
+  const zone  = GAUGE_ZONES.find(z => share < z.to) ?? GAUGE_ZONES[GAUGE_ZONES.length - 1]
+  const cx = 110, cy = 100, r = 78, stroke = 22
+  const at = (f: number, radius = r) => {   // 0 = left end, 1 = right end, over the top
+    const a = Math.PI * (1 - f)
+    return [cx + radius * Math.cos(a), cy - radius * Math.sin(a)]
+  }
+  const gap = 0.008                          // a thin surface gap between the zones
+  const arc = (f1: number, f2: number) => {
+    const [x1, y1] = at(f1), [x2, y2] = at(f2)
+    return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`
+  }
+  const [nx, ny] = at(share, r - 4)
+  const summary = `${accepted} accepted, ${rejected} rejected by the client (${rate}%)`
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: 148, justifyContent: 'center' }}>
+      <svg viewBox="0 0 220 112" style={{ width: '100%', maxWidth: 230, height: 'auto', display: 'block' }} role="img" aria-label={`Client acceptance ${summary}`}>
+        <title>{summary}</title>
+        {GAUGE_ZONES.map((z, i) => (
+          <path key={z.label} d={arc(z.from + (i ? gap : 0), z.to - (i < GAUGE_ZONES.length - 1 ? gap : 0))} fill="none" stroke={z.color} strokeWidth={stroke}>
+            <title>{`${z.label}: ${z.hint}`}</title>
+          </path>
+        ))}
+        <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={P.navy} strokeWidth={5} strokeLinecap="round" />
+        <circle cx={cx} cy={cy} r={7} fill={P.navy} />
+        <circle cx={cx} cy={cy} r={2.5} fill="#fff" />
+      </svg>
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 2 }}>
+        <span style={{ fontSize: 24, fontWeight: 700, color: P.navy, lineHeight: 1, fontFamily: F }}>{rate}%</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: P.textLabel }}>
+          <span style={{ width: 8, height: 8, borderRadius: 2, background: zone.color, border: zone.label === 'Low' ? `1px solid ${P.border}` : 'none' }} />
+          {zone.label}
+        </span>
+      </div>
+      <div style={{ fontSize: 10.5, color: P.textMuted, marginTop: 4, fontFamily: F }}>
+        <b style={{ color: P.navy }}>{accepted}</b> accepted · <b style={{ color: P.navy }}>{rejected}</b> rejected by client
+      </div>
+    </div>
+  )
+}
+
 function SaleTypeTreemap({ data }: { data: Slice[] }) {
   if (!data.length) return <Empty />
   const total = data.reduce((s, d) => s + d.value, 0)
@@ -304,6 +358,10 @@ export default function DashboardPage() {
               <Legendary data={d!.cancellationPie} colors={CANCEL_COLORS} />
             </div>
           )}
+        </div>
+        <div style={cardStyle}>
+          <div style={titleStyle}>Client Acceptance Rate</div>
+          <AcceptanceGauge accepted={stats.approvedByDirector} rejected={stats.rejectedByDirector} />
         </div>
       </div>
 
