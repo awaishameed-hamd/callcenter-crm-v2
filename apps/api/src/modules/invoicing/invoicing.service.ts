@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common'
 import { Prisma } from '@prisma/client'
-import { CustomerStatus } from '@crm/shared'
+import { CustomerStatus, fullName } from '@crm/shared'
 import { PrismaService } from '../prisma/prisma.service'
 import { V, fail } from '../../common/utils/validate'
 import {
@@ -34,7 +34,7 @@ export class InvoicingService {
     const createdAt = range ? dayRangeUtc(range.from, range.to, BUSINESS_TZ) : undefined
 
     const customerInclude = {
-      agent:  { select: { id: true, userCode: true, displayName: true } },
+      agent:  { select: { id: true, userCode: true, displayName: true, firstName: true, midName: true, lastName: true } },
       client: { select: { id: true, companyName: true, didCode: true, rateOfSaleAmount: true, rateType: true } },
     } satisfies Prisma.CustomerInclude
 
@@ -59,7 +59,7 @@ export class InvoicingService {
       type === 'vertical' ? `v_${c.verticalType ?? 'N/A'}` : `cu_${c.id}`
     const label = (c: Cust) =>
       type === 'client'   ? { label: c.client?.companyName ?? 'Unknown Client', sublabel: c.client?.didCode ?? '' } :
-      type === 'agent'    ? { label: c.agent?.displayName ?? 'Unknown Agent', sublabel: c.agent?.userCode ?? '' } :
+      type === 'agent'    ? { label: (c.agent && fullName(c.agent)) || 'Unknown Agent', sublabel: c.agent?.userCode ?? '' } :
       type === 'vertical' ? { label: c.verticalType ?? 'N/A', sublabel: '' } :
                             { label: `${c.firstName} ${c.lastName}`.trim(), sublabel: c.customerCode ?? '' }
 

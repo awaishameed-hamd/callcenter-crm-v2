@@ -1,19 +1,23 @@
 'use client'
 
-// The Laravel Revenue Report, kept beside Billing & Payments: per client, agent and vertical,
-// what is expected (manager approved, at the client's fixed rate), confirmed (final approved, at
-// the frozen sale rate) and invoiced (on issued invoices). US dollars.
+// The Laravel Revenue Report, kept beside Billing & Payments: per client, agent or vertical (picked
+// in the filter bar), what is expected (manager approved, at the client's fixed rate), confirmed
+// (final approved, at the frozen sale rate) and invoiced (sales on issued invoices). US dollars.
 
 import { useState, useEffect, useCallback } from 'react'
 import { apiGet } from '@/lib/api'
 import { useAutoRefresh } from '@/hooks/useAutoRefresh'
 import PillSelect from '@/components/ui/PillSelect'
-import { PageShell, PageHeader, FilterBar, FilterSep, FilterDate } from '@/components/ui/PageChrome'
+import DataTable from '@/components/ui/DataTable'
+import { PageShell, PageHeader, FilterBar, FilterSep, FilterPills, FilterDate, FilterCount } from '@/components/ui/PageChrome'
 import { usd } from '@/lib/format'
 import { P } from '@/lib/palette'
 
 type RevenueRow = { label: string; sublabel: string; expected: number; confirmed: number; invoice: number }
+type GroupBy = 'client' | 'agent' | 'vertical'
 
+const GROUPS = [['client', 'Client wise'], ['agent', 'Agent wise'], ['vertical', 'Vertical wise']] as const
+const NAME_LABEL: Record<GroupBy, string> = { client: 'Client', agent: 'Agent', vertical: 'Vertical' }
 const PERIODS = [
   { value: 'today', label: 'Today' }, { value: 'week', label: 'This Week' }, { value: 'month', label: 'This Month' },
   { value: 'all', label: 'All Time' }, { value: 'custom', label: 'Custom' },
@@ -21,96 +25,79 @@ const PERIODS = [
 const ORANGE = '#C25A1F', GREEN = '#3A6B3A'
 const F = "'Aptos', sans-serif"
 
-function RevenueTable({ title, rows, loading }: { title: string; rows: RevenueRow[]; loading: boolean }) {
-  const total = rows.reduce((t, r) => ({ expected: t.expected + (r.expected ?? 0), confirmed: t.confirmed + (r.confirmed ?? 0), invoice: t.invoice + (r.invoice ?? 0) }), { expected: 0, confirmed: 0, invoice: 0 })
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
-      <div className="px-4 py-2.5 flex items-center justify-between flex-shrink-0" style={{ background: 'linear-gradient(135deg, #3D4A5C 0%, #4A5568 100%)', borderBottom: '1px solid #2D3748' }}>
-        <span className="text-sm font-black text-white" style={{ fontFamily: F, letterSpacing: '0.06em' }}>{title}</span>
-        <span className="text-xs font-bold px-2 py-0.5 rounded-full" style={{ background: 'rgba(255,255,255,0.18)', color: '#fff' }}>{loading ? '...' : `${rows.length} rows`}</span>
-      </div>
-      <div className="grid grid-cols-4 border-b border-gray-100" style={{ background: 'rgba(19,46,87,0.04)' }}>
-        {['Name', 'Expected', 'Confirmed', 'Invoiced'].map(h => (
-          <div key={h} className="px-3 py-1.5 text-xs font-bold uppercase tracking-wider" style={{ color: P.navy, opacity: 0.55, fontFamily: F }}>{h}</div>
-        ))}
-      </div>
-      <div className="flex-1 overflow-y-auto" style={{ maxHeight: 320 }}>
-        {loading ? Array.from({ length: 6 }).map((_, i) => (
-          <div key={i} className={`grid grid-cols-4 px-3 py-2 ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/40'}`}>
-            {[1, 2, 3, 4].map(c => <div key={c} className="h-3 bg-gray-100 rounded animate-pulse w-4/5" />)}
-          </div>
-        )) : rows.length === 0 ? (
-          <div className="py-8 text-center text-xs text-gray-400">No data for this period.</div>
-        ) : rows.map((row, i) => (
-          <div key={i} className={`grid grid-cols-4 hover:bg-blue-50/40 transition-colors ${i % 2 === 0 ? 'bg-white' : 'bg-gray-50/30'}`}>
-            <div className="px-3 py-2 border-b border-gray-50 min-w-0">
-              <div className="text-xs font-semibold text-gray-800 truncate" title={row.label}>{row.label}</div>
-              {row.sublabel && <div className="text-[10px] font-mono text-gray-400 truncate">{row.sublabel}</div>}
-            </div>
-            <div className="px-3 py-2 border-b border-gray-50 flex items-center"><span className="text-xs font-bold" style={{ color: ORANGE }}>{usd(row.expected)}</span></div>
-            <div className="px-3 py-2 border-b border-gray-50 flex items-center"><span className="text-xs font-bold" style={{ color: P.teal }}>{usd(row.confirmed)}</span></div>
-            <div className="px-3 py-2 border-b border-gray-50 flex items-center"><span className="text-xs font-bold" style={{ color: GREEN }}>{usd(row.invoice)}</span></div>
-          </div>
-        ))}
-      </div>
-      {rows.length > 0 && !loading && (
-        <div className="grid grid-cols-4 border-t-2 flex-shrink-0" style={{ borderColor: '#3D4A5C', background: 'rgba(19,46,87,0.04)' }}>
-          <div className="px-3 py-2 text-xs font-black uppercase tracking-wide" style={{ color: P.navy }}>Total</div>
-          {[total.expected, total.confirmed, total.invoice].map((v, ci) => (
-            <div key={ci} className="px-3 py-2 flex items-center"><span className="text-xs font-black" style={{ color: [ORANGE, P.teal, GREEN][ci] }}>{usd(v)}</span></div>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 export default function RevenueReportPage() {
-  const [period, setPeriod] = useState('month')
+  const [group, setGroup]     = useState<GroupBy>('client')
+  const [period, setPeriod]   = useState('month')
   const [fromDate, setFromDate] = useState('')
-  const [toDate, setToDate] = useState('')
-  const [rows, setRows] = useState<Record<'client' | 'agent' | 'vertical', RevenueRow[]>>({ client: [], agent: [], vertical: [] })
+  const [toDate, setToDate]   = useState('')
+  const [rows, setRows]       = useState<RevenueRow[]>([])
   const [loading, setLoading] = useState(false)
 
-  const fetchAll = useCallback(async (silent = false) => {
+  const fetchRows = useCallback(async (silent = false) => {
     if (period === 'custom' && (!fromDate || !toDate)) return
     if (!silent) setLoading(true)
     try {
-      const base = { period, fromDate: fromDate || undefined, toDate: toDate || undefined }
-      const [c, a, v] = await Promise.all((['client', 'agent', 'vertical'] as const).map(type =>
-        apiGet<{ rows: RevenueRow[] }>('/invoicing/revenue-report', { ...base, type })))
-      setRows({ client: c.rows ?? [], agent: a.rows ?? [], vertical: v.rows ?? [] })
+      const r = await apiGet<{ rows: RevenueRow[] }>('/invoicing/revenue-report', { type: group, period, fromDate: fromDate || undefined, toDate: toDate || undefined })
+      setRows(r.rows ?? [])
     } catch {
-      if (!silent) setRows({ client: [], agent: [], vertical: [] })
+      if (!silent) setRows([])
     } finally { if (!silent) setLoading(false) }
-  }, [period, fromDate, toDate])
+  }, [group, period, fromDate, toDate])
 
-  useEffect(() => { fetchAll() }, [fetchAll])
-  useAutoRefresh(() => fetchAll(true), { sales: true })
+  useEffect(() => { fetchRows() }, [fetchRows])
+  useAutoRefresh(() => fetchRows(true), { sales: true })
+
+  const total = rows.reduce((t, r) => ({ expected: t.expected + (r.expected ?? 0), confirmed: t.confirmed + (r.confirmed ?? 0), invoice: t.invoice + (r.invoice ?? 0) }), { expected: 0, confirmed: 0, invoice: 0 })
+  const foot: React.CSSProperties = { padding: '9px 12px', fontSize: 13, fontWeight: 900, fontFamily: F, background: '#FEF6E0', borderTop: '2px solid #F2AC18', whiteSpace: 'nowrap' }
 
   return (
     <PageShell>
       <PageHeader title="Revenue Report" />
       <FilterBar>
+        <FilterPills value={group} onChange={v => setGroup(v as GroupBy)} options={GROUPS} />
+        <FilterSep />
         <PillSelect value={period} onChange={setPeriod} dimValue="month" minWidth={140} options={PERIODS} />
         {period === 'custom' && (
           <>
-            <FilterSep />
             <FilterDate value={fromDate} onChange={setFromDate} title="From" />
             <span style={{ color: 'rgba(255,255,255,0.8)', fontSize: 11, fontWeight: 700 }}>to</span>
             <FilterDate value={toDate} onChange={setToDate} title="To" />
           </>
         )}
-        <span style={{ flex: 1 }} />
-        <span style={{ fontSize: 11.5, color: 'rgba(255,255,255,0.9)', fontWeight: 600, padding: '0 6px' }}>
-          Expected: manager approved · Confirmed: final approved · Invoiced: on issued invoices
-        </span>
+        {!loading && <FilterCount>{rows.length} {rows.length === 1 ? 'row' : 'rows'}</FilterCount>}
       </FilterBar>
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4" style={{ marginTop: 8 }}>
-        <RevenueTable title="Client-wise Revenue" rows={rows.client} loading={loading} />
-        <RevenueTable title="Agent-wise Revenue" rows={rows.agent} loading={loading} />
-        <RevenueTable title="Vertical-wise Revenue" rows={rows.vertical} loading={loading} />
-      </div>
+
+      <DataTable
+        id="revenueReport" minWidth={760} rows={rows} loading={loading}
+        rowKey={(r: RevenueRow, i: number) => `${r.label}|${r.sublabel}|${i}`}
+        emptyText="No sales in this period."
+        columns={[
+          { key: 'n', label: '#', width: 50, align: 'right', resizable: false, cellStyle: { color: P.textMuted }, render: (_r: RevenueRow, i: number) => i + 1 },
+          { key: 'label', label: NAME_LABEL[group], width: 280, render: (r: RevenueRow) => (
+            <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
+              <span style={{ fontWeight: 700, color: P.navy, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label}</span>
+              {r.sublabel && <span style={{ fontSize: 11.5, color: P.textMuted }}>{r.sublabel}</span>}
+            </span>
+          ) },
+          { key: 'expected', label: 'Expected', width: 150, align: 'right', render: (r: RevenueRow) => <span style={{ fontWeight: 700, color: ORANGE }}>{usd(r.expected)}</span> },
+          { key: 'confirmed', label: 'Confirmed', width: 150, align: 'right', render: (r: RevenueRow) => <span style={{ fontWeight: 700, color: P.teal }}>{usd(r.confirmed)}</span> },
+          { key: 'invoice', label: 'Invoiced', width: 150, align: 'right', render: (r: RevenueRow) => <span style={{ fontWeight: 700, color: GREEN }}>{usd(r.invoice)}</span> },
+        ]}
+        footer={!loading && rows.length > 0 ? (
+          <tfoot>
+            <tr>
+              <td style={foot} />
+              <td style={{ ...foot, color: P.navy, textTransform: 'uppercase', letterSpacing: '0.06em' }}>Total</td>
+              <td style={{ ...foot, textAlign: 'right', color: ORANGE }}>{usd(total.expected)}</td>
+              <td style={{ ...foot, textAlign: 'right', color: P.teal }}>{usd(total.confirmed)}</td>
+              <td style={{ ...foot, textAlign: 'right', color: GREEN }}>{usd(total.invoice)}</td>
+            </tr>
+          </tfoot>
+        ) : null}
+      />
+      <p style={{ margin: '8px 2px 0', fontSize: 11.5, color: P.textMuted, fontFamily: F }}>
+        Expected: manager approved sales at the client&apos;s fixed rate. Confirmed: final approved sales at their rate. Invoiced: sales on issued invoices.
+      </p>
     </PageShell>
   )
 }
