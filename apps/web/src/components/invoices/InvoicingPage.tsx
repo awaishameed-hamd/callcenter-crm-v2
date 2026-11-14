@@ -242,6 +242,17 @@ export default function InvoicingPage() {
                 {ledger?.client?.businessName ?? ledger?.client?.user?.fullName ?? 'Client Account'}
               </h1>
             )}
+            {/* The client's billing terms, beside its name so the tab bar stays on one line */}
+            {selectedId !== null && ledger?.client?.cycleOfDay && (
+              <span title="Billing cycle" style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 10px', borderRadius: 20, background: '#E0F2F4', color: '#0E5F6E', flexShrink: 0 }}>
+                Every {ledger.client.cycleOfDay} days
+              </span>
+            )}
+            {selectedId !== null && ledger?.client?.rateType && (
+              <span style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 10px', borderRadius: 20, background: '#FEF3C7', color: '#92400E', flexShrink: 0 }}>
+                {ledger.client.rateType === 'variable' ? 'Variable rate' : `Fixed ${money(ledger.client.rateOfSaleAmount)}`}
+              </span>
+            )}
           </div>
 
           <div style={{ flex: 1, overflowY: 'auto', padding: '0 20px 20px', minWidth: 0 }}>
@@ -297,7 +308,7 @@ export default function InvoicingPage() {
               </div>
 
               {/* Tabs + period filter + actions */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: P.teal, borderRadius: 40, padding: '5px 8px', marginBottom: 14, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: P.teal, borderRadius: 40, padding: '5px 8px', marginBottom: 14, flexWrap: 'nowrap', overflowX: 'auto' }}>
                 {([['history', 'Account History'], ['invoices', `Invoices (${ledger.invoices.length})`], ['payments', `Payments (${ledger.payments.length})`], ['sales', `Sales (${sales.length})`]] as const).map(([k, l]) => (
                   <button key={k} onClick={() => setTab(k)} style={{
                     flexShrink: 0, padding: '4px 12px', borderRadius: 40, border: 'none', cursor: 'pointer',
@@ -325,17 +336,6 @@ export default function InvoicingPage() {
                 )}
 
                 <span style={{ flex: 1 }} />
-
-                {ledger.client?.cycleOfDay && (
-                  <span title="Billing cycle" style={{ fontSize: 10, fontWeight: 800, padding: '2px 9px', borderRadius: 20, background: '#E0F2F4', color: '#0E5F6E', flexShrink: 0 }}>
-                    Every {ledger.client.cycleOfDay} days
-                  </span>
-                )}
-                {ledger.client?.rateType && (
-                  <span style={{ fontSize: 10, fontWeight: 800, padding: '2px 9px', borderRadius: 20, background: '#FEF3C7', color: '#92400E', flexShrink: 0 }}>
-                    {ledger.client.rateType === 'variable' ? 'Variable rate' : `Fixed ${money(ledger.client.rateOfSaleAmount)}`}
-                  </span>
-                )}
 
                 <button onClick={() => setShowNewInvoice(true)}
                   style={{ flexShrink: 0, padding: '5px 14px', borderRadius: 30, border: `1px solid ${TEAL}`, cursor: 'pointer', fontSize: 12, fontWeight: 700, fontFamily: F, background: '#fff', color: TEAL }}>
