@@ -69,6 +69,17 @@ HR desk only (Admin, Director, HR Manager), under Interviews in the sidebar. Cod
 - **30 minute reminder:** a job runs every minute (`interview-reminders.service.ts`); for an interview starting within 30 minutes it notifies the HR managers only (not Admin or Director), with a bell notification and a popup (`InterviewReminder`, mounted in `AppLayout`) showing the phone, WhatsApp and "I Called Them". The popup is pushed over the socket (`modules/live/user-events.ts`) and also fetched on load.
 - **Interview Forms tab:** one form per role (Medicare, Final Expense, Auto, General Agent, Manager / Team Lead, plus walk-in versions are seeded by the migration). HR adds, removes, reorders and edits questions; a form already used is turned off instead of deleted.
 
+## Billing & Payments
+
+argroup's Invoicing & Payments ported to the call center (2026-11-14). Director and Admin only, US dollars, and separate from Accounting (nothing posts to the ledgers there). Code: API `modules/invoices` (and `modules/invoicing` for the Revenue Report), web `components/invoices`.
+
+- **Nothing is invoiced automatically.** Each client's billing clock starts at its first manager-approved sale (or first final-approved sale, per "Billing Starts After"); the first period lasts "Billing Starts After (Days)", every later one "Cycle (Days)". When a period ends with approved sales not invoiced yet, the directors and admins get an "Invoice due" notification (daily job at 00:15 US Eastern and on start-up, `invoice-scheduler.service.ts`; each period is announced once via `clients.cycleNotifiedThrough`).
+- **Invoices Due** (sidebar): clients whose period has ended with sales still to invoice, plus drafts. **Create Invoice / New Invoice**: pick the client and sale dates, tick the final-approved sales to bill (only ones not invoiced yet are listed, each at its frozen rate, editable), add a discount or a + / − adjustment, then Save Invoice (issued) or Save as Draft. A sale can be on one non-cancelled invoice only; cancelling or deleting an invoice frees its sales.
+- **Clients Ledgers**: per client the account history (period aware, opening balance brought forward), invoices, payments, and a Sales tab showing every final-approved sale as Invoiced / On a draft / Not invoiced with its invoice number and date. Receive Payment and Apply credit follow argroup: a payment belongs to the client, allocations put cash plus an optional discount against invoices, invoice totals are always rebuilt from the allocations, and money beyond the invoices is an Advance (credit) or a Bonus (kept). The opening balance is an OPENING invoice, set from the client's right-click menu or the client form.
+- **Invoicing Details**: every issued invoice with balance and how it stands today (not due, overdue, partially paid, paid).
+- **Invoice PDF**: the invoice sums the sales up by vertical, and **Annexure A** lists every sale it bills (customer, phone, sale date, state, vertical, rate) with a total that ties to the invoice. Agent names are not printed.
+- **Revenue Report**: the Laravel report (expected, confirmed, invoiced by client, agent and vertical).
+
 ## Where things live
 
 ### API (`apps/api/src`)
@@ -77,7 +88,7 @@ HR desk only (Admin, Director, HR Manager), under Interviews in the sidebar. Cod
 - `modules/<feature>/`: one folder per feature, each with a `*.controller.ts` (routes), `*.service.ts` (logic) and `*.module.ts`
   - `auth`, `users`, `customers` (sales and approvals), `clients` (clients and DIDs), `reports`, `dashboard`
   - `attendance`, `leaves`, `working-days`, `interviews`, `chat`, `notifications`, `files`
-  - `crm` (form builder and role changes), `invoicing`, `accounting`
+  - `crm` (form builder and role changes), `invoices` (Billing & Payments), `invoicing` (Revenue Report), `accounting`
 - `common/`: auth guards, decorators, the response wrapper (`{ success, data }`), and utils for time zones, validation and staff policy
 - `prisma/schema.prisma`: the database schema; `prisma/migrations/`: its history
 
@@ -87,7 +98,7 @@ Every route is under `/api` and needs a Bearer token, except `POST /api/auth/log
 
 - `app/(auth)/login`: login page
 - `app/(dashboard)/<role>/<page>/page.tsx`: one thin route file per role and page, each rendering a component from `components/`
-- `components/<area>/`: the actual screens (`sales`, `admin`, `reports`, `dashboard`, `attendance`, `leaves`, `interviews`, `chat`, `crm`, `invoicing`, `accounting`, `profile`)
+- `components/<area>/`: the actual screens (`sales`, `admin`, `reports`, `dashboard`, `attendance`, `leaves`, `interviews`, `chat`, `crm`, `invoices`, `accounting`, `profile`)
   - `components/layout/`: `AppLayout` (role routing), `Sidebar`, `RefreshButton`
   - `components/ui/`: shared building blocks: `PageChrome` (page title, teal filter bar, buttons, pager), `DataTable` (gold-header table), `StyledSelect`, `PillSelect`, `Toast`
 - `lib/`: `api.ts` (axios with token refresh), `roles.ts`, `format.tsx`, `palette.ts` (all colours), `socket.ts`

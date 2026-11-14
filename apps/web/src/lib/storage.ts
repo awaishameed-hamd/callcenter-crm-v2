@@ -3,7 +3,7 @@ import api from './api'
 // Files are stored on the API server's disk. What the database keeps is the
 // object key ("chat/<uuid>.ext"); fileHref turns a key into a link the browser can open.
 
-export type StorageFolder = 'chat' | 'misc' | 'cv'
+export type StorageFolder = 'chat' | 'misc' | 'cv' | 'payment-proofs'
 
 export interface UploadedFileInfo {
   url:      string

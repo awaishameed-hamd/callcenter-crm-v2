@@ -193,7 +193,7 @@ export class CustomersService {
       const note = c.reason && c.managerNote?.startsWith(c.reason) ? c.managerNote.slice(c.reason.length) : ''
       return { managerNote: `${reason}${note}`.slice(0, 255) }
     }
-    const billed = await this.prisma.invoiceItem.findFirst({ where: { customerId: c.id }, select: { invoice: { select: { invoiceNumber: true } } } })
+    const billed = await this.prisma.invoiceItem.findFirst({ where: { customerId: c.id, invoice: { status: { not: 'CANCELLED' } } }, select: { invoice: { select: { invoiceNumber: true } } } })
     if (billed) fail(`This sale is on invoice ${billed.invoice.invoiceNumber}. Remove it from the invoice before rejecting it.`)
     const clientId = data.clientId !== undefined ? data.clientId : c.clientId
     const client = clientId ? await this.prisma.client.findUnique({ where: { id: clientId } }) : null
@@ -267,7 +267,7 @@ export class CustomersService {
   async remove(id: string) {
     await this.load(id)
     // Deleting would silently take the sale off an invoice (the line cascades), so a billed sale stays
-    const billed = await this.prisma.invoiceItem.findFirst({ where: { customerId: id }, select: { invoice: { select: { invoiceNumber: true } } } })
+    const billed = await this.prisma.invoiceItem.findFirst({ where: { customerId: id, invoice: { status: { not: 'CANCELLED' } } }, select: { invoice: { select: { invoiceNumber: true } } } })
     if (billed) fail(`This sale is on invoice ${billed.invoice.invoiceNumber}. Remove it from the invoice first.`)
     await this.prisma.customer.delete({ where: { id } })
     return { message: 'Record permanently deleted.' }

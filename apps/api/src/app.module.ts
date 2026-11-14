@@ -15,6 +15,7 @@ import { DashboardModule }     from './modules/dashboard/dashboard.module'
 import { ReportsModule }       from './modules/reports/reports.module'
 import { CrmModule }           from './modules/crm/crm.module'
 import { InvoicingModule }     from './modules/invoicing/invoicing.module'
+import { InvoicesModule }      from './modules/invoices/invoices.module'
 import { AccountingModule }    from './modules/accounting/accounting.module'
 import { AttendanceModule }    from './modules/attendance/attendance.module'
 import { WorkingDaysModule }   from './modules/working-days/working-days.module'
@@ -39,6 +40,7 @@ import { FilesModule }         from './modules/files/files.module'
     ReportsModule,
     CrmModule,
     InvoicingModule,
+    InvoicesModule,
     AccountingModule,
     AttendanceModule,
     WorkingDaysModule,

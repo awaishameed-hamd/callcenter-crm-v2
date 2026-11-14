@@ -126,6 +126,12 @@ export function fmtLongDate(s: string): string {
   return `${DAYS_LONG[dow]}, ${MONTHS_LONG[m - 1]} ${d}, ${y}`
 }
 
+/** "21 Oct 2026" */
+export function fmtShortDate(s: string): string {
+  const { y, m, d } = parseYmd(s)
+  return `${pad(d)} ${MONTHS_SHORT[m - 1]} ${y}`
+}
+
 export function dayShort(s: string): string {
   const { y, m, d } = parseYmd(s)
   return DAYS_SHORT[new Date(Date.UTC(y, m - 1, d)).getUTCDay()]

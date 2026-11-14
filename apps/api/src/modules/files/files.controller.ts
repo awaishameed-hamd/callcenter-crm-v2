@@ -9,7 +9,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard'
 
-const FOLDERS = ['chat', 'misc', 'cv'] as const   // cv: candidate CVs for HR > Interviews
+const FOLDERS = ['chat', 'misc', 'cv', 'payment-proofs'] as const   // cv: candidate CVs for HR > Interviews; payment-proofs: Receive Payment
 const MAX_BYTES = 25 * 1024 * 1024
 const KEY_RE = /^(chat|misc|cv)\/[0-9a-f-]{36}(\.[a-z0-9]{1,8})?$/
 export const AVATAR_RE = /^[0-9a-f-]{36}\.(jpg|png|webp)$/

@@ -3,13 +3,14 @@ import { Prisma } from '@prisma/client'
 import { SALE_TYPES, RATE_TYPES } from '@crm/shared'
 import { PrismaService } from '../prisma/prisma.service'
 import { VerticalsService } from '../verticals/verticals.service'
+import { InvoicesService } from '../invoices/invoices.service'
 import { V, fail, defined, pageArgs, toPage } from '../../common/utils/validate'
 
 const didNumber = (code: string | null) => parseInt((code ?? '').slice(2), 10) || 0
 
 @Injectable()
 export class ClientsService {
-  constructor(private prisma: PrismaService, private verticals: VerticalsService) {}
+  constructor(private prisma: PrismaService, private verticals: VerticalsService, private invoices: InvoicesService) {}
 
   /** NewSale dropdown: active clients with a DID. Never exposes the company name. */
   async dropdown(campaign?: string) {
@@ -88,6 +89,7 @@ export class ClientsService {
     const client = await this.prisma.client.create({
       data: { ...(data as Prisma.ClientCreateInput), displayName: data.companyName as string },
     })
+    if (client.openingBalance && Number(client.openingBalance) > 0) await this.invoices.syncOpeningInvoice(client.id, Number(client.openingBalance))
     return { client }
   }
 
@@ -98,6 +100,10 @@ export class ClientsService {
     if (data.campaign !== undefined && data.campaign !== client.campaign) await this.verticals.assertCampaign(data.campaign as string)
     if (data.didCode !== undefined && data.didCode !== client.didCode) await this.assertDidFree(data.didCode as string | null, id)
     const updated = await this.prisma.client.update({ where: { id }, data: data as Prisma.ClientUpdateInput })
+    // The ledger reads the opening balance as an OPENING invoice; keep it in step with the form
+    if (data.openingBalance !== undefined && Number(updated.openingBalance ?? 0) !== Number(client.openingBalance ?? 0)) {
+      await this.invoices.syncOpeningInvoice(id, Number(updated.openingBalance ?? 0))
+    }
     return { client: updated }
   }
 

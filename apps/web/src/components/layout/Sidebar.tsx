@@ -43,6 +43,10 @@ const ICONS: Record<string, string> = {
   messages:    'M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z',
   interviews:  'M20.25 14.15v4.25c0 1.094-.787 2.036-1.872 2.18-2.087.277-4.216.42-6.378.42s-4.291-.143-6.378-.42c-1.085-.144-1.872-1.086-1.872-2.18v-4.25m16.5 0a2.18 2.18 0 00.75-1.661V8.706c0-1.081-.768-2.015-1.837-2.175a48.114 48.114 0 00-3.413-.387m4.5 8.006c-.194.165-.42.295-.673.38A23.978 23.978 0 0112 15.75c-2.648 0-5.195-.429-7.577-1.22a2.016 2.016 0 01-.673-.38m0 0A2.18 2.18 0 013 12.489V8.706c0-1.081.768-2.015 1.837-2.175a48.111 48.111 0 013.413-.387m7.5 0V5.25A2.25 2.25 0 0013.5 3h-3a2.25 2.25 0 00-2.25 2.25v.894m7.5 0a48.667 48.667 0 00-7.5 0M12 12.75h.008v.008H12v-.008z',
   profile:     'M17.982 18.725A7.488 7.488 0 0012 15.75a7.488 7.488 0 00-5.982 2.975m11.963 0a9 9 0 10-11.963 0m11.963 0A8.966 8.966 0 0112 21a8.966 8.966 0 01-5.982-2.275M15 9.75a3 3 0 11-6 0 3 3 0 016 0z',
+  invoicesDue: 'M12 6v6h4.5m4.5 0a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z',
+  ledgers:     'M19.5 14.25v-2.625a3.375 3.375 0 0 0-3.375-3.375h-1.5A1.125 1.125 0 0 1 13.5 7.125v-1.5a3.375 3.375 0 0 0-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 0 0-9-9Z',
+  invDetails:  'M3.75 12h16.5m-16.5 3.75h16.5M3.75 19.5h16.5M5.625 4.5h12.75a1.875 1.875 0 0 1 0 3.75H5.625a1.875 1.875 0 0 1 0-3.75Z',
+  revenue:     'M2.25 18 9 11.25l4.306 4.306a11.95 11.95 0 0 1 5.814-5.518l2.74-1.22m0 0-5.94-2.281m5.94 2.28-2.28 5.941',
   logout:      'M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15M12 9l-3 3m0 0l3 3m-3-3h12.75',
 }
 
@@ -65,7 +69,10 @@ function navFor(user: NonNullable<ReturnType<typeof useAuth>['user']>): NavItem[
       it('dailyAtt', 'Daily Attendance', `${b}/attendance/daily`),
       it('interviews', 'Interviews', `${b}/interviews`),
       it('accounting', 'Accounting', `${b}/accounting`),
-      it('invoicing', 'Invoicing & Payments', `${b}/invoicing`),
+      it('invoicesDue', 'Invoices Due', `${b}/invoices-due`),
+      it('ledgers', 'Clients Ledgers', `${b}/invoicing`),
+      it('invDetails', 'Invoicing Details', `${b}/invoicing-details`),
+      it('revenue', 'Revenue Report', `${b}/revenue-report`),
       it('crm', 'CRM Management', `${b}/crm`),
       it('messages', 'Chats', `${b}/messages`),
       it('profile', 'Profile', `${b}/profile`),
@@ -80,7 +87,10 @@ function navFor(user: NonNullable<ReturnType<typeof useAuth>['user']>): NavItem[
       it('attApproval', 'Attendance Approval', `${b}/attendance/approval`),
       it('dailyAtt', 'Daily Attendance', `${b}/attendance/daily`),
       it('interviews', 'Interviews', `${b}/interviews`),
-      it('invoicing', 'Invoicing & Payments', `${b}/invoicing`),
+      it('invoicesDue', 'Invoices Due', `${b}/invoices-due`),
+      it('ledgers', 'Clients Ledgers', `${b}/invoicing`),
+      it('invDetails', 'Invoicing Details', `${b}/invoicing-details`),
+      it('revenue', 'Revenue Report', `${b}/revenue-report`),
       it('messages', 'Chats', `${b}/messages`),
       it('profile', 'Profile', `${b}/profile`),
     ]
@@ -233,7 +243,7 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
   }
 
   // ── Badges ──
-  const [counts, setCounts] = useState({ attApproval: 0, messages: 0, approvals: 0 })
+  const [counts, setCounts] = useState({ attApproval: 0, messages: 0, approvals: 0, invoicesDue: 0 })
   const fetchCounts = useCallback(() => {
     if (!user) return
     // Approvals badge: the queue this user acts on (Manager Approval for QA/Floor managers,
@@ -243,6 +253,13 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
       api.get('/customers/counts').then(r => {
         const d = r.data?.data ?? r.data
         setCounts(c => ({ ...c, approvals: d?.[queue] ?? 0 }))
+      }).catch(() => {})
+    }
+    // Invoices Due badge: clients whose billing period ended with sales still to invoice
+    if (isFinalApprover(user)) {
+      api.get('/invoices/due').then(r => {
+        const d = r.data?.data ?? r.data
+        setCounts(c => ({ ...c, invoicesDue: Array.isArray(d) ? d.length : 0 }))
       }).catch(() => {})
     }
     if (user.role !== Role.AGENT && !isAccountant(user)) {
@@ -278,7 +295,7 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
   const exactActive = (item: NavItem) =>
     item.key === 'myAtt' ? pathname === item.href : isActive(item.href)
   const attActive = attItems.some(exactActive)
-  const itemBadge = (key: string) => key === 'attApproval' ? counts.attApproval : key === 'messages' ? counts.messages : key === 'approvals' ? counts.approvals : 0
+  const itemBadge = (key: string) => key === 'attApproval' ? counts.attApproval : key === 'messages' ? counts.messages : key === 'approvals' ? counts.approvals : key === 'invoicesDue' ? counts.invoicesDue : 0
 
   useLayoutEffect(() => {
     if (!attOpen) return
