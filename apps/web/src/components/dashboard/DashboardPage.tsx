@@ -89,50 +89,79 @@ function PieBox({ data, colors, inner, center }: { data: Slice[]; colors: string
 // director after the client's report), the share it accepted. Zones: under 60% low, 60 to 80%
 // watch, 80% and over good; the word under the figure says which, so colour is never alone.
 const GAUGE_ZONES = [
-  { from: 0,    to: 0.6, color: '#E3E7EC', label: 'Low',   hint: 'Under 60%' },
-  { from: 0.6,  to: 0.8, color: '#A5D8DD', label: 'Watch', hint: '60% to 80%' },
-  { from: 0.8,  to: 1,   color: P.teal,    label: 'Good',  hint: '80% and over' },
+  { from: 0,   to: 0.6, color: '#E4E7EB', label: 'Low',   hint: 'Under 60%',    pill: '#F1F3F5', ink: '#5C5C5C' },
+  { from: 0.6, to: 0.8, color: '#A9DCE2', label: 'Watch', hint: '60% to 80%',   pill: '#E6F5F7', ink: '#1D6E7A' },
+  { from: 0.8, to: 1,   color: '#1E8496', label: 'Good',  hint: '80% and over', pill: '#DCF0F2', ink: '#0E5F6E' },
 ]
+const G = { cx: 120, cy: 100, r: 76, stroke: 25 }   // gauge geometry, in viewBox units (240 × 114)
+const gaugeAt = (f: number, radius = G.r) => {      // 0 = left end, 1 = right end, over the top
+  const a = Math.PI * (1 - f)
+  return [G.cx + radius * Math.cos(a), G.cy - radius * Math.sin(a)]
+}
+const gaugeArc = (f1: number, f2: number) => {
+  const [x1, y1] = gaugeAt(f1), [x2, y2] = gaugeAt(f2)
+  return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${G.r} ${G.r} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`
+}
+// The needle drawn pointing at 0% (left): a long, thin, tapering pointer with a sharp tip just past
+// the outer edge of the arc and a flat base behind the centre. It is turned to the value by CSS,
+// so it sweeps up from 0% when the dashboard loads and glides when the figure changes.
+const NEEDLE = (() => {
+  const tip = G.r + G.stroke / 2 + 4, back = 7, half = 4.6
+  return [[G.cx - tip, G.cy], [G.cx + back, G.cy - half], [G.cx + back, G.cy + half]].map(p => p.join(',')).join(' ')
+})()
+
 function AcceptanceGauge({ accepted, rejected }: { accepted: number; rejected: number }) {
   const decided = accepted + rejected
+  const share   = decided ? accepted / decided : 0
+  const [shown, setShown] = useState(0)
+  useEffect(() => { const t = requestAnimationFrame(() => setShown(share)); return () => cancelAnimationFrame(t) }, [share])
   if (!decided) return <Empty text="No client decisions in this period" />
-  const share = accepted / decided
-  const rate  = Math.round(share * 100)
-  const zone  = GAUGE_ZONES.find(z => share < z.to) ?? GAUGE_ZONES[GAUGE_ZONES.length - 1]
-  const cx = 110, cy = 100, r = 78, stroke = 22
-  const at = (f: number, radius = r) => {   // 0 = left end, 1 = right end, over the top
-    const a = Math.PI * (1 - f)
-    return [cx + radius * Math.cos(a), cy - radius * Math.sin(a)]
-  }
-  const gap = 0.008                          // a thin surface gap between the zones
-  const arc = (f1: number, f2: number) => {
-    const [x1, y1] = at(f1), [x2, y2] = at(f2)
-    return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r} ${r} 0 0 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`
-  }
-  const [nx, ny] = at(share, r - 4)
+
+  const rate = Math.round(share * 100)
+  const zone = GAUGE_ZONES.find(z => share < z.to) ?? GAUGE_ZONES[GAUGE_ZONES.length - 1]
+  const gap  = 0.009                                   // a thin surface gap between the zones
   const summary = `${accepted} accepted, ${rejected} rejected by the client (${rate}%)`
+  const tick = (f: number, text: string) => {
+    const [x, y] = gaugeAt(f, G.r + G.stroke / 2 + 7)
+    return <text key={text} x={x} y={y} textAnchor={f < 0.5 ? 'end' : f > 0.5 ? 'start' : 'middle'} dominantBaseline="middle" fontSize={7.5} fontWeight={600} fill="#94A3B8">{text}</text>
+  }
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: 148, justifyContent: 'center' }}>
-      <svg viewBox="0 0 220 112" style={{ width: '100%', maxWidth: 230, height: 'auto', display: 'block' }} role="img" aria-label={`Client acceptance ${summary}`}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', height: 148, justifyContent: 'center', fontFamily: F }}>
+      <div style={{ fontSize: 10, color: P.textMuted, marginBottom: 1 }}>Accepted out of all client decisions</div>
+      <svg viewBox="0 0 240 114" style={{ width: '100%', maxWidth: 210, height: 'auto', display: 'block', overflow: 'visible' }} role="img" aria-label={`Client acceptance: ${summary}`}>
         <title>{summary}</title>
+        <defs>
+          <linearGradient id="gaugeGood" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#2AA3B5" />
+            <stop offset="100%" stopColor="#146C7A" />
+          </linearGradient>
+          <filter id="needleShadow" x="-20%" y="-60%" width="140%" height="220%">
+            <feDropShadow dx="0" dy="1.4" stdDeviation="1.3" floodColor="#0F172A" floodOpacity="0.32" />
+          </filter>
+        </defs>
         {GAUGE_ZONES.map((z, i) => (
-          <path key={z.label} d={arc(z.from + (i ? gap : 0), z.to - (i < GAUGE_ZONES.length - 1 ? gap : 0))} fill="none" stroke={z.color} strokeWidth={stroke}>
+          <path key={z.label} d={gaugeArc(z.from + (i ? gap : 0), z.to - (i < GAUGE_ZONES.length - 1 ? gap : 0))}
+            fill="none" stroke={z.label === 'Good' ? 'url(#gaugeGood)' : z.color} strokeWidth={G.stroke}>
             <title>{`${z.label}: ${z.hint}`}</title>
           </path>
         ))}
-        <line x1={cx} y1={cy} x2={nx} y2={ny} stroke={P.navy} strokeWidth={5} strokeLinecap="round" />
-        <circle cx={cx} cy={cy} r={7} fill={P.navy} />
-        <circle cx={cx} cy={cy} r={2.5} fill="#fff" />
+        {tick(0.6, '60%')}
+        {tick(0.8, '80%')}
+        <text x={G.cx - G.r} y={G.cy + 11} textAnchor="middle" fontSize={7.5} fontWeight={600} fill="#94A3B8">0%</text>
+        <text x={G.cx + G.r} y={G.cy + 11} textAnchor="middle" fontSize={7.5} fontWeight={600} fill="#94A3B8">100%</text>
+        <g style={{ transform: `rotate(${shown * 180}deg)`, transformOrigin: `${G.cx}px ${G.cy}px`, transition: 'transform 1.1s cubic-bezier(0.22, 1, 0.36, 1)' }} filter="url(#needleShadow)">
+          <polygon points={NEEDLE} fill="#2E333A" />
+        </g>
       </svg>
-      <div style={{ display: 'flex', alignItems: 'baseline', gap: 8, marginTop: 2 }}>
-        <span style={{ fontSize: 24, fontWeight: 700, color: P.navy, lineHeight: 1, fontFamily: F }}>{rate}%</span>
-        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 700, color: P.textLabel }}>
-          <span style={{ width: 8, height: 8, borderRadius: 2, background: zone.color, border: zone.label === 'Low' ? `1px solid ${P.border}` : 'none' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 1 }}>
+        <span style={{ fontSize: 26, fontWeight: 700, color: P.teal, lineHeight: 1, letterSpacing: '-0.01em' }}>{rate}%</span>
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 9px', borderRadius: 99, background: zone.pill, color: zone.ink, fontSize: 10.5, fontWeight: 800, letterSpacing: '0.02em' }}>
+          <span style={{ width: 7, height: 7, borderRadius: '50%', background: zone.label === 'Good' ? '#1E8496' : zone.color, boxShadow: zone.label === 'Low' ? `inset 0 0 0 1px ${P.border}` : 'none' }} />
           {zone.label}
         </span>
       </div>
-      <div style={{ fontSize: 10.5, color: P.textMuted, marginTop: 4, fontFamily: F }}>
-        <b style={{ color: P.navy }}>{accepted}</b> accepted · <b style={{ color: P.navy }}>{rejected}</b> rejected by client
+      <div style={{ fontSize: 10.5, color: P.textMuted, marginTop: 4 }}>
+        <b style={{ color: P.navy }}>{accepted}</b> accepted <span style={{ margin: '0 3px', color: '#CBD5E1' }}>|</span> <b style={{ color: P.navy }}>{rejected}</b> rejected by client
       </div>
     </div>
   )
