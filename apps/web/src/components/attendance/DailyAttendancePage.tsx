@@ -81,7 +81,7 @@ function AttendanceTable({ present, absent, leave }: { present: any[]; absent: a
                   <tr key={u.userId} style={{ background: '#fff', transition: 'background .15s' }}
                     onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F8FAFC'}
                     onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = '#fff'}>
-                    <td style={{ ...tdBase, fontWeight: 700, color: '#94A3B8', width: 40 }}>{rowNum}</td>
+                    <td style={{ ...tdBase, fontWeight: 700, color: '#94A3B8', width: 40, textAlign: 'center' }}>{rowNum}</td>
                     <td style={{ ...tdBase, fontWeight: 700 }}>{u.displayName}</td>
                     <td style={tdBase}>
                       <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: rs.bg, color: rs.color }}>{staffRole(u.role, u.roleType)}</span>

@@ -356,7 +356,7 @@ export default function MyAttendancePage() {
                         <tr key={row.date} style={{ background: '#fff', opacity: (isWeekend || isNotJoined) ? 0.65 : 1, transition: 'background .15s' }}
                           onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F8FAFC'}
                           onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = '#fff'}>
-                          <td style={{ ...tdBase, fontWeight: 700, color: '#94A3B8', width: 40 }}>{idx + 1}</td>
+                          <td style={{ ...tdBase, fontWeight: 700, color: '#94A3B8', width: 40, textAlign: 'center' }}>{idx + 1}</td>
                           <td style={{ ...tdBase, fontWeight: 700 }}>{row.date}</td>
                           <td style={{ ...tdBase, color: '#64748B' }}>{row.day_name}</td>
                           <td style={tdBase}>

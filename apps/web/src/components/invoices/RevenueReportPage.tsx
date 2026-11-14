@@ -72,7 +72,7 @@ export default function RevenueReportPage() {
         rowKey={(r: RevenueRow, i: number) => `${r.label}|${r.sublabel}|${i}`}
         emptyText="No sales in this period."
         columns={[
-          { key: 'n', label: '#', width: 50, align: 'right', resizable: false, cellStyle: { color: P.textMuted }, render: (_r: RevenueRow, i: number) => i + 1 },
+          { key: 'n', label: '#', width: 50, resizable: false, cellStyle: { color: P.textMuted }, render: (_r: RevenueRow, i: number) => i + 1 },
           { key: 'label', label: NAME_LABEL[group], width: 280, render: (r: RevenueRow) => (
             <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 8, minWidth: 0 }}>
               <span style={{ fontWeight: 700, color: P.navy, overflow: 'hidden', textOverflow: 'ellipsis' }}>{r.label}</span>

@@ -145,12 +145,12 @@ export default function FormsManager({ forms, reload, notify }: { forms: FormFul
           <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: '12px 18px' }}>
             {/* Gold column header, as every CRM table */}
             <div style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr) 170px 86px 88px', gap: 10, padding: '7px 10px', marginBottom: 6, borderRadius: 6, background: P.gold, fontFamily: FONT, fontSize: 11, fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: '#1a1a1a' }}>
-              <span>#</span><span>Question</span><span>Answer type</span><span>Required</span><span />
+              <span style={{ textAlign: 'center' }}>#</span><span>Question</span><span>Answer type</span><span>Required</span><span />
             </div>
             {draft.questions.map((q, i) => (
               <div key={i} style={{ padding: '7px 10px', marginBottom: 5, borderRadius: 8, border: '1.5px solid #E2E8F0', background: i % 2 ? '#F8FAFC' : '#fff' }}>
                 <div style={{ display: 'grid', gridTemplateColumns: '28px minmax(0, 1fr) 170px 86px 88px', gap: 10, alignItems: 'center' }}>
-                  <span style={{ fontSize: 13, fontWeight: 800, color: P.teal }}>{i + 1}</span>
+                  <span style={{ fontSize: 13, fontWeight: 800, color: P.teal, textAlign: 'center' }}>{i + 1}</span>
                   <input className={cls} value={q.label} onChange={e => editQ(i, { label: e.target.value })} placeholder="Type the question" />
                   <StyledSelect value={q.type} onChange={v => editQ(i, { type: v as QType })} options={(Object.keys(QTYPE_LABEL) as QType[]).map(t => ({ value: t, label: QTYPE_LABEL[t] }))} />
                   <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12.5, fontWeight: 600, color: P.navy, cursor: 'pointer' }}>

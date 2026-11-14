@@ -901,7 +901,7 @@ export default function AttendanceReportPage() {
                     <tr key={s.userId} style={{ background: '#fff', transition: 'background .15s' }}
                       onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#F8FAFC'}
                       onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = '#fff'}>
-                      <td style={{ ...tdBase, fontWeight: 700, color: '#94A3B8', width: 40 }}>{idx + 1}</td>
+                      <td style={{ ...tdBase, fontWeight: 700, color: '#94A3B8', width: 40, textAlign: 'center' }}>{idx + 1}</td>
                       <td style={{ ...tdBase, fontWeight: 700, color: P.navy }}>{s.userName}</td>
                       <td style={tdBase}>
                         <span style={{ display: 'inline-flex', alignItems: 'center', padding: '2px 8px', borderRadius: 99, fontSize: 11, fontWeight: 600, background: roleStyle.bg, color: roleStyle.color }}>{staffRole(s.userRole, s.userType)}</span>

@@ -148,7 +148,7 @@ export default function DataTable<T>({
                 ...rowStyle?.(row, idx),
               }}>
               {columns.map(c => (
-                <td key={c.key} style={{ ...tdBase, textAlign: c.align ?? 'left', ...c.cellStyle }}>
+                <td key={c.key} style={{ ...tdBase, textAlign: c.label === '#' ? 'center' : c.align ?? 'left', ...c.cellStyle }}>
                   {c.render ? c.render(row, idx) : String((row as any)[c.key] ?? '')}
                 </td>
               ))}

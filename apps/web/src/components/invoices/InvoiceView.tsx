@@ -252,7 +252,7 @@ export default function InvoiceView({ inv: initialInv, onClose, onDeleted, onEdi
           headStyles: { fillColor: NV, textColor: 255, fontStyle: 'bold' },
           footStyles: { fillColor: [241, 245, 249], textColor: NV, fontStyle: 'bold' },
           alternateRowStyles: { fillColor: [248, 250, 252] },
-          columnStyles: { 0: { cellWidth: 9, halign: 'right' }, 6: { halign: 'right', fontStyle: 'bold' } },
+          columnStyles: { 0: { cellWidth: 9, halign: 'center' }, 6: { halign: 'right', fontStyle: 'bold' } },
           didDrawPage: () => {
             pdf.setFont('helvetica', 'normal'); pdf.setFontSize(8); pdf.setTextColor(...MUTED)
             pdf.text(`${inv.invoiceNumber} · Annexure A · page ${pdf.getNumberOfPages() - 1}`, pageW / 2, pageH - 7, { align: 'center' })
@@ -415,7 +415,7 @@ export default function InvoiceView({ inv: initialInv, onClose, onDeleted, onEdi
                     <tbody>
                       {items.map((it, i) => (
                         <tr key={it.id} style={{ background: i % 2 ? '#F8FAFC' : '#fff', borderBottom: `1px solid ${P.gridLine}` }}>
-                          <td style={{ padding: '6px 10px', fontSize: 12, color: '#94A3B8', textAlign: 'right', width: 30 }}>{i + 1}</td>
+                          <td style={{ padding: '6px 10px', fontSize: 12, color: '#94A3B8', textAlign: 'center', width: 30 }}>{i + 1}</td>
                           <td style={{ padding: '6px 10px', fontSize: 12, fontWeight: 700, color: NAVY }}>{it.customer?.name}</td>
                           <td style={{ padding: '6px 10px', fontSize: 12, fontFamily: 'ui-monospace, Consolas, monospace', color: '#334155' }}>{it.customer?.phone ?? ''}</td>
                           <td style={{ padding: '6px 10px', fontSize: 12, color: '#64748B' }}>{fmtDate(it.customer?.saleDate)}</td>
