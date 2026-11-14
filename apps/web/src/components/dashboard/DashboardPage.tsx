@@ -224,9 +224,11 @@ export default function DashboardPage() {
   const statCards = [
     { label: 'TOTAL CUSTOMERS', value: stats.total, border: P.navy, fill: P.fillNavy, text: P.navy, hint: null as string | null, breakdown: null as { label: string; value: number }[] | null },
     { label: 'APPROVED', value: stats.approved, border: P.teal, fill: P.fillTeal, text: P.teal, hint: `${rate.rate}% approval rate`,
-      breakdown: [{ label: 'By Manager', value: stats.approvedByManager }, { label: 'By Director', value: stats.approvedByDirector }] },
-    { label: 'PENDING', value: stats.pending, border: P.gold, fill: P.fillGold, text: P.gold, hint: null,
-      breakdown: [{ label: 'At Manager', value: stats.pendingAtManager }, { label: 'At Director', value: stats.pendingAtDirector }] },
+      // Director approvals are part of the manager's (every sale passes the manager first), so these
+      // lines are not added up: by manager = by director + awaiting director
+      breakdown: [{ label: 'By Manager', value: stats.approvedByManager }, { label: 'By Director', value: stats.approvedByDirector }, { label: 'Awaiting Director', value: stats.pendingAtDirector }] },
+    { label: 'PENDING', value: stats.pending, border: P.gold, fill: P.fillGold, text: P.gold, hint: 'Waiting for manager review',
+      breakdown: null },
     { label: 'REJECTED', value: stats.rejected, border: P.brick, fill: P.fillBrick, text: P.brick, hint: null,
       breakdown: [{ label: 'By Agent', value: stats.rejectedByAgent }, { label: 'By Manager', value: stats.rejectedByManager }, { label: 'By Director', value: stats.rejectedByDirector }] },
   ]

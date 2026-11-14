@@ -56,10 +56,13 @@ export class DashboardService {
       this.verticalPie(where),
     ])
 
+    // The cards split the total with no overlap: total = approved + pending + rejected. A sale the
+    // director approved was approved by the manager first, so "by manager" counts every standing
+    // manager approval (the director's included) and is never added to "by director".
     return {
       stats: {
         total, approved, pending, rejected,
-        approvedByManager:  n(CustomerStatus.APPROVED),
+        approvedByManager:  approved,
         approvedByDirector: n(CustomerStatus.FINAL_APPROVED),
         pendingAtManager:   n(CustomerStatus.PENDING),
         pendingAtDirector:  n(CustomerStatus.APPROVED),
