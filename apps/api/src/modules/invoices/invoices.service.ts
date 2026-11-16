@@ -14,6 +14,11 @@ import { BUSINESS_TZ, todayIn, addDays, dayRangeUtc, dateOnly, fmtDateOnly, isYm
 //     with cash plus an optional discount.
 // The money model is argroup's: payments belong to the client, allocations say how much of a
 // payment went to which invoice, and the invoice's settled figures are always rebuilt from them.
+//
+// "Client" here is the Company (user, 2026-11-16): one client has one or more lines, each line is
+// a `clients` row connected to a DID. The ledger, invoices, payments, opening balance and billing
+// cycle are the client's; an invoice can bill sales from any of its lines, each at that line's rate.
+// The API still calls the client's id `clientId`, which is what the screens send.
 
 const BILLABLE = ['SENT', 'OVERDUE', 'PARTIALLY_PAID', 'PAID']          // money really owed
 const AWAITING = ['SENT', 'OVERDUE', 'PARTIALLY_PAID']                  // can take a payment
@@ -25,16 +30,28 @@ const num = (d: Prisma.Decimal | number | null | undefined) => Number(d ?? 0)
 
 type Alloc = { invoiceId: string; amount: number; discount: number }
 
-const CLIENT_SELECT = {
-  id: true, companyName: true, didCode: true, campaign: true, rateType: true, rateOfSaleAmount: true,
-  cycleOfDay: true, billingStartAfterDays: true, billingStartAfter: true, isActive: true,
-  openingBalance: true, openingBalanceDate: true,
+const LINE_SELECT = {
+  id: true, companyId: true, lineName: true, companyName: true, didCode: true, campaign: true, rateType: true, rateOfSaleAmount: true,
+  cycleOfDay: true, billingStartAfterDays: true, isActive: true, openingBalance: true, openingBalanceDate: true,
 } satisfies Prisma.ClientSelect
+
+type LineRow = Prisma.ClientGetPayload<{ select: typeof LINE_SELECT }>
+
+const COMPANY_SELECT = {
+  id: true, name: true, isActive: true,
+  lines: { select: LINE_SELECT, orderBy: { createdAt: 'asc' as const } },
+} satisfies Prisma.CompanySelect
+
+type CompanyRow = Prisma.CompanyGetPayload<{ select: typeof COMPANY_SELECT }>
+
+/** The line a sale came in on, as the invoice screens show it */
+const SALE_LINE = { select: { id: true, lineName: true, companyName: true, didCode: true, rateOfSaleAmount: true } }
 
 const PERSON = { select: { id: true, displayName: true, firstName: true, midName: true, lastName: true } }
 
 const INVOICE_INCLUDE = {
-  client: { select: CLIENT_SELECT },
+  company: { select: COMPANY_SELECT },
+  client: { select: LINE_SELECT },
   items: {
     orderBy: { createdAt: 'asc' as const },
     include: {
@@ -42,7 +59,7 @@ const INVOICE_INCLUDE = {
         select: {
           id: true, firstName: true, midName: true, lastName: true, phone: true, state: true, verticalType: true,
           createdAt: true, finalApprovedAt: true, submittedAtEst: true, saleDidCode: true,
-          agent: PERSON,
+          agent: PERSON, client: SALE_LINE,
         },
       },
     },
@@ -79,21 +96,56 @@ export class InvoicesService {
 
   // ── Shape for the browser (argroup's field names, so the screens port as they are) ──
 
+  /**
+   * The client for the screens, under argroup's field names. Rate and DID are the lines' (one
+   * rate when every line bills the same, otherwise none); `lines` lists them.
+   */
+  private shapeLine(l: LineRow) {
+    return { ...l, rateOfSaleAmount: l.rateOfSaleAmount === null ? null : num(l.rateOfSaleAmount), openingBalance: num(l.openingBalance) }
+  }
+
+  /**
+   * The client for the screens, under argroup's field names, with its lines. Cycle, rate and DID
+   * are the lines' (shown when every line has the same, otherwise left empty).
+   */
+  private shapeCompany(c: CompanyRow) {
+    const lines = c.lines.map(l => this.shapeLine(l))
+    const same = <T,>(pick: (l: (typeof lines)[number]) => T) => (lines.length && new Set(lines.map(pick)).size === 1 ? pick(lines[0]) : null)
+    const fixedRate = same(l => l.rateOfSaleAmount)
+    const rateType = same(l => l.rateType) === 'fixed' && fixedRate === null ? null : same(l => l.rateType)   // fixed at different rates: no one rate to show
+    return {
+      ...c, businessName: c.name, companyName: c.name, lines,
+      didCode: lines.map(l => l.didCode).filter(Boolean).join(', ') || null,
+      cycleOfDay: same(l => l.cycleOfDay),
+      rateType,
+      rateOfSaleAmount: rateType === 'fixed' ? fixedRate : null,
+      // the lines' opening balances together; a one-line client's date is its line's
+      openingBalance: r2(lines.reduce((s, l) => s + l.openingBalance, 0)),
+      openingBalanceDate: lines.length === 1 ? lines[0].openingBalanceDate : null,
+    }
+  }
+
+  private saleLine(l: { lineName: string; companyName: string; didCode: string | null } | null, saleDid?: string | null) {
+    return { line: l?.lineName ?? '', lineLabel: l?.companyName ?? '', didCode: saleDid ?? l?.didCode ?? null }
+  }
+
+  /** `client` is the client billed (whose ledger), `line` the line the invoice is for. */
   private shape(i: InvoiceRow) {
-    const c = i.client
     return {
       ...i,
+      clientId: i.companyId, lineId: i.clientId,
       amount: num(i.totalAmount), subtotal: num(i.subtotal), discount: num(i.discount), adjustment: num(i.adjustment),
       amountPaid: num(i.amountPaid), discountTotal: num(i.discountTotal),
       issueDate: fmtDateOnly(i.invoiceDate), dueDate: fmtDateOnly(i.dueDate),
       billingPeriodStart: fmtDateOnly(i.billingPeriodStart), billingPeriodEnd: fmtDateOnly(i.billingPeriodEnd),
-      client: c && { ...c, businessName: c.companyName, rateOfSaleAmount: c.rateOfSaleAmount === null ? null : num(c.rateOfSaleAmount), openingBalance: num(c.openingBalance) },
+      client: this.shapeCompany(i.company), company: undefined,
+      line: i.client ? this.shapeLine(i.client) : null,
       createdBy: i.createdBy && { id: i.createdBy.id, fullName: fullName(i.createdBy) },
       items: [...i.items].sort((a, b) => a.customer.createdAt.getTime() - b.customer.createdAt.getTime()).map(it => ({   // by sale date
         id: it.id, customerId: it.customerId, rate: num(it.rate), amount: num(it.amount), description: it.description,
         customer: {
           id: it.customer.id, name: fullName(it.customer), phone: it.customer.phone, state: it.customer.state,
-          verticalType: it.customer.verticalType, didCode: it.customer.saleDidCode,
+          verticalType: it.customer.verticalType, ...this.saleLine(it.customer.client, it.customer.saleDidCode),
           saleDate: todayIn(BUSINESS_TZ, it.customer.createdAt), saleTimeEst: it.customer.submittedAtEst,
           finalApprovedAt: it.customer.finalApprovedAt, agent: fullName(it.customer.agent),
         },
@@ -111,10 +163,10 @@ export class InvoicesService {
     await this.sweepOverdue()
     const where: Prisma.InvoiceWhereInput = {}
     if (q.status && q.status !== 'ALL') where.status = q.status
-    if (q.clientId) where.clientId = q.clientId
+    if (q.clientId) where.companyId = q.clientId
     if (q.search) {
       const s = { contains: q.search, mode: 'insensitive' as const }
-      where.OR = [{ invoiceNumber: s }, { description: s }, { client: { companyName: s } }]
+      where.OR = [{ invoiceNumber: s }, { description: s }, { company: { name: s } }]
     }
     const rows = await this.prisma.invoice.findMany({ where, include: INVOICE_INCLUDE, orderBy: [{ invoiceDate: 'desc' }, { createdAt: 'desc' }] })
     return rows.map(r => this.shape(r))
@@ -133,11 +185,11 @@ export class InvoicesService {
   async register(q: Record<string, string | undefined>) {
     await this.sweepOverdue()
     const where: Prisma.InvoiceWhereInput = { status: { in: BILLABLE } }
-    if (q.clientId) where.clientId = q.clientId
+    if (q.clientId) where.companyId = q.clientId
     if (isYmd(q.from) || isYmd(q.to)) where.invoiceDate = { ...(isYmd(q.from) ? { gte: dateOnly(q.from) } : {}), ...(isYmd(q.to) ? { lte: dateOnly(q.to) } : {}) }
     if (q.search) {
       const s = { contains: q.search, mode: 'insensitive' as const }
-      where.OR = [{ invoiceNumber: s }, { description: s }, { client: { companyName: s } }]
+      where.OR = [{ invoiceNumber: s }, { description: s }, { company: { name: s } }]
     }
     const rows = await this.prisma.invoice.findMany({
       where,
@@ -145,7 +197,8 @@ export class InvoicesService {
         id: true, invoiceNumber: true, kind: true, status: true, description: true, invoiceDate: true, dueDate: true,
         sentAt: true, paidAt: true, subtotal: true, discount: true, adjustment: true, totalAmount: true,
         amountPaid: true, discountTotal: true, billingPeriodStart: true, billingPeriodEnd: true,
-        client: { select: { id: true, companyName: true, didCode: true } }, _count: { select: { items: true } },
+        company: { select: { id: true, name: true } }, client: { select: { id: true, lineName: true, companyName: true, didCode: true } },
+        _count: { select: { items: true } },
       },
       orderBy: [{ invoiceDate: 'desc' }, { createdAt: 'desc' }],
     })
@@ -160,8 +213,9 @@ export class InvoicesService {
         billingPeriodStart: fmtDateOnly(i.billingPeriodStart), billingPeriodEnd: fmtDateOnly(i.billingPeriodEnd),
         amount: num(i.totalAmount), subtotal: num(i.subtotal), discount: num(i.discount), adjustment: num(i.adjustment),
         amountPaid: num(i.amountPaid), discountTotal: num(i.discountTotal), salesCount: i._count.items,
-        client: { id: i.client.id, businessName: i.client.companyName, didCode: i.client.didCode },
-        clientName: i.client.companyName,
+        client: { id: i.company.id, businessName: i.company.name, didCode: i.client?.didCode ?? null },
+        clientName: i.company.name,
+        line: i.client && { id: i.client.id, lineName: i.client.lineName, label: i.client.companyName, didCode: i.client.didCode },
         settled, balance,
         daysOverdue: overdue ? Math.floor((today.getTime() - i.dueDate.getTime()) / 86_400_000) : 0,
         bucket: balance <= 0.001 ? 'paid' : overdue ? 'overdue' : settled > 0.001 ? 'partial' : 'notdue',
@@ -189,16 +243,18 @@ export class InvoicesService {
   /** Every client with its running account totals, for the Clients Ledgers sidebar. */
   async clientsWithBalances(search?: string) {
     await this.sweepOverdue()
-    const clients = await this.prisma.client.findMany({
-      where: search ? { OR: [{ companyName: { contains: search, mode: 'insensitive' } }, { didCode: { contains: search, mode: 'insensitive' } }] } : undefined,
+    const s = search ? { contains: search, mode: 'insensitive' as const } : null
+    const clients = await this.prisma.company.findMany({
+      where: s ? { OR: [{ name: s }, { lines: { some: { OR: [{ companyName: s }, { lineName: s }, { didCode: s }] } } }] } : undefined,
       select: {
-        id: true, companyName: true, didCode: true, isActive: true, cycleOfDay: true,
+        id: true, name: true, isActive: true,
+        lines: { select: { didCode: true, lineName: true, isActive: true, cycleOfDay: true }, orderBy: { createdAt: 'asc' } },
         invoices: { select: { status: true, totalAmount: true } },
         payments: { select: { amount: true, overpaymentType: true, allocations: { select: { amount: true, discount: true } } } },
       },
-      orderBy: [{ isActive: 'desc' }, { companyName: 'asc' }],
+      orderBy: { name: 'asc' },
     })
-    return clients.map(c => {
+    const rows = clients.map(c => {
       const invoiced = c.invoices.filter(i => BILLABLE.includes(i.status)).reduce((s, i) => s + num(i.totalAmount), 0)
       let cash = 0, nonCash = 0, credit = 0
       for (const p of c.payments) {
@@ -209,13 +265,19 @@ export class InvoicesService {
         credit += bonus ? 0 : spare
         nonCash += p.allocations.reduce((s, a) => s + num(a.discount), 0)
       }
+      const dids = c.lines.map(l => l.didCode).filter(Boolean).join(', ') || null
+      const cycles = new Set(c.lines.map(l => l.cycleOfDay))
       return {
-        id: c.id, businessName: c.companyName, fullName: c.didCode, didCode: c.didCode, isActive: c.isActive, cycleOfDay: c.cycleOfDay,
+        id: c.id, businessName: c.name, fullName: dids, didCode: dids,
+        isActive: c.isActive && (!c.lines.length || c.lines.some(l => l.isActive)),
+        cycleOfDay: cycles.size === 1 ? c.lines[0].cycleOfDay : null,
+        lineCount: c.lines.length, lines: c.lines.map(l => l.lineName),
         totalInvoiced: r2(invoiced), totalPaid: r2(cash), unappliedCredit: r2(credit), outstanding: r2(invoiced - cash - nonCash),
         draftCount: c.invoices.filter(i => i.status === 'DRAFT').length,
         overdueCount: c.invoices.filter(i => i.status === 'OVERDUE').length,
       }
     })
+    return rows.sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.businessName.localeCompare(b.businessName))
   }
 
   /**
@@ -225,11 +287,11 @@ export class InvoicesService {
    */
   async clientLedger(clientId: string, from?: string, to?: string) {
     await this.sweepOverdue()
-    const client = await this.prisma.client.findUnique({ where: { id: clientId }, select: CLIENT_SELECT })
+    const client = await this.prisma.company.findUnique({ where: { id: clientId }, select: COMPANY_SELECT })
     if (!client) throw new NotFoundException('Client not found.')
 
     const invoices = await this.prisma.invoice.findMany({
-      where: { clientId, status: { not: 'DRAFT' } },     // drafts live in Invoice Approval
+      where: { companyId: clientId, status: { not: 'DRAFT' } },     // drafts live in Invoice Approval
       include: INVOICE_INCLUDE,
       orderBy: [{ invoiceDate: 'desc' }, { createdAt: 'desc' }],
     })
@@ -237,10 +299,12 @@ export class InvoicesService {
 
     type Txn = { date: string; type: 'INVOICE' | 'OPENING' | 'PAYMENT' | 'DISCOUNT'; ref: string; description: string; charge: number; credit: number; paymentId?: string; unapplied?: number }
     const txns: Txn[] = []
+    const manyLines = client.lines.length > 1   // then each invoice says which line it bills
     for (const i of invoices.filter(x => BILLABLE.includes(x.status))) {
       txns.push({
         date: fmtDateOnly(i.invoiceDate)!, type: i.kind === 'OPENING' ? 'OPENING' : 'INVOICE', ref: i.invoiceNumber,
-        description: i.description ?? 'Sales', charge: num(i.totalAmount), credit: 0,
+        description: `${manyLines && i.client ? `${i.client.lineName}: ` : ''}${i.description ?? 'Sales'}`,
+        charge: num(i.totalAmount), credit: 0,
       })
     }
     for (const p of payments) {
@@ -273,7 +337,7 @@ export class InvoicesService {
     const timeline = inPeriod.map(t => { running += t.charge - t.credit; return { ...t, balance: r2(running) } })
 
     return {
-      client: { ...client, businessName: client.companyName, rateOfSaleAmount: client.rateOfSaleAmount === null ? null : num(client.rateOfSaleAmount), openingBalance: num(client.openingBalance) },
+      client: this.shapeCompany(client),
       openingBalance: r2(openingBalance),
       totalInvoiced: r2(totalInvoiced),
       totalPaid: r2(inPeriod.filter(t => t.type === 'PAYMENT').reduce((s, t) => s + t.credit, 0)),
@@ -293,11 +357,11 @@ export class InvoicesService {
    */
   async openInvoices(clientId: string, paymentId?: string) {
     const rows = await this.prisma.invoice.findMany({
-      where: paymentId ? { clientId, OR: [{ status: { in: AWAITING } }, { allocations: { some: { paymentId } } }] } : { clientId, status: { in: AWAITING } },
+      where: paymentId ? { companyId: clientId, OR: [{ status: { in: AWAITING } }, { allocations: { some: { paymentId } } }] } : { companyId: clientId, status: { in: AWAITING } },
       orderBy: [{ invoiceDate: 'asc' }, { createdAt: 'asc' }],   // oldest first: the order a payment auto-applies in
       select: {
         id: true, invoiceNumber: true, description: true, invoiceDate: true, dueDate: true, totalAmount: true, amountPaid: true, discountTotal: true,
-        billingPeriodStart: true, billingPeriodEnd: true,
+        billingPeriodStart: true, billingPeriodEnd: true, client: { select: { lineName: true } }, company: { select: { _count: { select: { lines: true } } } },
         allocations: paymentId ? { where: { paymentId }, select: { amount: true, discount: true } } : false,
       },
     })
@@ -306,6 +370,7 @@ export class InvoicesService {
       const current = (i.allocations ?? [])[0]
       return {
         id: i.id, invoiceNumber: i.invoiceNumber, description: i.description,
+        lineName: i.company._count.lines > 1 ? i.client?.lineName ?? null : null,   // named when the client has several lines
         issueDate: fmtDateOnly(i.invoiceDate), dueDate: fmtDateOnly(i.dueDate), amount: num(i.totalAmount),
         billingPeriodStart: fmtDateOnly(i.billingPeriodStart), billingPeriodEnd: fmtDateOnly(i.billingPeriodEnd),
         balance: r2(num(i.totalAmount) - (num(i.amountPaid) + num(i.discountTotal) - mine)),
@@ -317,25 +382,26 @@ export class InvoicesService {
   // ── Opening balance ────────────────────────────────────────────────────────
 
   /**
-   * Stores the opening balance on the client and mirrors it as one OPENING invoice, so it shows in
-   * the ledger and settles through Receive Payment like any invoice.
+   * Stores the opening balance on the line (`id`, or a one-line client's id) and mirrors it as one
+   * OPENING invoice on the client's ledger, so it settles through Receive Payment like any invoice.
    */
-  async setOpeningBalance(clientId: string, b: Record<string, any>) {
-    const client = await this.prisma.client.findUnique({ where: { id: clientId }, select: { id: true } })
-    if (!client) throw new NotFoundException('Client not found.')
+  async setOpeningBalance(id: string, b: Record<string, any>) {
+    const line = await this.lineFor(V.str(b.lineId, 'Line') ?? id)
     const amount = r2(Math.max(0, V.num(b.openingBalance, 'Opening balance', { min: 0 }) ?? 0))
     const date = V.date(b.date, 'Date') ?? todayIn(BUSINESS_TZ)
-    await this.syncOpeningInvoice(clientId, amount, date)
+    await this.syncOpeningInvoice(line.id, amount, date)
     const updated = await this.prisma.client.update({
-      where: { id: clientId }, data: { openingBalance: amount, openingBalanceDate: dateOnly(date) },
+      where: { id: line.id }, data: { openingBalance: amount, openingBalanceDate: dateOnly(date) },
       select: { id: true, openingBalance: true, openingBalanceDate: true },
     })
     return { ...updated, openingBalance: num(updated.openingBalance) }
   }
 
-  /** Keeps the OPENING invoice in line with the client's opening balance (also used by the client form). */
-  async syncOpeningInvoice(clientId: string, amount: number, date = todayIn(BUSINESS_TZ)) {
-    const existing = await this.prisma.invoice.findFirst({ where: { clientId, kind: 'OPENING' }, include: { allocations: { select: { id: true } } } })
+  /** Keeps the line's OPENING invoice in step with its opening balance (also used by the line form). */
+  async syncOpeningInvoice(lineId: string, amount: number, date = todayIn(BUSINESS_TZ)) {
+    const line = await this.prisma.client.findUnique({ where: { id: lineId }, select: { id: true, companyId: true } })
+    if (!line) throw new NotFoundException('Line not found.')
+    const existing = await this.prisma.invoice.findFirst({ where: { clientId: lineId, kind: 'OPENING' }, include: { allocations: { select: { id: true } } } })
     if (amount > 0) {
       if (existing) {
         await this.prisma.invoice.update({
@@ -346,7 +412,7 @@ export class InvoicesService {
       } else {
         await this.prisma.invoice.create({
           data: {
-            invoiceNumber: await this.next('INV'), clientId, kind: 'OPENING', status: 'SENT', description: 'Opening Balance',
+            invoiceNumber: await this.next('INV'), companyId: line.companyId, clientId: line.id, kind: 'OPENING', status: 'SENT', description: 'Opening Balance',
             subtotal: amount, totalAmount: amount, invoiceDate: dateOnly(date), dueDate: dateOnly(date),
             billingPeriodStart: dateOnly(date), billingPeriodEnd: dateOnly(date), sentAt: new Date(),
           },
@@ -359,17 +425,36 @@ export class InvoicesService {
 
   // ── Sales that can be billed ───────────────────────────────────────────────
 
-  /** A sale is billed once it is on an invoice that is not cancelled. */
-  private unbilled(clientId: string, extra: Prisma.CustomerWhereInput = {}): Prisma.CustomerWhereInput {
+  /** A line's sales not billed yet: a sale is billed once it is on an invoice that is not cancelled. */
+  private unbilled(lineId: string, extra: Prisma.CustomerWhereInput = {}): Prisma.CustomerWhereInput {
     return {
-      clientId, status: CustomerStatus.FINAL_APPROVED,
+      clientId: lineId, status: CustomerStatus.FINAL_APPROVED,
       invoiceItems: { none: { invoice: { status: { not: 'CANCELLED' } } } },
       ...extra,
     }
   }
 
-  private saleRate(c: { saleRateAmount: Prisma.Decimal | null }, client: { rateOfSaleAmount: Prisma.Decimal | null }) {
-    return r2(num(c.saleRateAmount ?? client.rateOfSaleAmount))
+  /**
+   * The line an invoice is for. Invoices are line by line; a client id is taken only when the
+   * client has a single line (so a one-line client can be billed without naming the line).
+   */
+  private async lineFor(id: string) {
+    const line = await this.prisma.client.findUnique({ where: { id }, select: { id: true, companyId: true } })
+    if (line) return line
+    const lines = await this.prisma.client.findMany({ where: { companyId: id }, select: { id: true, companyId: true }, take: 2 })
+    if (lines.length === 1) return lines[0]
+    if (lines.length > 1) fail('Pick the line this invoice is for.')
+    throw new NotFoundException('Line not found.')
+  }
+
+  /** The sale's frozen rate, or its line's rate when it has none */
+  private saleRate(c: { saleRateAmount: Prisma.Decimal | null; client: { rateOfSaleAmount: Prisma.Decimal | null } | null }) {
+    return r2(num(c.saleRateAmount ?? c.client?.rateOfSaleAmount))
+  }
+
+  private async assertClient(clientId: string) {
+    const c = await this.prisma.company.findUnique({ where: { id: clientId }, select: { id: true } })
+    if (!c) throw new NotFoundException('Client not found.')
   }
 
   /** Sale dates are US business days (as on the Sales Report); either end may be left open. */
@@ -381,36 +466,35 @@ export class InvoicesService {
     }
   }
 
-  /** The client's final approved sales not on any invoice yet, by sale date (for New Invoice). */
-  async unbilledSales(clientId: string, q: Record<string, string | undefined>) {
-    const client = await this.prisma.client.findUnique({ where: { id: clientId }, select: { id: true, rateOfSaleAmount: true } })
-    if (!client) throw new NotFoundException('Client not found.')
+  /** The line's final approved sales not on any invoice yet, by sale date (for New Invoice). */
+  async unbilledSales(lineId: string, q: Record<string, string | undefined>) {
+    const line = await this.lineFor(lineId)
     const createdAt = this.saleDates(q.from, q.to)
     const rows = await this.prisma.customer.findMany({
-      where: this.unbilled(clientId, createdAt ? { createdAt } : {}),
-      select: { id: true, firstName: true, midName: true, lastName: true, phone: true, state: true, verticalType: true, createdAt: true, finalApprovedAt: true, saleRateAmount: true, agent: PERSON },
+      where: this.unbilled(line.id, createdAt ? { createdAt } : {}),
+      select: { id: true, firstName: true, midName: true, lastName: true, phone: true, state: true, verticalType: true, createdAt: true, finalApprovedAt: true, saleRateAmount: true, saleDidCode: true, agent: PERSON, client: SALE_LINE },
       orderBy: { createdAt: 'asc' },
     })
     return rows.map(c => ({
       id: c.id, name: fullName(c), phone: c.phone, state: c.state, verticalType: c.verticalType,
       saleDate: todayIn(BUSINESS_TZ, c.createdAt), finalApprovedAt: c.finalApprovedAt, agent: fullName(c.agent),
-      rate: this.saleRate(c, client),
+      rate: this.saleRate(c), ...this.saleLine(c.client, c.saleDidCode),
     }))
   }
 
   /**
-   * Every final approved sale of the client with its billing record: the invoice it is on (number,
-   * date, status), or not invoiced yet. Drafts count as "on a draft", cancelled invoices as not billed.
+   * Every final approved sale of the client, across its lines, with its billing record: the invoice
+   * it is on (number, date, status), or not invoiced yet. Drafts count as "on a draft", cancelled
+   * invoices as not billed.
    */
   async clientSales(clientId: string, q: Record<string, string | undefined>) {
-    const client = await this.prisma.client.findUnique({ where: { id: clientId }, select: { id: true, rateOfSaleAmount: true } })
-    if (!client) throw new NotFoundException('Client not found.')
+    await this.assertClient(clientId)
     const createdAt = this.saleDates(q.from, q.to)
     const rows = await this.prisma.customer.findMany({
-      where: { clientId, status: CustomerStatus.FINAL_APPROVED, ...(createdAt ? { createdAt } : {}) },
+      where: { client: { companyId: clientId }, status: CustomerStatus.FINAL_APPROVED, ...(createdAt ? { createdAt } : {}) },
       select: {
         id: true, firstName: true, midName: true, lastName: true, phone: true, verticalType: true, createdAt: true, finalApprovedAt: true, saleRateAmount: true,
-        agent: PERSON,
+        saleDidCode: true, agent: PERSON, client: SALE_LINE,
         invoiceItems: {
           where: { invoice: { status: { not: 'CANCELLED' } } },
           select: { rate: true, invoice: { select: { id: true, invoiceNumber: true, invoiceDate: true, sentAt: true, status: true } } },
@@ -424,8 +508,8 @@ export class InvoicesService {
       const inv = item?.invoice
       return {
         id: c.id, name: fullName(c), phone: c.phone, verticalType: c.verticalType, agent: fullName(c.agent),
-        saleDate: todayIn(BUSINESS_TZ, c.createdAt), finalApprovedAt: c.finalApprovedAt,
-        rate: item ? num(item.rate) : this.saleRate(c, client),
+        saleDate: todayIn(BUSINESS_TZ, c.createdAt), finalApprovedAt: c.finalApprovedAt, ...this.saleLine(c.client, c.saleDidCode),
+        rate: item ? num(item.rate) : this.saleRate(c),
         billing: !inv ? 'NOT_INVOICED' : inv.status === 'DRAFT' ? 'ON_DRAFT' : 'INVOICED',
         invoice: inv ? { id: inv.id, invoiceNumber: inv.invoiceNumber, issueDate: fmtDateOnly(inv.invoiceDate), sentAt: inv.sentAt, status: inv.status } : null,
       }
@@ -438,8 +522,8 @@ export class InvoicesService {
     return { subtotal: r2(subtotal), discount: r2(discount), adjustment: r2(adjustment), totalAmount: r2(subtotal - discount + adjustment) }
   }
 
-  /** Reads `items: [{customerId, rate}]` and checks every sale belongs to the client, is final approved and not billed elsewhere. */
-  private async readLines(clientId: string, raw: unknown, invoiceId?: string) {
+  /** Reads `items: [{customerId, rate}]` and checks every sale is on the line, final approved and not billed elsewhere. */
+  private async readLines(lineId: string, raw: unknown, invoiceId?: string) {
     if (!Array.isArray(raw)) fail('Sales are required.')
     const lines = new Map<string, number>()
     for (const r of raw as any[]) {
@@ -450,21 +534,22 @@ export class InvoicesService {
     if (!lines.size) return []
     const ok = await this.prisma.customer.findMany({
       where: {
-        id: { in: [...lines.keys()] }, clientId, status: CustomerStatus.FINAL_APPROVED,
+        id: { in: [...lines.keys()] }, clientId: lineId, status: CustomerStatus.FINAL_APPROVED,
         invoiceItems: { none: { invoice: { status: { not: 'CANCELLED' }, ...(invoiceId ? { id: { not: invoiceId } } : {}) } } },
       },
       select: { id: true, firstName: true, midName: true, lastName: true, phone: true },
     })
-    if (ok.length !== lines.size) fail('One or more sales are not final approved for this client, or are already on another invoice.')
+    if (ok.length !== lines.size) fail('One or more sales are not final approved on this line, or are already on another invoice.')
     return ok.map(c => ({ customerId: c.id, rate: lines.get(c.id)!, amount: lines.get(c.id)!, description: `${fullName(c)}${c.phone ? ` · ${c.phone}` : ''}`.slice(0, 300) }))
   }
 
-  /** New Invoice: the director bills chosen sales off-cycle (or only an adjustment). Starts as a draft. */
+  /**
+   * New Invoice for one line (`lineId`; a one-line client's id also works): the director bills
+   * chosen sales of that line (or only an adjustment). It goes on the client's ledger. Starts as a draft.
+   */
   async create(b: Record<string, any>, userId: string) {
-    const clientId = V.str(b.clientId, 'Client', { required: true })!
-    const client = await this.prisma.client.findUnique({ where: { id: clientId }, select: { id: true } })
-    if (!client) throw new NotFoundException('Client not found.')
-    const lines = await this.readLines(clientId, b.items ?? [])
+    const line = await this.lineFor(V.str(b.lineId ?? b.clientId, 'Line', { required: true })!)
+    const lines = await this.readLines(line.id, b.items ?? [])
     const discount = V.num(b.discount, 'Discount', { min: 0 }) ?? 0
     const adjustment = V.num(b.adjustment, 'Adjustment') ?? 0
     if (!lines.length && adjustment <= 0) fail('Pick at least one sale, or enter an adjustment to bill.')
@@ -478,7 +563,7 @@ export class InvoicesService {
     if (t.totalAmount < 0) fail('The invoice total cannot be below zero.')
     const inv = await this.prisma.invoice.create({
       data: {
-        invoiceNumber: await this.next('INV'), clientId, kind: 'MANUAL', status: 'DRAFT', ...t,
+        invoiceNumber: await this.next('INV'), companyId: line.companyId, clientId: line.id, kind: 'MANUAL', status: 'DRAFT', ...t,
         description: V.str(b.description, 'Description', { max: 500 }) ?? `${lines.length} sale${lines.length === 1 ? '' : 's'}, ${start === end ? fmtShortDate(start) : `${fmtShortDate(start)} to ${fmtShortDate(end)}`}`,
         billingPeriodStart: dateOnly(start), billingPeriodEnd: dateOnly(end),
         invoiceDate: dateOnly(invoiceDate), dueDate: dateOnly(dueDate),
@@ -504,7 +589,8 @@ export class InvoicesService {
     let lines: Awaited<ReturnType<typeof this.readLines>> | null = null
     if (b.items !== undefined) {
       if (!draft) fail('The sales on a sent invoice cannot change. Cancel it and raise a new one.')
-      lines = await this.readLines(inv.clientId, b.items, id)
+      if (!inv.clientId) fail('This invoice is not for a line.')
+      lines = await this.readLines(inv.clientId!, b.items, id)
     }
     const subtotal = lines ? lines.reduce((s, l) => s + l.amount, 0) : num(inv.subtotal)
     const discount = V.num(b.discount, 'Discount', { min: 0 }) ?? num(inv.discount)
@@ -618,7 +704,7 @@ export class InvoicesService {
     if (!allocs.length) return
     if (new Set(allocs.map(a => a.invoiceId)).size !== allocs.length) fail('The same invoice is listed twice.')
     const invoices = await this.prisma.invoice.findMany({
-      where: { id: { in: allocs.map(a => a.invoiceId) }, clientId },
+      where: { id: { in: allocs.map(a => a.invoiceId) }, companyId: clientId },
       select: { id: true, invoiceNumber: true, totalAmount: true, status: true, allocations: { select: { paymentId: true, amount: true, discount: true } } },
     })
     if (invoices.length !== allocs.length) fail('One or more invoices do not belong to this client.')
@@ -655,10 +741,11 @@ export class InvoicesService {
     const allocs = this.readAllocs(b.allocations)
     const cash = allocs.reduce((s, a) => s + a.amount, 0)
     if (cash > f.amount! + 0.001) fail('Cash applied to invoices is more than the payment received.')
+    await this.assertClient(clientId)
     await this.validateAllocations(clientId, allocs)
     const payment = await this.prisma.payment.create({
       data: {
-        clientId, paymentNumber: await this.next('PMT'), amount: r2(f.amount!), method: f.method!,
+        companyId: clientId, paymentNumber: await this.next('PMT'), amount: r2(f.amount!), method: f.method!,
         reference: f.reference ?? null, proofUrl: f.proofUrl ?? null, notes: f.notes ?? null,
         paidAt: f.paidAt ? dateOnly(f.paidAt) : this.today(), overpaymentType: f.overpaymentType ?? 'ADVANCE', recordedById: userId,
         allocations: { create: allocs.map(a => ({ invoiceId: a.invoiceId, amount: a.amount, discount: a.discount })) },
@@ -676,7 +763,7 @@ export class InvoicesService {
     const allocs = this.readAllocs(b.allocations)
     if (!allocs.length) fail('Nothing to apply.')
     if (allocs.reduce((s, a) => s + a.amount, 0) > unapplied + 0.001) fail('Applied amount is more than this payment has left.')
-    await this.validateAllocations(payment.clientId, allocs)
+    await this.validateAllocations(payment.companyId, allocs)
     for (const a of allocs) {
       const existing = payment.allocations.find(x => x.invoiceId === a.invoiceId)
       if (existing) await this.prisma.paymentAllocation.update({ where: { id: existing.id }, data: { amount: r2(num(existing.amount) + a.amount), discount: r2(num(existing.discount) + a.discount) } })
@@ -688,13 +775,13 @@ export class InvoicesService {
 
   /** Every payment from the client, with how much of each is applied, unapplied credit or bonus. */
   async clientPayments(clientId: string) {
-    const rows = await this.prisma.payment.findMany({ where: { clientId }, include: PAYMENT_INCLUDE, orderBy: [{ paidAt: 'desc' }, { createdAt: 'desc' }] })
+    const rows = await this.prisma.payment.findMany({ where: { companyId: clientId }, include: PAYMENT_INCLUDE, orderBy: [{ paidAt: 'desc' }, { createdAt: 'desc' }] })
     return rows.map(p => {
       const applied = r2(p.allocations.reduce((s, a) => s + num(a.amount), 0))
       const spare = r2(num(p.amount) - applied)
       const bonus = p.overpaymentType === 'BONUS' && spare > 0
       return {
-        ...p, amount: num(p.amount), paidAt: p.paidAt,
+        ...p, clientId: p.companyId, amount: num(p.amount), paidAt: p.paidAt,
         allocations: p.allocations.map(a => ({ ...a, amount: num(a.amount), discount: num(a.discount) })),
         recordedBy: p.recordedBy && { id: p.recordedBy.id, fullName: fullName(p.recordedBy) },
         applied, unapplied: bonus ? 0 : spare, bonus: bonus ? spare : 0,
@@ -715,7 +802,7 @@ export class InvoicesService {
     if (b.allocations !== undefined) {
       const allocs = this.readAllocs(b.allocations)
       if (allocs.reduce((s, a) => s + a.amount, 0) > amount + 0.001) fail('Applied cash is more than the payment amount.')
-      await this.validateAllocations(payment.clientId, allocs, paymentId)
+      await this.validateAllocations(payment.companyId, allocs, paymentId)
       touched = [...payment.allocations.map(a => a.invoiceId), ...allocs.map(a => a.invoiceId)]
       await this.prisma.$transaction([
         this.prisma.paymentAllocation.deleteMany({ where: { paymentId } }),
@@ -758,16 +845,16 @@ export class InvoicesService {
     return { ok: true }
   }
 
-  // ── Billing cycles: the drafts ─────────────────────────────────────────────
+  // ── Billing cycles (per line, as before clients had lines) ─────────────────
 
   /**
-   * The day the client's billing clock starts: its first sale approved by a manager, or its first
-   * final approved sale, as the client's "Billing Starts After" setting says. Null before that.
+   * The day the line's billing clock starts: its first sale approved by a manager, or its first
+   * final approved sale, as the line's "Billing Starts After" setting says. Null before that.
    */
-  private async anchorOf(client: { id: string; billingStartAfter: string }): Promise<string | null> {
-    const final = client.billingStartAfter === 'first_final_approved'
+  private async anchorOf(line: { id: string; billingStartAfter: string }): Promise<string | null> {
+    const final = line.billingStartAfter === 'first_final_approved'
     const agg = await this.prisma.customer.aggregate({
-      where: { clientId: client.id, ...(final ? { finalApprovedAt: { not: null } } : { approvedAt: { not: null } }) },
+      where: { clientId: line.id, ...(final ? { finalApprovedAt: { not: null } } : { approvedAt: { not: null } }) },
       _min: { approvedAt: true, finalApprovedAt: true },
     })
     const first = final ? agg._min.finalApprovedAt : agg._min.approvedAt
@@ -775,7 +862,7 @@ export class InvoicesService {
   }
 
   /**
-   * The client's billing cycles that have ended by `today`, as [start, end) business days. The first
+   * The line's billing cycles that have ended by `today`, as [start, end) business days. The first
    * cycle runs from the anchor for "Billing Starts After (Days)" (or one cycle when that is 0), every
    * later one for "Cycle (Days)".
    */
@@ -792,9 +879,9 @@ export class InvoicesService {
     return out
   }
 
-  /** The cycle running now, for the New Invoice form: its dates and the day its invoice falls due. */
-  async nextCycleOf(clientId: string) {
-    const c = await this.prisma.client.findUnique({ where: { id: clientId }, select: { id: true, billingStartAfter: true, billingStartAfterDays: true, cycleOfDay: true } })
+  /** The line's cycle running now, for the New Invoice form: its dates and the day its invoice falls due. */
+  async nextCycleOf(lineId: string) {
+    const c = await this.prisma.client.findUnique({ where: { id: lineId }, select: { id: true, billingStartAfter: true, billingStartAfterDays: true, cycleOfDay: true } })
     if (!c) return null
     const anchor = await this.anchorOf(c)
     if (!anchor) return null
@@ -804,41 +891,46 @@ export class InvoicesService {
     return { start, end: addDays(end, -1), dueOn: end }
   }
 
-  /** Approved sales of the client not invoiced yet, made before `end` (exclusive): how many, how much. */
-  private async unbilledBefore(client: { id: string; rateOfSaleAmount: Prisma.Decimal | null }, end: string) {
+  /** Approved sales of the line not invoiced yet, made before `end` (exclusive): how many, how much. */
+  private async unbilledBefore(lineId: string, end: string) {
     const sales = await this.prisma.customer.findMany({
-      where: this.unbilled(client.id, { createdAt: { lt: this.dayStart(end) } }),
-      select: { saleRateAmount: true, createdAt: true },
+      where: this.unbilled(lineId, { createdAt: { lt: this.dayStart(end) } }),
+      select: { saleRateAmount: true, createdAt: true, client: { select: { rateOfSaleAmount: true } } },
     })
     return {
       sales: sales.length,
-      amount: r2(sales.reduce((s, c) => s + this.saleRate(c, client), 0)),
+      amount: r2(sales.reduce((s, c) => s + this.saleRate(c), 0)),
       firstSale: sales.length ? sales.map(c => todayIn(BUSINESS_TZ, c.createdAt)).sort()[0] : null,
     }
   }
 
+  private static readonly CYCLE_LINE = {
+    id: true, companyId: true, lineName: true, companyName: true, didCode: true, isActive: true,
+    billingStartAfter: true, billingStartAfterDays: true, cycleOfDay: true, cycleNotifiedThrough: true,
+    company: { select: { name: true } },
+  } satisfies Prisma.ClientSelect
+
   /**
-   * Invoices Due: every client whose latest billing cycle has ended with approved sales still not
+   * Invoices Due: every line whose latest billing cycle has ended with approved sales still not
    * invoiced (any made before that cycle ended, so leftovers of earlier cycles count too). This is
-   * what the "invoice due" notification points at; creating the invoice clears it.
+   * what the "invoice due" notification points at; creating the invoice clears it. `lineId` is the
+   * line to invoice, `clientId` the client whose ledger it goes on.
    */
   async dueInvoices() {
     const today = todayIn(BUSINESS_TZ)
-    const clients = await this.prisma.client.findMany({
-      select: { id: true, companyName: true, didCode: true, isActive: true, billingStartAfter: true, billingStartAfterDays: true, cycleOfDay: true, rateOfSaleAmount: true },
-      orderBy: { companyName: 'asc' },
-    })
+    const lines = await this.prisma.client.findMany({ select: InvoicesService.CYCLE_LINE, orderBy: { companyName: 'asc' } })
     const out = []
-    for (const c of clients) {
-      const anchor = await this.anchorOf(c)
+    for (const l of lines) {
+      const anchor = await this.anchorOf(l)
       if (!anchor) continue
-      const ended = this.cyclePeriods(anchor, c.billingStartAfterDays, c.cycleOfDay, today)
+      const ended = this.cyclePeriods(anchor, l.billingStartAfterDays, l.cycleOfDay, today)
       if (!ended.length) continue
       const last = ended[ended.length - 1]
-      const u = await this.unbilledBefore(c, last.end)
+      const u = await this.unbilledBefore(l.id, last.end)
       if (!u.sales) continue
       out.push({
-        clientId: c.id, businessName: c.companyName, didCode: c.didCode, isActive: c.isActive, cycleOfDay: c.cycleOfDay,
+        lineId: l.id, clientId: l.companyId, businessName: l.companyName, clientName: l.company.name, lineName: l.lineName,
+        didCode: l.didCode, isActive: l.isActive, cycleOfDay: l.cycleOfDay,
         periodStart: last.start, periodEnd: addDays(last.end, -1), dueSince: last.end,
         earliestSale: u.firstSale, sales: u.sales, amount: u.amount,
       })
@@ -847,24 +939,22 @@ export class InvoicesService {
   }
 
   /**
-   * For the daily job: billing cycles that ended since the director was last told, with approved
-   * sales still to invoice. Each ended cycle is announced once (`cycleNotifiedThrough`).
+   * For the daily job: line billing cycles that ended since the director was last told, with
+   * approved sales still to invoice. Each ended cycle is announced once (`cycleNotifiedThrough`).
    */
   async newlyDueCycles(today = todayIn(BUSINESS_TZ)) {
-    const clients = await this.prisma.client.findMany({
-      select: { id: true, companyName: true, billingStartAfter: true, billingStartAfterDays: true, cycleOfDay: true, cycleNotifiedThrough: true, rateOfSaleAmount: true },
-    })
+    const lines = await this.prisma.client.findMany({ select: InvoicesService.CYCLE_LINE })
     const due: { clientId: string; client: string; periodStart: string; periodEnd: string; sales: number; amount: number }[] = []
-    for (const c of clients) {
-      const anchor = await this.anchorOf(c)
+    for (const l of lines) {
+      const anchor = await this.anchorOf(l)
       if (!anchor) continue
-      const told = fmtDateOnly(c.cycleNotifiedThrough)
-      const fresh = this.cyclePeriods(anchor, c.billingStartAfterDays, c.cycleOfDay, today).filter(p => !told || p.end > told)
+      const told = fmtDateOnly(l.cycleNotifiedThrough)
+      const fresh = this.cyclePeriods(anchor, l.billingStartAfterDays, l.cycleOfDay, today).filter(p => !told || p.end > told)
       if (!fresh.length) continue
       const last = fresh[fresh.length - 1]   // after downtime, one notice for the latest cycle, not one per missed cycle
-      const u = await this.unbilledBefore(c, last.end)
-      if (u.sales) due.push({ clientId: c.id, client: c.companyName, periodStart: last.start, periodEnd: addDays(last.end, -1), sales: u.sales, amount: u.amount })
-      await this.prisma.client.update({ where: { id: c.id }, data: { cycleNotifiedThrough: dateOnly(last.end) } })
+      const u = await this.unbilledBefore(l.id, last.end)
+      if (u.sales) due.push({ clientId: l.id, client: l.companyName, periodStart: last.start, periodEnd: addDays(last.end, -1), sales: u.sales, amount: u.amount })
+      await this.prisma.client.update({ where: { id: l.id }, data: { cycleNotifiedThrough: dateOnly(last.end) } })
     }
     return due
   }

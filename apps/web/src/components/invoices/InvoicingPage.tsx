@@ -117,6 +117,8 @@ export default function InvoicingPage() {
   }
 
   const selectedClient = useMemo(() => clients.find(c => c.id === selectedId), [clients, selectedId])
+  // A client with several lines: tables show which line each invoice and sale is on
+  const manyLines = (ledger?.client?.lines?.length ?? 0) > 1
 
   const td: React.CSSProperties = {
     padding: '6px 12px', borderBottom: `1px solid ${P.border}50`, fontFamily: F,
@@ -241,6 +243,13 @@ export default function InvoicingPage() {
               <h1 style={{ margin: 0, fontFamily: "'Aptos', sans-serif", fontSize: 22, fontWeight: 800, display: 'inline-block', color: '#1E8496' }}>
                 {ledger?.client?.businessName ?? ledger?.client?.user?.fullName ?? 'Client Account'}
               </h1>
+            )}
+            {/* A client with several lines: which lines this ledger covers */}
+            {selectedId !== null && (ledger?.client?.lines?.length ?? 0) > 1 && (
+              <span title={ledger.client.lines.map((l: any) => `${l.lineName}${l.didCode ? ` (${l.didCode})` : ''}`).join(', ')}
+                style={{ fontSize: 10.5, fontWeight: 800, padding: '3px 10px', borderRadius: 20, background: '#EDE9FE', color: '#5B21B6', flexShrink: 0, whiteSpace: 'nowrap' }}>
+                {ledger.client.lines.length} lines: {ledger.client.lines.map((l: any) => l.lineName).join(', ')}
+              </span>
             )}
             {/* The client's billing terms, beside its name so the tab bar stays on one line */}
             {selectedId !== null && ledger?.client?.cycleOfDay && (
@@ -411,6 +420,7 @@ export default function InvoicingPage() {
                   columns={[
                     { key: 'invoiceNumber', label: 'Invoice #', width: 118, cellStyle: { color: TEAL, fontWeight: 700 } },
                     { key: 'issueDate', label: 'Date', width: 104, cellStyle: { color: '#64748B' }, render: (r: any) => fmtDate(r.issueDate) },
+                    ...(manyLines ? [{ key: 'line', label: 'Line', width: 120, render: (r: any) => r.line?.lineName ?? '' }] : []),
                     { key: 'description', label: 'Description', width: 250, cellStyle: { fontWeight: 400 }, render: (r: any) => (
                       <>
                         {r.description ?? ''}
@@ -508,6 +518,7 @@ export default function InvoicingPage() {
                       emptyText="No final approved sales for this client in this period."
                       columns={[
                         { key: 'name', label: 'Customer', width: 170, cellStyle: { color: NAVY } },
+                        ...(manyLines ? [{ key: 'line', label: 'Line', width: 120, render: (s: any) => s.line }] : []),
                         { key: 'phone', label: 'Phone', width: 120, cellStyle: { fontWeight: 400, fontFamily: 'ui-monospace, Consolas, monospace' } },
                         { key: 'saleDate', label: 'Sale Date', width: 104, cellStyle: { color: '#64748B' }, render: (s: any) => fmtDate(s.saleDate) },
                         { key: 'agent', label: 'Agent', width: 150, cellStyle: { fontWeight: 400 } },

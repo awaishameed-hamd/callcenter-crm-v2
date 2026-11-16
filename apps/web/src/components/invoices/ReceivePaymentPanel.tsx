@@ -264,6 +264,7 @@ export default function ReceivePaymentPanel({ client, payment, onClose, onSaved 
                         </td>
                         <td style={{ ...cell, fontWeight: 700, color: on ? TEAL : '#94A3B8' }}>
                           {inv.invoiceNumber}
+                          {inv.lineName && <span style={{ marginLeft: 6, fontSize: 10.5, fontWeight: 700, color: '#5B21B6' }}>{inv.lineName}</span>}
                           <div style={{ fontSize: 10.5, fontWeight: 400, color: '#94A3B8' }}>{fmtDate(inv.issueDate)}{inv.billingPeriodStart ? ` · ${fmtPeriod(inv)}` : ''}</div>
                         </td>
                         <td style={{ ...cell, textAlign: 'right', fontWeight: 700, color: on ? NAVY : '#94A3B8' }}>{money(inv.balance)}</td>

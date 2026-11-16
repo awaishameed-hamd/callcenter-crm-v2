@@ -98,8 +98,12 @@ export interface Customer {
   agent?:          { id: string; userCode: string; displayName: string; firstName?: string | null; midName?: string | null; lastName?: string | null } | null
 }
 
+/** A line (the old "client"): what a DID is connected to. `companyName` is its full label. */
 export interface Client {
   id:                    string
+  companyId:             string
+  lineName:              string
+  company?:              { id: string; name: string }
   didCode:               string | null
   saleType:              string | null
   campaign:              string | null
@@ -115,6 +119,16 @@ export interface Client {
   isActive:              boolean
   extraFields:           Record<string, unknown> | null
   createdAt:             string
+}
+
+/** A client (company): groups its lines into one ledger. */
+export interface Company {
+  id:        string
+  name:      string
+  notes:     string | null
+  isActive:  boolean
+  createdAt: string
+  lines:     Client[]
 }
 
 export interface FormField {

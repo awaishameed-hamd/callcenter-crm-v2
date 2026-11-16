@@ -40,6 +40,23 @@ export class ClientsController {
   toggleActive(@Param('id') id: string) { return this.clients.toggleActive(id) }
 }
 
+/** Clients: the companies that own the lines (the `/clients` routes above are the lines). */
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles(Role.ADMIN, Role.DIRECTOR)
+@Controller('companies')
+export class CompaniesController {
+  constructor(private clients: ClientsService) {}
+
+  @Get()
+  list() { return this.clients.companies() }
+
+  @Post()
+  create(@Body() body: Record<string, any>) { return this.clients.createCompany(body) }
+
+  @Put(':id')
+  update(@Param('id') id: string, @Body() body: Record<string, any>) { return this.clients.updateCompany(id, body) }
+}
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('dids')
 export class DidsController {

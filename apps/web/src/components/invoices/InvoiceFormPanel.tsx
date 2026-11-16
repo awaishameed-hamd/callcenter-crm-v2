@@ -6,11 +6,12 @@ import { P } from '@/lib/palette'
 import StyledSelect from '@/components/ui/StyledSelect'
 import { money, fmtDate, fmtPeriod, inputStyle, labelStyle, btn, NAVY, TEAL, F } from './invoiceShared'
 
-// The one invoice form (argroup's), for the call center: an invoice bills a client's final
-// approved sales. Which way in it is comes from the invoice it was handed:
+// The one invoice form (argroup's), for the call center: an invoice bills one line's final
+// approved sales (invoicing is line by line) and goes on its client's ledger. Which way in it is
+// comes from the invoice it was handed:
 //
-//   no invoice        a new invoice: pick the client and the sale dates, tick the approved
-//                     sales to bill (only those not invoiced yet are listed)
+//   no invoice        a new invoice: pick the line (from the client's lines when a client was
+//                     handed over) and the sale dates, tick the approved sales to bill
 //   a DRAFT invoice   from Invoice Approval: its sales are ticked, later approvals can be added
 //   an issued invoice the sales are fixed; discount, adjustment, dates and notes can change
 //
@@ -25,8 +26,13 @@ const today = () => new Date().toLocaleDateString('en-CA', { timeZone: 'America/
 const plusDays = (ymd: string, n: number) => { const d = new Date(`${ymd}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10) }
 const approvedDay = (iso: string | null) => iso ? new Date(iso).toLocaleDateString('en-CA', { timeZone: 'America/New_York' }) : ''
 
-export default function InvoiceFormPanel({ clientId: givenClient, clientName: givenName, inv, period, onClose, onSaved }: {
+type LineOpt = { id: string; companyId: string; companyName: string; lineName: string; didCode: string | null; isActive: boolean; company?: { id: string; name: string } }
+
+export default function InvoiceFormPanel({ clientId: givenClient, lineId: givenLine, clientName: givenName, inv, period, onClose, onSaved }: {
+  /** The client (whose ledger): the line is picked from its lines */
   clientId?: string
+  /** The line to invoice, when already known (an "invoice due" row) */
+  lineId?: string
   clientName?: string
   inv?: any | null
   /** Sale dates to start with, e.g. the billing period an "invoice due" row is for */
@@ -34,13 +40,20 @@ export default function InvoiceFormPanel({ clientId: givenClient, clientName: gi
   onClose: () => void
   onSaved: () => void
 }) {
-  const [clientId, setClientId] = useState(givenClient ?? inv?.clientId ?? '')
-  const [clients,  setClients]  = useState<{ id: string; companyName: string; didCode: string | null; isActive: boolean }[]>([])
+  const fixedLine = givenLine ?? inv?.lineId ?? null
+  const [lineId, setLineId] = useState<string>(fixedLine ?? '')
+  const [lines,  setLines]  = useState<LineOpt[]>([])
   useEffect(() => {
-    if (givenClient || inv) return
-    api.get('/clients', { params: { perPage: 'all' } }).then(({ data }) => setClients((data?.data ?? data) as any[])).catch(() => {})
-  }, [givenClient, inv])
-  const clientName = givenName ?? inv?.client?.businessName ?? clients.find(c => c.id === clientId)?.companyName ?? ''
+    if (fixedLine) return
+    api.get('/clients', { params: { perPage: 'all' } }).then(({ data }) => {
+      const all = ((data?.data ?? data) as LineOpt[]).filter(l => !givenClient || l.companyId === givenClient)
+      setLines(all)
+      if (givenClient && all.length === 1) setLineId(all[0].id)   // a one-line client: nothing to pick
+    }).catch(() => {})
+  }, [fixedLine, givenClient])
+  const pickedLine = lines.find(l => l.id === lineId)
+  const clientName = givenName ?? inv?.client?.businessName ?? pickedLine?.company?.name ?? ''
+  const lineLabel  = inv?.line?.companyName ?? pickedLine?.companyName ?? ''
   const isEdit  = !!inv
   const isDraft = inv?.status === 'DRAFT'
   const salesFixed = isEdit && !isDraft
@@ -67,9 +80,9 @@ export default function InvoiceFormPanel({ clientId: givenClient, clientName: gi
       rate: String(Number(it.rate)), on: true,
     }))
     if (salesFixed) { setRows(onIt); return }
-    if (!clientId) { setRows([]); setLoading(false); return }
+    if (!lineId) { setRows([]); setLoading(false); return }
     setLoading(true)
-    api.get(`/invoices/unbilled/${clientId}`)
+    api.get(`/invoices/unbilled/${lineId}`)
       .then(({ data }) => {
         const list = (data?.data ?? data) as any[]
         const free: Row[] = list.map(s => ({
@@ -80,7 +93,7 @@ export default function InvoiceFormPanel({ clientId: givenClient, clientName: gi
       })
       .catch(() => setRows(onIt))
       .finally(() => setLoading(false))
-  }, [clientId, inv?.id]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [lineId, inv?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const visible = useMemo(() => rows.filter(r => {
     if (show === 'ticked' && !r.on) return false
@@ -105,7 +118,7 @@ export default function InvoiceFormPanel({ clientId: givenClient, clientName: gi
   // `send` separates saving a draft from issuing it
   async function save(send: boolean) {
     if (send && total <= 0) { setError('The invoice total must be above zero to send it.'); return }
-    if (!clientId) { setError('Pick the client first.'); return }
+    if (!lineId) { setError('Pick the line first.'); return }
     if (!salesFixed && !ticked.length && nAdjust <= 0) { setError('Tick at least one sale, or enter an adjustment to bill.'); return }
     if (total < 0) { setError('The invoice total cannot be below zero.'); return }
     setSaving(true); setError('')
@@ -121,7 +134,7 @@ export default function InvoiceFormPanel({ clientId: givenClient, clientName: gi
         await api.patch(`/invoices/${id}`, body)
       } else {
         const { data } = await api.post('/invoices', {
-          clientId, ...body,
+          lineId, ...body,
           // The invoice covers the sale dates picked, or the ticked sales' dates when none were
           periodStart: from || days[0] || issueDate, periodEnd: to || days[days.length - 1] || issueDate,
         })
@@ -144,7 +157,7 @@ export default function InvoiceFormPanel({ clientId: givenClient, clientName: gi
       <div style={{ background: P.teal, color: '#fff', padding: '10px 20px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
           <h2 style={{ fontFamily: F, fontSize: 22, fontWeight: 800, display: 'inline-block', color: '#F1F5F9', letterSpacing: '0.04em', margin: 0, whiteSpace: 'nowrap' }}>{title}</h2>
-          <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700 }}>{clientName}</span>
+          {(lineLabel || clientName) && <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700 }}>{lineLabel || clientName}</span>}
           {inv?.billingPeriodStart && inv.kind === 'CYCLE' && (
             <span style={{ fontSize: 11, padding: '2px 8px', borderRadius: 9999, background: 'rgba(255,255,255,0.18)', color: '#E2E8F0', fontWeight: 700, whiteSpace: 'nowrap' }}>Cycle {fmtPeriod(inv)}</span>
           )}
@@ -165,13 +178,13 @@ export default function InvoiceFormPanel({ clientId: givenClient, clientName: gi
         {!salesFixed && (
           <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 14, marginBottom: 16 }}>
             <div>
-              <label style={labelStyle}>Client <span style={{ color: '#ef4444' }}>*</span></label>
-              {givenClient || inv ? (
-                <div style={{ ...inputStyle, background: '#F8FAFC', fontWeight: 700, color: NAVY }}>{clientName}</div>
+              <label style={labelStyle}>Line <span style={{ color: '#ef4444' }}>*</span></label>
+              {fixedLine || (givenClient && lines.length === 1) ? (
+                <div style={{ ...inputStyle, background: '#F8FAFC', fontWeight: 700, color: NAVY }}>{lineLabel || clientName}</div>
               ) : (
-                <StyledSelect value={clientId} onChange={v => { setClientId(v); setRows([]) }} placeholder="Select client"
-                  options={clients.slice().sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.companyName.localeCompare(b.companyName))
-                    .map(c => ({ value: c.id, label: `${c.companyName}${c.didCode ? ` (${c.didCode})` : ''}${c.isActive ? '' : ' (inactive)'}` }))} />
+                <StyledSelect value={lineId} onChange={v => { setLineId(v); setRows([]) }} placeholder={givenClient ? `Select a line of ${clientName}` : 'Select line'}
+                  options={lines.slice().sort((a, b) => Number(b.isActive) - Number(a.isActive) || a.companyName.localeCompare(b.companyName))
+                    .map(l => ({ value: l.id, label: `${l.companyName}${l.didCode ? ` (${l.didCode})` : ''}${l.isActive ? '' : ' (inactive)'}` }))} />
               )}
             </div>
             <div>
@@ -220,7 +233,7 @@ export default function InvoiceFormPanel({ clientId: givenClient, clientName: gi
               {loading && <tr><td colSpan={8} style={{ ...td, textAlign: 'center', color: P.textMuted, padding: 24 }}>Loading sales…</td></tr>}
               {!loading && !visible.length && (
                 <tr><td colSpan={8} style={{ ...td, textAlign: 'center', color: P.textMuted, padding: 24, whiteSpace: 'normal' }}>
-                  {salesFixed ? 'No sales on this invoice.' : !clientId ? 'Pick a client to see its approved sales.' : (from || to) ? 'No approved sales waiting to be invoiced in these dates.' : 'No approved sales waiting to be invoiced for this client.'}
+                  {salesFixed ? 'No sales on this invoice.' : !lineId ? 'Pick a line to see its approved sales.' : (from || to) ? 'No approved sales waiting to be invoiced in these dates.' : 'No approved sales waiting to be invoiced on this line.'}
                 </td></tr>
               )}
               {!loading && visible.map(r => (

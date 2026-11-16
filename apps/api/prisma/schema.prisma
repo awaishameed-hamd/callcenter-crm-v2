@@ -384,8 +384,36 @@ model Did {
   @@map("dids")
 }
 
+/// The client: the company that pays. It groups one or more lines (the `clients` table, below)
+/// into one ledger (user, 2026-11-16). Everything that was the client's before stays on the line:
+/// DID, rate, billing cycle, opening balance and its own invoices. The client's ledger shows every
+/// line's invoices, and payments belong to the client, so one payment can settle invoices of
+/// several of its lines.
+model Company {
+  id        String   @id @default(cuid())
+  name      String
+  notes     String?  @db.Text
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  lines    Client[]
+  invoices Invoice[]
+  payments Payment[]
+
+  @@index([name])
+  @@map("companies")
+}
+
+/// A line of a client (Company): what a DID is connected to and what sales, reports, approvals,
+/// batch imports and invoices work with. Kept under its old name so everything after the DID stays
+/// as it was. `companyName` is the line's full label ("Centerfield Inbound"), kept in step with the
+/// client's name and the line name.
 model Client {
   id                    String    @id @default(cuid())
+  companyId             String
+  company               Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  lineName              String
   didCode               String? // assigned DID; reusable once the client is deactivated
   saleType              String? // CPA | CPL
   campaign              String? // Medicare | Final Expense | Auto
@@ -411,6 +439,7 @@ model Client {
   invoices  Invoice[]
   payments  Payment[]
 
+  @@index([companyId])
   @@index([didCode])
   @@index([campaign])
   @@index([isActive])
@@ -516,8 +545,10 @@ model FormFieldSetting {
 model Invoice {
   id                  String    @id @default(cuid())
   invoiceNumber       String    @unique // INV-2026-0001
-  clientId            String
-  client              Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  companyId           String // the client whose ledger it is on
+  company             Company   @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  clientId            String? // the line it bills (its OPENING invoice carries the line's opening balance)
+  client              Client?   @relation(fields: [clientId], references: [id], onDelete: Restrict)
   kind                String    @default("MANUAL") // MANUAL | OPENING (CYCLE unused)
   billingPeriodStart  DateTime  @db.Date
   billingPeriodEnd    DateTime  @db.Date // last day of the period (inclusive)
@@ -546,6 +577,7 @@ model Invoice {
 
   @@index([clientId, billingPeriodStart, billingPeriodEnd])
   @@index([clientId, status])
+  @@index([companyId, status])
   @@index([status])
   @@map("invoices")
 }
@@ -553,8 +585,10 @@ model Invoice {
 model Payment {
   id              String   @id @default(cuid())
   paymentNumber   String   @unique // PMT-2026-0001
-  clientId        String
-  client          Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  companyId       String // the client that paid; it can settle invoices of any of its lines
+  company         Company  @relation(fields: [companyId], references: [id], onDelete: Restrict)
+  clientId        String? // no longer written (payments were per line before clients had lines)
+  client          Client?  @relation(fields: [clientId], references: [id], onDelete: SetNull)
   amount          Decimal  @db.Decimal(12, 2) // USD actually received
   method          String   @default("WIRE") // WIRE | ACH | PAYONEER | WISE | PAYPAL | CHECK | CASH | OTHER
   reference       String?
@@ -570,6 +604,7 @@ model Payment {
   allocations PaymentAllocation[]
 
   @@index([clientId])
+  @@index([companyId])
   @@index([paidAt])
   @@map("payments")
 }

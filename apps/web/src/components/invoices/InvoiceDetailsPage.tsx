@@ -99,7 +99,7 @@ function InvoiceDetail({ id, onBack }: { id: string; onBack: () => void }) {
         <div style={{ flex: 1 }}>
           <div style={{ fontSize: 15, fontWeight: 900, color: '#fff', fontFamily: F }}>{inv.invoiceNumber}</div>
           <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.85)', fontFamily: F, marginTop: 1 }}>
-            {inv.client?.businessName || ''}{inv.billingPeriodStart && inv.kind !== 'OPENING' ? ` · ${fmtPeriod(inv)}` : ''}
+            {inv.client?.businessName || ''}{inv.line?.lineName && inv.line.lineName !== inv.client?.businessName ? `, ${inv.line.lineName}` : ''}{inv.billingPeriodStart && inv.kind !== 'OPENING' ? ` · ${fmtPeriod(inv)}` : ''}
           </div>
         </div>
         <span style={{ fontSize: 11, fontWeight: 800, padding: '3px 10px', borderRadius: 20, background: km.bg, color: km.color }}>{km.label}</span>
@@ -303,7 +303,8 @@ export default function InvoiceDetailsPage() {
               : 'No issued invoices in this range. An invoice shows up here the moment it is sent.'}
             columns={[
               { key: 'invoiceNumber', label: 'Invoice #', width: 108, cellStyle: { color: TEAL, fontWeight: 600 } },
-              { key: 'clientName',    label: 'Client',    width: 180, cellStyle: { fontWeight: 600 } },
+              { key: 'clientName',    label: 'Client',    width: 160, cellStyle: { fontWeight: 600 } },
+              { key: 'line',          label: 'Line',      width: 120, render: (r: any) => r.line?.lineName && r.line.lineName !== r.clientName ? r.line.lineName : '' },
               { key: 'description',   label: 'Description', width: 240,
                 render: (r: any) => r.description ?? '' },
               { key: 'period', label: 'Billing Period', width: 190, cellStyle: { color: '#475569' },

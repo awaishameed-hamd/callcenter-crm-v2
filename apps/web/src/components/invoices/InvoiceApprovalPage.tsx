@@ -1,10 +1,11 @@
 'use client'
 
 // Invoices Due (argroup's Invoice Approval, reworked for the call center). Nothing is invoiced
-// automatically: when a client's billing period ends the director is notified, and this page
-// lists every client whose period has ended with approved sales still not invoiced. Create
-// Invoice opens the form with that client and dates; the director ticks the sales to bill,
-// adjusts if needed and saves. Invoices saved as drafts wait below until they are saved for real.
+// automatically: invoicing is line by line, so when a line's billing period ends the director is
+// notified, and this page lists every line whose period has ended with approved sales still not
+// invoiced. Create Invoice opens the form with that line and dates; the director ticks the sales
+// to bill, adjusts if needed and saves. The invoice goes on the line's client ledger. Invoices
+// saved as drafts wait below until they are saved for real.
 
 import { useState, useEffect, useCallback } from 'react'
 import api from '@/lib/api'
@@ -15,7 +16,7 @@ import InvoiceFormPanel from '@/components/invoices/InvoiceFormPanel'
 import { StatCard, money, fmtDate, btn, TEAL, F } from './invoiceShared'
 
 type Due = {
-  clientId: string; businessName: string; didCode: string | null; isActive: boolean; cycleOfDay: number | null
+  lineId: string; clientId: string; businessName: string; clientName: string; lineName: string; didCode: string | null; isActive: boolean; cycleOfDay: number | null
   periodStart: string; periodEnd: string; dueSince: string; earliestSale: string | null; sales: number; amount: number
 }
 
@@ -26,7 +27,7 @@ export default function InvoiceApprovalPage() {
   const [drafts,  setDrafts]  = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [busy,    setBusy]    = useState<string | null>(null)
-  const [form,    setForm]    = useState<{ clientId?: string; clientName?: string; inv?: any; period?: { start: string; end: string } } | null>(null)
+  const [form,    setForm]    = useState<{ lineId?: string; clientName?: string; inv?: any; period?: { start: string; end: string } } | null>(null)
   const [confirmDel, setConfirmDel] = useState<any>(null)
 
   const fetchAll = useCallback((silent = false) => {
@@ -75,7 +76,7 @@ export default function InvoiceApprovalPage() {
 
       {form ? (
         <InvoiceFormPanel
-          clientId={form.clientId ?? form.inv?.clientId}
+          lineId={form.lineId ?? form.inv?.lineId}
           clientName={form.clientName ?? form.inv?.client?.businessName}
           inv={form.inv}
           period={form.period}
@@ -95,11 +96,12 @@ export default function InvoiceApprovalPage() {
           <div style={{ marginBottom: 20 }}>
             <DataTable
               id="invoicesDue" minWidth={900} rows={due} loading={loading} skeletonRows={3}
-              rowKey={(r: Due) => r.clientId}
-              emptyText="Nothing due. When a client's billing period ends you are notified and it shows here."
+              rowKey={(r: Due) => r.lineId}
+              emptyText="Nothing due. When a line's billing period ends you are notified and it shows here."
               columns={[
-                { key: 'client', label: 'Client', width: 220, cellStyle: { fontWeight: 700 },
-                  render: (r: Due) => <>{r.businessName}{r.didCode && <span style={{ marginLeft: 6, color: '#64748B', fontWeight: 600 }}>({r.didCode})</span>}</> },
+                { key: 'client', label: 'Client', width: 170, cellStyle: { fontWeight: 700 }, render: (r: Due) => r.clientName },
+                { key: 'line', label: 'Line', width: 170,
+                  render: (r: Due) => <>{r.lineName}{r.didCode && <span style={{ marginLeft: 6, color: '#64748B', fontWeight: 600 }}>({r.didCode})</span>}</> },
                 { key: 'period', label: 'Billing Period', width: 230, render: (r: Due) => `${fmtDate(r.periodStart)} to ${fmtDate(r.periodEnd)}` },
                 { key: 'cycle', label: 'Cycle', width: 90, cellStyle: { color: '#64748B' }, render: (r: Due) => r.cycleOfDay ? `${r.cycleOfDay} days` : '' },
                 { key: 'sales', label: 'Sales Not Invoiced', width: 140, align: 'right',
@@ -107,7 +109,7 @@ export default function InvoiceApprovalPage() {
                 { key: 'amount', label: 'Amount', width: 110, align: 'right', render: (r: Due) => <b>{money(r.amount)}</b> },
                 { key: 'actions', label: '', width: 130, resizable: false, cellStyle: { overflow: 'visible' }, render: (r: Due) => (
                   <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                    <button onClick={() => setForm({ clientId: r.clientId, clientName: r.businessName, period: { start: r.earliestSale && r.earliestSale < r.periodStart ? r.earliestSale : r.periodStart, end: r.periodEnd } })}
+                    <button onClick={() => setForm({ lineId: r.lineId, clientName: r.clientName, period: { start: r.earliestSale && r.earliestSale < r.periodStart ? r.earliestSale : r.periodStart, end: r.periodEnd } })}
                       style={{ padding: '0 10px', height: 22, borderRadius: 6, border: 'none', background: TEAL, color: '#fff', cursor: 'pointer', fontSize: 11, fontWeight: 700, fontFamily: F }}>
                       Create Invoice
                     </button>
@@ -124,7 +126,8 @@ export default function InvoiceApprovalPage() {
             emptyText="No drafts. An invoice saved as a draft waits here until you save it for the client."
             columns={[
               { key: 'invoiceNumber', label: 'Invoice #', width: 120, cellStyle: { color: TEAL, fontWeight: 600 } },
-              { key: 'client', label: 'Client', width: 180, cellStyle: { fontWeight: 600 }, render: (r: any) => r.client?.businessName ?? '' },
+              { key: 'client', label: 'Client', width: 150, cellStyle: { fontWeight: 600 }, render: (r: any) => r.client?.businessName ?? '' },
+              { key: 'line', label: 'Line', width: 130, render: (r: any) => r.line?.lineName ?? '' },
               { key: 'description', label: 'Description', width: 260, render: (r: any) => r.description ?? '' },
               { key: 'sales', label: 'Sales', width: 70, align: 'right', render: (r: any) => r.items?.length ?? 0 },
               { key: 'createdAt', label: 'Created', width: 104, cellStyle: { color: '#64748B' }, render: (r: any) => fmtDate(r.createdAt) },

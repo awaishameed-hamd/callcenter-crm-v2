@@ -42,6 +42,8 @@ export default function InvoiceView({ inv: initialInv, onClose, onDeleted, onEdi
   const balance    = balanceOf(inv)
   const st         = STATUS_META[inv.status] ?? STATUS_META.DRAFT
   const clientName = inv.client?.businessName ?? 'Client'
+  // Invoices are line by line: name the line when the client has one of its own name
+  const lineName   = (inv as any).line?.lineName && (inv as any).line.lineName.toLowerCase() !== clientName.toLowerCase() ? String((inv as any).line.lineName) : ''
   const items      = (inv.items ?? []) as any[]
   const lines      = summaryLines(inv)
   const opening    = inv.kind === 'OPENING'
@@ -123,6 +125,7 @@ export default function InvoiceView({ inv: initialInv, onClose, onDeleted, onEdi
       pdf.text(clientName, left, y + 6)
       let ly = y + 11
       pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor(...GREY)
+      if (lineName) { pdf.text(`Line: ${lineName}`, left, ly); ly += 4.5 }
       if (!opening && inv.billingPeriodStart) { pdf.text(`Billing period: ${fmtPeriod(inv)}`, left, ly); ly += 4.5 }
       if (!opening && items.length) { pdf.text(`${items.length} sale${items.length === 1 ? '' : 's'}, listed in Annexure A`, left, ly); ly += 4.5 }
 
@@ -237,7 +240,7 @@ export default function InvoiceView({ inv: initialInv, onClose, onDeleted, onEdi
         pdf.setFont('helvetica', 'bold'); pdf.setFontSize(12); pdf.setTextColor(...NV)
         pdf.text('ANNEXURE A: SALES DETAILS', left + 6, margin + 10)
         pdf.setFont('helvetica', 'normal'); pdf.setFontSize(9); pdf.setTextColor(...GREY)
-        pdf.text(`${inv.invoiceNumber} · ${clientName}${inv.billingPeriodStart ? ` · ${fmtPeriod(inv)}` : ''}`, right - 6, margin + 10, { align: 'right' })
+        pdf.text(`${inv.invoiceNumber} · ${clientName}${lineName ? ` ${lineName}` : ''}${inv.billingPeriodStart ? ` · ${fmtPeriod(inv)}` : ''}`, right - 6, margin + 10, { align: 'right' })
         autoTable(pdf, {
           startY: margin + 22,
           margin: { left: margin, right: margin },
@@ -260,7 +263,7 @@ export default function InvoiceView({ inv: initialInv, onClose, onDeleted, onEdi
         })
       }
 
-      pdf.save(`${clientName} ${inv.invoiceNumber}.pdf`.replace(/[\\/:*?"<>|]/g, ' '))
+      pdf.save(`${clientName}${lineName ? ` ${lineName}` : ''} ${inv.invoiceNumber}.pdf`.replace(/[\\/:*?"<>|]/g, ' '))
     } finally {
       setBusy(false)
     }
@@ -309,6 +312,7 @@ export default function InvoiceView({ inv: initialInv, onClose, onDeleted, onEdi
             <div>
               <div style={{ fontSize: 9, fontWeight: 900, letterSpacing: '0.14em', color: '#94A3B8', fontFamily: F, marginBottom: 6 }}>BILL TO</div>
               <div style={{ fontSize: 15, fontWeight: 800, color: NAVY, fontFamily: F }}>{clientName}</div>
+              {lineName && <div style={{ fontSize: 12, color: '#64748B', fontFamily: F, marginTop: 3 }}>Line: {lineName}</div>}
               {!opening && inv.billingPeriodStart && <div style={{ fontSize: 12, color: '#64748B', fontFamily: F, marginTop: 3 }}>Billing period: {fmtPeriod(inv)}</div>}
               {!opening && items.length > 0 && <div style={{ fontSize: 12, color: '#64748B', fontFamily: F }}>{items.length} sale{items.length === 1 ? '' : 's'}, listed in Annexure A</div>}
             </div>
