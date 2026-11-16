@@ -887,10 +887,18 @@ export class InvoicesService {
     return { start, end: addDays(end, -1), dueOn: end }
   }
 
-  /** Approved sales of the line not invoiced yet, made before `end` (exclusive): how many, how much. */
+  /**
+   * The line's approved sales not invoiced yet, made before `end` (exclusive): how many, how much.
+   * For "invoice due" a sale counts once a manager approved it (final approval often comes later,
+   * from the client's report); pending and rejected sales do not. No such sale: nothing is due.
+   */
   private async unbilledBefore(lineId: string, end: string) {
     const sales = await this.prisma.customer.findMany({
-      where: this.unbilled(lineId, { createdAt: { lt: this.dayStart(end) } }),
+      where: {
+        clientId: lineId, status: { in: [CustomerStatus.APPROVED, CustomerStatus.FINAL_APPROVED] },
+        createdAt: { lt: this.dayStart(end) },
+        invoiceItems: { none: { invoice: { status: { not: 'CANCELLED' } } } },
+      },
       select: { saleRateAmount: true, createdAt: true, client: { select: { rateOfSaleAmount: true } } },
     })
     return {
@@ -907,14 +915,14 @@ export class InvoicesService {
   } satisfies Prisma.ClientSelect
 
   /**
-   * Invoices Due: every line whose latest billing cycle has ended with approved sales still not
+   * Invoices Due: every active line whose latest billing cycle has ended with approved sales still not
    * invoiced (any made before that cycle ended, so leftovers of earlier cycles count too). This is
    * what the "invoice due" notification points at; creating the invoice clears it. `lineId` is the
    * line to invoice, `clientId` the client whose ledger it goes on.
    */
   async dueInvoices() {
     const today = todayIn(BUSINESS_TZ)
-    const lines = await this.prisma.client.findMany({ select: InvoicesService.CYCLE_LINE, orderBy: { companyName: 'asc' } })
+    const lines = await this.prisma.client.findMany({ where: { isActive: true }, select: InvoicesService.CYCLE_LINE, orderBy: { companyName: 'asc' } })
     const out = []
     for (const l of lines) {
       const first = this.firstPeriod(l)
@@ -934,11 +942,11 @@ export class InvoicesService {
   }
 
   /**
-   * For the daily job: line billing cycles that ended since the director was last told, with
-   * approved sales still to invoice. Each ended cycle is announced once (`cycleNotifiedThrough`).
+   * For the daily job: active lines' billing cycles that ended since the director was last told,
+   * with approved sales still to invoice (a cycle with none is not due). Each ended cycle is announced once (`cycleNotifiedThrough`).
    */
   async newlyDueCycles(today = todayIn(BUSINESS_TZ)) {
-    const lines = await this.prisma.client.findMany({ select: InvoicesService.CYCLE_LINE })
+    const lines = await this.prisma.client.findMany({ where: { isActive: true }, select: InvoicesService.CYCLE_LINE })
     const due: { clientId: string; client: string; periodStart: string; periodEnd: string; sales: number; amount: number }[] = []
     for (const l of lines) {
       const first = this.firstPeriod(l)
