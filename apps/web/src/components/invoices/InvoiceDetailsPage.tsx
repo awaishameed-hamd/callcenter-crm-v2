@@ -199,17 +199,28 @@ export default function InvoiceDetailsPage() {
   const [to,      setTo]      = useState('')
   const [search,  setSearch]  = useState('')
   const [openId,  setOpenId]  = useState<string | null>(null)
+  // Client and line filters: a client narrows the lines to its own
+  const [clientId, setClientId] = useState('')
+  const [lineId,   setLineId]   = useState('')
+  const [clients,  setClients]  = useState<{ id: string; name: string; lines: { id: string; lineName: string; companyName: string; didCode: string | null }[] }[]>([])
+  useEffect(() => { api.get('/companies').then(({ data }) => setClients((data.data ?? data) as any[])).catch(() => {}) }, [])
+  const lineOptions = useMemo(() => {
+    const list = clientId ? clients.find(c => c.id === clientId)?.lines ?? [] : clients.flatMap(c => c.lines)
+    return list
+      .map(l => ({ value: l.id, label: `${clientId ? l.lineName : l.companyName}${l.didCode ? ` (${l.didCode})` : ''}` }))
+      .sort((a, b) => a.label.localeCompare(b.label))
+  }, [clients, clientId])
 
   // Presets fill the two date boxes, Custom hands them back to the user
   const dates = useMemo(() => range === 'custom' ? { from: from || undefined, to: to || undefined } : rangeDates(range), [range, from, to])
 
   const fetchRows = useCallback((silent = false) => {
     if (!silent) setLoading(true)
-    api.get('/invoices/register', { params: { ...dates, ...(search ? { search } : {}) } })
+    api.get('/invoices/register', { params: { ...dates, ...(search ? { search } : {}), ...(clientId ? { clientId } : {}), ...(lineId ? { lineId } : {}) } })
       .then(({ data }) => { const d = data.data ?? data; setRows(Array.isArray(d) ? d : []) })
       .catch(() => { if (!silent) setRows([]) })
       .finally(() => { if (!silent) setLoading(false) })
-  }, [dates, search])
+  }, [dates, search, clientId, lineId])
 
   useEffect(() => { fetchRows() }, [fetchRows])
   useAutoRefresh(() => fetchRows(true))
@@ -285,6 +296,18 @@ export default function InvoiceDetailsPage() {
                 </>
               )}
 
+              <div style={{ width: 1, height: 22, background: 'rgba(255,255,255,0.3)', flexShrink: 0, margin: '0 2px' }} />
+
+              <PillSelect
+                value={clientId} dimValue="" minWidth={170} searchable
+                onChange={v => { setClientId(v); if (v && lineId && !clients.find(c => c.id === v)?.lines.some(l => l.id === lineId)) setLineId('') }}
+                options={[{ value: '', label: 'All Clients' }, ...clients.map(c => ({ value: c.id, label: c.name }))]}
+              />
+              <PillSelect
+                value={lineId} onChange={setLineId} dimValue="" minWidth={190} searchable
+                options={[{ value: '', label: 'All Lines' }, ...lineOptions]}
+              />
+
               <div style={{ position: 'relative', flex: 1, minWidth: 150, maxWidth: 230 }}>
                 <svg style={{ position: 'absolute', left: 9, top: '50%', transform: 'translateY(-50%)', pointerEvents: 'none' }} width={12} height={12} fill="none" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.8)" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
@@ -300,6 +323,7 @@ export default function InvoiceDetailsPage() {
             rowKey={(r: any) => r.id} onRowClick={(r: any) => setOpenId(r.id)}
             emptyText={search
               ? `No invoices matching "${search}".`
+              : clientId || lineId ? 'No issued invoices for this client or line in this range.'
               : 'No issued invoices in this range. An invoice shows up here the moment it is sent.'}
             columns={[
               { key: 'invoiceNumber', label: 'Invoice #', width: 108, cellStyle: { color: TEAL, fontWeight: 600 } },

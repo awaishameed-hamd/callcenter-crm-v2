@@ -186,6 +186,7 @@ export class InvoicesService {
     await this.sweepOverdue()
     const where: Prisma.InvoiceWhereInput = { status: { in: BILLABLE } }
     if (q.clientId) where.companyId = q.clientId
+    if (q.lineId) where.clientId = q.lineId
     if (isYmd(q.from) || isYmd(q.to)) where.invoiceDate = { ...(isYmd(q.from) ? { gte: dateOnly(q.from) } : {}), ...(isYmd(q.to) ? { lte: dateOnly(q.to) } : {}) }
     if (q.search) {
       const s = { contains: q.search, mode: 'insensitive' as const }
