@@ -21,9 +21,9 @@ const inputCls  = 'w-full rounded-lg border border-gray-300 bg-white px-3 py-2.5
 // cycle, opening balance, its own invoices); a client groups its lines into one ledger.
 type Form = {
   companyId: string; lineName: string; campaign: string; didCode: string; saleType: string; rateType: string
-  rateOfSaleAmount: string; openingBalance: string; cycleOfDay: string; billingStartAfterDays: string; notes: string
+  rateOfSaleAmount: string; openingBalance: string; cycleOfDay: string; billingStartAfterDays: string; nextBillingDate: string; notes: string
 }
-const EMPTY: Form = { companyId: '', lineName: '', campaign: '', didCode: '', saleType: '', rateType: 'fixed', rateOfSaleAmount: '', openingBalance: '', cycleOfDay: '', billingStartAfterDays: '', notes: '' }
+const EMPTY: Form = { companyId: '', lineName: '', campaign: '', didCode: '', saleType: '', rateType: 'fixed', rateOfSaleAmount: '', openingBalance: '', cycleOfDay: '', billingStartAfterDays: '', nextBillingDate: '', notes: '' }
 const str = (v: unknown) => (v === null || v === undefined ? '' : String(v))
 
 function Field({ label, required, error, children }: { label: string; required?: boolean; error?: string; children: React.ReactNode }) {
@@ -87,7 +87,7 @@ function LineForm({ initial, companies, companyId, onSubmit, loading, errors }: 
   const [form, setForm] = useState<Form>(initial ? {
     companyId: initial.companyId, lineName: initial.lineName, campaign: str(initial.campaign), didCode: str(initial.didCode), saleType: str(initial.saleType),
     rateType: initial.rateType, rateOfSaleAmount: str(initial.rateOfSaleAmount), openingBalance: str(initial.openingBalance),
-    cycleOfDay: str(initial.cycleOfDay), billingStartAfterDays: str(initial.billingStartAfterDays), notes: str(initial.notes),
+    cycleOfDay: str(initial.cycleOfDay), billingStartAfterDays: str(initial.billingStartAfterDays), nextBillingDate: str(initial.nextBillingDate).slice(0, 10), notes: str(initial.notes),
   } : { ...EMPTY, companyId: companyId ?? '' })
   const [extra, setExtra] = useState<Record<string, string>>(Object.fromEntries(Object.entries(initial?.extraFields ?? {}).map(([k, v]) => [k, str(v)])))
   const [dids, setDids] = useState<{ id: string; didCode: string }[]>([])
@@ -194,6 +194,21 @@ function LineForm({ initial, companies, companyId, onSubmit, loading, errors }: 
           </Field>
         )}
       </div>
+      {/* For a client moved here mid cycle: the day its next invoice falls due, then every cycle after */}
+      <Field label="Next Invoice Date">
+        <div className="flex items-center gap-2">
+          <DateInput value={form.nextBillingDate} onChange={(e: React.ChangeEvent<HTMLInputElement>) => set('nextBillingDate', e.target.value)} className={inputCls} />
+          {form.nextBillingDate && (
+            <button type="button" onClick={() => set('nextBillingDate', '')} className="shrink-0 px-3 py-2.5 rounded-lg border border-gray-300 text-xs font-semibold text-gray-600 hover:bg-gray-50">Clear</button>
+          )}
+        </div>
+        <p className="mt-1 text-xs text-gray-400">
+          {form.nextBillingDate
+            ? `The invoice falls due on this date, then every ${form.cycleOfDay || 'cycle'} days after it.`
+            : 'Optional. For a client already running when it moved here: the day its next invoice is due. Left empty, the cycle counts from the day the line was added, whether or not sales were approved yet.'}
+          {isEdit && initial?.nextInvoiceDue && <> Next invoice due now: <b className="text-gray-600">{new Date(`${initial.nextInvoiceDue}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' })}</b>.</>}
+        </p>
+      </Field>
       {vis('notes') && (
         <Field label={label('notes', 'Notes')}>
           <textarea value={form.notes} onChange={e => set('notes', e.target.value)} rows={cfg('notes')?.textareaRows ?? 3} placeholder={ph('notes', 'Optional notes')} className={`${inputCls} resize-none`} />
@@ -295,7 +310,8 @@ const F = "'Aptos', sans-serif"
 const TH: React.CSSProperties = { padding: '7px 12px', textAlign: 'center', fontSize: 11, fontWeight: 700, textTransform: 'uppercase', color: '#1a1a1a', fontFamily: F, letterSpacing: '0.07em', whiteSpace: 'nowrap' }
 const TD: React.CSSProperties = { padding: '6px 12px', fontSize: 12, fontFamily: F, color: '#1a1a1a', borderBottom: `1px solid ${P.border}50`, whiteSpace: 'nowrap' }
 const EDIT_ICON = 'm16.862 4.487 1.687-1.688a1.875 1.875 0 1 1 2.652 2.652L10.582 16.07a4.5 4.5 0 0 1-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 0 1 1.13-1.897l8.932-8.931zm0 0L19.5 7.125'
-const HEADS = ['Line', 'Campaign', 'Assigned DID', 'Type', 'Rate Type', 'Rate', 'Opening Bal.', 'Cycle', 'Status', 'Actions']
+const HEADS = ['Line', 'Campaign', 'Assigned DID', 'Type', 'Rate Type', 'Rate', 'Opening Bal.', 'Cycle', 'Next Invoice', 'Status', 'Actions']
+const shortDate = (ymd?: string | null) => (ymd ? new Date(`${ymd}T00:00:00Z`).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric', timeZone: 'UTC' }) : '')
 
 export default function ClientsPage() {
   const [companies, setCompanies] = useState<Company[]>([])
@@ -494,6 +510,8 @@ export default function ClientsPage() {
                       <td style={center}>{l.openingBalance != null && Number(l.openingBalance) > 0
                         ? <span style={{ fontSize: 12, fontWeight: 600, color: P.forest }}>${Number(l.openingBalance).toLocaleString('en-US', { minimumFractionDigits: 2 })}</span> : na}</td>
                       <td style={center}><span style={{ fontSize: 12, color: P.slate }}>{l.cycleOfDay ? `${l.cycleOfDay}d` : 'N/A'}</span></td>
+                      <td style={center} title={l.nextBillingDate ? 'Set by Next Invoice Date' : 'From the billing cycle'}>{l.nextInvoiceDue
+                        ? <span style={{ fontSize: 12, fontWeight: 600, color: l.nextBillingDate ? P.teal : P.slate }}>{shortDate(l.nextInvoiceDue)}</span> : na}</td>
                       <td style={center}>{tw(l.isActive ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500', l.isActive ? 'Active' : 'Inactive')}</td>
                       <td style={TD}>
                         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}>

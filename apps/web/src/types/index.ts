@@ -115,6 +115,8 @@ export interface Client {
   cycleOfDay:            number | null
   billingStartAfterDays: number | null
   billingStartAfter:     string
+  nextBillingDate?:      string | null   // Next Invoice Date, when set
+  nextInvoiceDue?:       string | null   // the running period's due day (from /companies)
   notes:                 string | null
   isActive:              boolean
   extraFields:           Record<string, unknown> | null

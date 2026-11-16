@@ -429,6 +429,9 @@ model Client {
   // End (exclusive) of the billing cycles the director has already been told are due, so each
   // ended cycle raises its "invoice due" notification once
   cycleNotifiedThrough  DateTime? @db.Date
+  // Next Invoice Date (user, 2026-11-16): for a client moved here mid cycle, the day its first
+  // invoice falls due here; the cycle runs on from it. Empty: from the first approved sale.
+  nextBillingDate       DateTime? @db.Date
   notes                 String?   @db.Text
   isActive              Boolean   @default(true)
   extraFields           Json?

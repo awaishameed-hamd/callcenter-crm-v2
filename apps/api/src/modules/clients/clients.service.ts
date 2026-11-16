@@ -5,8 +5,11 @@ import { PrismaService } from '../prisma/prisma.service'
 import { VerticalsService } from '../verticals/verticals.service'
 import { InvoicesService } from '../invoices/invoices.service'
 import { V, fail, defined, pageArgs, toPage } from '../../common/utils/validate'
+import { dateOnly, fmtDateOnly } from '../../common/utils/time'
 
 const didNumber = (code: string | null) => parseInt((code ?? '').slice(2), 10) || 0
+/** A form date for a DATE column: undefined leaves it, null clears it */
+const dateOrNull = (d: string | null | undefined) => (d === undefined ? undefined : d === null ? null : dateOnly(d))
 
 /**
  * A line's full label, shown wherever lines are listed (reports, approvals, dashboard, batch
@@ -89,6 +92,7 @@ export class ClientsService {
       openingBalance:        V.num(b.openingBalance, 'Opening balance', { min: 0 }),
       cycleOfDay:            V.int(b.cycleOfDay, 'Cycle (days)', { required: creating, min: 1 }),
       billingStartAfterDays: V.int(b.billingStartAfterDays, 'Billing starts after (days)', { required: creating, min: 0 }),
+      nextBillingDate:       dateOrNull(V.date(b.nextBillingDate, 'Next invoice date')),
       notes:            V.str(b.notes, 'Notes'),
       extraFields:      extra === null ? Prisma.DbNull : (extra as Prisma.InputJsonValue | undefined),
     })
@@ -194,13 +198,22 @@ export class ClientsService {
 
   // ── Clients (the companies that own the lines) ─────────────────────────────
 
-  /** Every client with its lines, for the Clients page and the billing pickers. */
+  /**
+   * Every client with its lines, for the Clients page and the billing pickers. Each line carries
+   * `nextInvoiceDue`: the day its running billing period's invoice falls due.
+   */
   async companies() {
     const rows = await this.prisma.company.findMany({
       include: { lines: { orderBy: [{ createdAt: 'asc' }] } },
       orderBy: { name: 'asc' },
     })
-    return rows.map(c => ({ ...c, isActive: c.isActive && (!c.lines.length || c.lines.some(l => l.isActive)) }))
+    const due = new Map<string, string | null>()
+    for (const l of rows.flatMap(c => c.lines)) due.set(l.id, (await this.invoices.nextCycleOf(l.id))?.dueOn ?? null)
+    return rows.map(c => ({
+      ...c,
+      isActive: c.isActive && (!c.lines.length || c.lines.some(l => l.isActive)),
+      lines: c.lines.map(l => ({ ...l, nextBillingDate: fmtDateOnly(l.nextBillingDate), nextInvoiceDue: due.get(l.id) ?? null })),
+    }))
   }
 
   private readCompany(b: Record<string, any>, creating: boolean) {

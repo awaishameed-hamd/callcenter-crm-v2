@@ -849,29 +849,25 @@ export class InvoicesService {
   // ── Billing cycles (per line, as before clients had lines) ─────────────────
 
   /**
-   * The day the line's billing clock starts: its first sale approved by a manager, or its first
-   * final approved sale, as the line's "Billing Starts After" setting says. Null before that.
+   * The line's first billing period, as [start, end) business days; its invoice falls due on `end`.
+   * The cycle runs on calendar days, whether or not sales were approved in it (user, 2026-11-16):
+   * with a Next Invoice Date set (a client moved here mid cycle) that date ends the first period;
+   * otherwise it runs from the day the line was added for "Billing Starts After (Days)" (or one
+   * cycle when that is 0). A period with no approved sales simply has nothing to invoice.
    */
-  private async anchorOf(line: { id: string; billingStartAfter: string }): Promise<string | null> {
-    const final = line.billingStartAfter === 'first_final_approved'
-    const agg = await this.prisma.customer.aggregate({
-      where: { clientId: line.id, ...(final ? { finalApprovedAt: { not: null } } : { approvedAt: { not: null } }) },
-      _min: { approvedAt: true, finalApprovedAt: true },
-    })
-    const first = final ? agg._min.finalApprovedAt : agg._min.approvedAt
-    return first ? todayIn(BUSINESS_TZ, first) : null
+  private firstPeriod(line: { createdAt: Date; billingStartAfterDays: number | null; cycleOfDay: number | null; nextBillingDate: Date | null }) {
+    const cycle = Math.max(1, line.cycleOfDay || DEFAULT_CYCLE)
+    const next = fmtDateOnly(line.nextBillingDate)
+    if (next) return { start: addDays(next, -cycle), end: next }
+    const start = todayIn(BUSINESS_TZ, line.createdAt)
+    return { start, end: addDays(start, line.billingStartAfterDays && line.billingStartAfterDays > 0 ? line.billingStartAfterDays : cycle) }
   }
 
-  /**
-   * The line's billing cycles that have ended by `today`, as [start, end) business days. The first
-   * cycle runs from the anchor for "Billing Starts After (Days)" (or one cycle when that is 0), every
-   * later one for "Cycle (Days)".
-   */
-  cyclePeriods(anchor: string, startAfterDays: number | null, cycleDays: number | null, today: string) {
+  /** The line's billing periods that have ended by `today`: the first one, then one every "Cycle (Days)". */
+  cyclePeriods(first: { start: string; end: string }, cycleDays: number | null, today: string) {
     const cycle = Math.max(1, cycleDays || DEFAULT_CYCLE)
     const out: { start: string; end: string }[] = []
-    let start = anchor
-    let end = addDays(anchor, startAfterDays && startAfterDays > 0 ? startAfterDays : cycle)
+    let { start, end } = first
     for (let i = 0; end <= today && i < 5000; i++) {
       out.push({ start, end })
       start = end
@@ -880,15 +876,14 @@ export class InvoicesService {
     return out
   }
 
-  /** The line's cycle running now, for the New Invoice form: its dates and the day its invoice falls due. */
+  /** The line's period running now: its dates and the day its invoice falls due (Clients page, New Invoice). */
   async nextCycleOf(lineId: string) {
-    const c = await this.prisma.client.findUnique({ where: { id: lineId }, select: { id: true, billingStartAfter: true, billingStartAfterDays: true, cycleOfDay: true } })
+    const c = await this.prisma.client.findUnique({ where: { id: lineId }, select: { id: true, createdAt: true, billingStartAfterDays: true, cycleOfDay: true, nextBillingDate: true } })
     if (!c) return null
-    const anchor = await this.anchorOf(c)
-    if (!anchor) return null
-    const ended = this.cyclePeriods(anchor, c.billingStartAfterDays, c.cycleOfDay, todayIn(BUSINESS_TZ))
-    const start = ended.length ? ended[ended.length - 1].end : anchor
-    const end = ended.length ? addDays(start, Math.max(1, c.cycleOfDay || DEFAULT_CYCLE)) : addDays(anchor, c.billingStartAfterDays && c.billingStartAfterDays > 0 ? c.billingStartAfterDays : Math.max(1, c.cycleOfDay || DEFAULT_CYCLE))
+    const first = this.firstPeriod(c)
+    const ended = this.cyclePeriods(first, c.cycleOfDay, todayIn(BUSINESS_TZ))
+    const start = ended.length ? ended[ended.length - 1].end : first.start
+    const end = ended.length ? addDays(start, Math.max(1, c.cycleOfDay || DEFAULT_CYCLE)) : first.end
     return { start, end: addDays(end, -1), dueOn: end }
   }
 
@@ -907,7 +902,7 @@ export class InvoicesService {
 
   private static readonly CYCLE_LINE = {
     id: true, companyId: true, lineName: true, companyName: true, didCode: true, isActive: true,
-    billingStartAfter: true, billingStartAfterDays: true, cycleOfDay: true, cycleNotifiedThrough: true,
+    createdAt: true, billingStartAfterDays: true, cycleOfDay: true, cycleNotifiedThrough: true, nextBillingDate: true,
     company: { select: { name: true } },
   } satisfies Prisma.ClientSelect
 
@@ -922,9 +917,8 @@ export class InvoicesService {
     const lines = await this.prisma.client.findMany({ select: InvoicesService.CYCLE_LINE, orderBy: { companyName: 'asc' } })
     const out = []
     for (const l of lines) {
-      const anchor = await this.anchorOf(l)
-      if (!anchor) continue
-      const ended = this.cyclePeriods(anchor, l.billingStartAfterDays, l.cycleOfDay, today)
+      const first = this.firstPeriod(l)
+      const ended = this.cyclePeriods(first, l.cycleOfDay, today)
       if (!ended.length) continue
       const last = ended[ended.length - 1]
       const u = await this.unbilledBefore(l.id, last.end)
@@ -947,10 +941,9 @@ export class InvoicesService {
     const lines = await this.prisma.client.findMany({ select: InvoicesService.CYCLE_LINE })
     const due: { clientId: string; client: string; periodStart: string; periodEnd: string; sales: number; amount: number }[] = []
     for (const l of lines) {
-      const anchor = await this.anchorOf(l)
-      if (!anchor) continue
+      const first = this.firstPeriod(l)
       const told = fmtDateOnly(l.cycleNotifiedThrough)
-      const fresh = this.cyclePeriods(anchor, l.billingStartAfterDays, l.cycleOfDay, today).filter(p => !told || p.end > told)
+      const fresh = this.cyclePeriods(first, l.cycleOfDay, today).filter(p => !told || p.end > told)
       if (!fresh.length) continue
       const last = fresh[fresh.length - 1]   // after downtime, one notice for the latest cycle, not one per missed cycle
       const u = await this.unbilledBefore(l.id, last.end)
