@@ -141,6 +141,14 @@ function navFor(user: NonNullable<ReturnType<typeof useAuth>['user']>): NavItem[
 
 const ATTENDANCE_KEYS = ['attApproval', 'myAtt', 'myLeaves', 'attReport', 'dailyAtt', 'workingDays']
 
+// Items that sit under one heading on the sidebar and open in a flyout, in the order listed
+// (Invoicing & Payments: Clients Ledgers on top, user 2026-11-16). The heading shows the badge named.
+const GROUPS = [
+  { id: 'attendance', label: 'Attendance', icon: 'myAtt', keys: ATTENDANCE_KEYS, badge: 'attApproval' },
+  { id: 'invoicing', label: 'Invoicing & Payments', icon: 'invoicing', keys: ['ledgers', 'invoicesDue', 'invDetails'], badge: 'invoicesDue' },
+]
+const groupOf = (key: string) => GROUPS.find(g => g.keys.includes(key))
+
 function Badge({ n, active }: { n: number; active?: boolean }) {
   if (n <= 0) return null
   return (
@@ -171,24 +179,24 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
 
   const { avatar, save: saveAvatar } = useAvatar()   // stored on the server (lib/avatar.ts)
 
-  // ── Attendance flyout ──
-  const triggerRef = useRef<HTMLDivElement>(null)
+  // ── Group flyouts (Attendance, Invoicing & Payments) ──
+  const triggerRefs = useRef<Record<string, HTMLDivElement | null>>({})
   const panelRef   = useRef<HTMLDivElement>(null)
   const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
-  const [attOpen, setAttOpen] = useState(false)
+  const [openGroup, setOpenGroup] = useState<string | null>(null)
   const [menuPos, setMenuPos] = useState({ top: 0, left: 0 })
 
-  const openMenu = useCallback(() => {
+  const openMenu = useCallback((id: string) => {
     if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null }
-    const rect = triggerRef.current?.getBoundingClientRect()
+    const rect = triggerRefs.current[id]?.getBoundingClientRect()
     if (rect) setMenuPos({ top: rect.top, left: rect.right + 8 })
-    setAttOpen(true)
+    setOpenGroup(id)
   }, [])
-  const scheduleClose = useCallback(() => { closeTimer.current = setTimeout(() => setAttOpen(false), 150) }, [])
+  const scheduleClose = useCallback(() => { closeTimer.current = setTimeout(() => setOpenGroup(null), 150) }, [])
   const cancelClose = useCallback(() => {
     if (closeTimer.current) { clearTimeout(closeTimer.current); closeTimer.current = null }
   }, [])
-  useEffect(() => { setAttOpen(false) }, [pathname])
+  useEffect(() => { setOpenGroup(null) }, [pathname])
 
   // ── Notifications ──
   const [notifs, setNotifs] = useState<any[]>([])
@@ -277,29 +285,34 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
   useAutoRefresh(fetchCounts, { page: false, sales: true })
 
   const navItems = user ? navFor(user).filter(i => i.key !== 'myAtt' || user.attendanceApplicable !== false) : []
-  const attItems = navItems.filter(i => ATTENDANCE_KEYS.includes(i.key))
-    .sort((a, b) => ATTENDANCE_KEYS.indexOf(a.key) - ATTENDANCE_KEYS.indexOf(b.key))
+  const groupItems = (id: string) => {
+    const g = GROUPS.find(x => x.id === id)
+    return g ? navItems.filter(i => g.keys.includes(i.key)).sort((a, b) => g.keys.indexOf(a.key) - g.keys.indexOf(b.key)) : []
+  }
 
-  type Entry = NavItem | { group: true }
+  // A group's heading takes the place of its first item in the role's list
+  type Entry = NavItem | { group: string }
   const entries: Entry[] = []
-  let groupPlaced = false
+  const placed = new Set<string>()
   for (const item of navItems) {
-    if (ATTENDANCE_KEYS.includes(item.key)) {
-      if (!groupPlaced && attItems.length) { entries.push({ group: true }); groupPlaced = true }
+    const g = groupOf(item.key)
+    if (g) {
+      if (!placed.has(g.id)) { entries.push({ group: g.id }); placed.add(g.id) }
       continue
     }
     entries.push(item)
   }
+  const flyoutItems = openGroup ? groupItems(openGroup) : []
+  const flyoutGroup = GROUPS.find(g => g.id === openGroup)
 
   const isActive = (href: string) => pathname === href || pathname.startsWith(href + '/')
   const exactActive = (item: NavItem) =>
     item.key === 'myAtt' ? pathname === item.href : isActive(item.href)
-  const attActive = attItems.some(exactActive)
   const itemBadge = (key: string) => key === 'attApproval' ? counts.attApproval : key === 'messages' ? counts.messages : key === 'approvals' ? counts.approvals : key === 'invoicesDue' ? counts.invoicesDue : 0
 
   useLayoutEffect(() => {
-    if (!attOpen) return
-    const trigger = triggerRef.current, panel = panelRef.current
+    if (!openGroup) return
+    const trigger = triggerRefs.current[openGroup], panel = panelRef.current
     if (!trigger || !panel) return
     const margin = 8
     const t = trigger.getBoundingClientRect()
@@ -311,7 +324,7 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
     if (left + w > window.innerWidth - margin) left = t.left - w - margin
     left = Math.max(left, margin)
     setMenuPos(prev => (prev.top === top && prev.left === left ? prev : { top, left }))
-  }, [attOpen, attItems.length])
+  }, [openGroup, flyoutItems.length])
 
   function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -397,12 +410,13 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
       <nav style={{ flex: 1, overflowY: 'auto', padding: '8px 12px 16px', minWidth: 256 }}>
         {entries.map(entry => {
           if ('group' in entry) {
-            const active = attActive || attOpen
+            const g = GROUPS.find(x => x.id === entry.group)!
+            const active = groupItems(g.id).some(exactActive) || openGroup === g.id
             return (
-              <div key="attendance-group" ref={triggerRef} onMouseEnter={openMenu} onMouseLeave={scheduleClose} onClick={openMenu} style={rowStyle(active)}>
-                <Icon d={ICONS.myAtt} active={active} />
-                <span style={{ flex: 1 }}>Attendance</span>
-                <Badge n={counts.attApproval} active={false} />
+              <div key={`group-${g.id}`} ref={el => { triggerRefs.current[g.id] = el }} onMouseEnter={() => openMenu(g.id)} onMouseLeave={scheduleClose} onClick={() => openMenu(g.id)} style={rowStyle(active)}>
+                <Icon d={ICONS[g.icon] ?? ICONS.dashboard} active={active} />
+                <span style={{ flex: 1 }}>{g.label}</span>
+                <Badge n={itemBadge(g.badge)} active={false} />
               </div>
             )
           }
@@ -419,15 +433,15 @@ export default function Sidebar({ collapsed, onToggle, compact = false }: Sideba
         })}
       </nav>
 
-      {/* Attendance flyout */}
-      {attOpen && attItems.length > 0 && (
+      {/* Group flyout */}
+      {flyoutGroup && flyoutItems.length > 0 && (
         <div ref={panelRef} onMouseEnter={cancelClose} onMouseLeave={scheduleClose}
           style={{ position: 'fixed', top: menuPos.top, left: menuPos.left, zIndex: 400, width: 220, background: '#fff', border: `1px solid ${C.border}`, borderRadius: 10, boxShadow: '0 8px 24px rgba(0,0,0,0.14)', maxHeight: 'calc(100vh - 16px)', overflowY: 'auto', overflowX: 'hidden' }}>
-          <div style={{ padding: '8px 14px 6px', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.gray, fontFamily: "'Aptos', sans-serif" }}>Attendance</div>
-          {attItems.map(item => {
+          <div style={{ padding: '8px 14px 6px', fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: C.gray, fontFamily: "'Aptos', sans-serif" }}>{flyoutGroup.label}</div>
+          {flyoutItems.map(item => {
             const active = exactActive(item)
             return (
-              <Link key={item.href} href={item.href} onClick={() => { setAttOpen(false); if (compact && !collapsed) onToggle() }}
+              <Link key={item.href} href={item.href} onClick={() => { setOpenGroup(null); if (compact && !collapsed) onToggle() }}
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 14px', textDecoration: 'none', fontSize: 14, fontFamily: "'Rajdhani', sans-serif", fontWeight: 600, letterSpacing: '0.02em', background: active ? C.bgActive : 'transparent', color: active ? C.navy : C.slate }}
                 onMouseEnter={e => { if (!active) { e.currentTarget.style.background = C.tealDim; e.currentTarget.style.color = C.navy } }}
                 onMouseLeave={e => { if (!active) { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.slate } }}>
